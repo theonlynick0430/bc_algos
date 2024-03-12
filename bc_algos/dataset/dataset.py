@@ -74,15 +74,13 @@ class MIMODataset(torch.utils.data.Dataset):
 
         # init data structures 
         self.total_num_sequences = 0
-        self.index_to_demo_id = dict()  # index in total_num_sequences -> demo_id
+        self.index_to_demo_id = [] # index in total_num_sequences -> demo_id
         self.demo_id_to_start_index = dict()  # demo_id -> start index in total_num_sequences
         self.demo_id_to_demo_length = dict() # demo_id -> length of demo in data
 
         self.load_demo_info()
 
-        # store dataset in memory for fast access
-        print("caching get_item calls...")
-        self.getitem_cache = [self.get_item(i) for i in LogUtils.custom_tqdm(range(len(self)))]
+        self.cache_index()
 
     @classmethod
     def dataset_factory(cls, config, obs_group_to_keys):
@@ -123,7 +121,11 @@ class MIMODataset(torch.utils.data.Dataset):
         """
         Get number of demos
         """
-        return NotImplementedError      
+        return NotImplementedError
+
+    @property
+    def gc(self):
+        return "goal" in self.obs_group_to_keys and self.goal_mode in ["last", "subgoal"]
 
     def get_demo_len(self, demo_id):
         """
@@ -154,7 +156,7 @@ class MIMODataset(torch.utils.data.Dataset):
                 assert num_sequences >= 1  # assume demo_length >= (self.n_frame_stack + self.seq_length)
 
             for _ in range(num_sequences):
-                self.index_to_demo_id[self.total_num_sequences] = demo_id
+                self.index_to_demo_id.append(demo_id)
                 self.total_num_sequences += 1    
 
     def __len__(self):
@@ -168,7 +170,7 @@ class MIMODataset(torch.utils.data.Dataset):
         """
         Fetch dataset sequence @index (inferred through internal index map) using the getitem_cache.
         """
-        return self.getitem_cache[index]
+        return self.get_item(index)
     
     def __repr__(self):
         """
@@ -189,20 +191,35 @@ class MIMODataset(torch.utils.data.Dataset):
         Main implementation of getitem.
         """
         demo_id = self.index_to_demo_id[index]
-        # convert index in total_num_sequences to index in data
-        start_offset = 0 if self.pad_frame_stack else self.n_frame_stack
-        demo_index = index - self.demo_id_to_start_index[demo_id] + start_offset
-
-        data_seq_index, pad_mask = self.get_data_seq_index(demo_id=demo_id, index_in_demo=demo_index)
+        cache = self.index_cache[index]
+        data_seq_index = cache[0]
         meta = self.get_data_seq(demo_id=demo_id, keys=self.dataset_keys, seq_index=data_seq_index)
         meta["obs"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_keys["obs"], seq_index=data_seq_index)
-        if "goal" in self.obs_group_to_keys and self.goal_mode in ["last", "subgoal"]:
-            goal_index = self.get_goal_seq_index(demo_id=demo_id, data_seq_index=data_seq_index)
+        if self.gc:
+            goal_index = cache[1]
             meta["goal"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_keys["goal"], seq_index=goal_index)
         if self.get_pad_mask:
+            pad_mask = cache[2]
             meta["pad_mask"] = pad_mask
-
         return meta
+
+    def cache_index(self):
+        """
+        Cache all index required for get_item calls to speed up training and reduce memory.
+        """
+        self.index_cache = []
+        for index in LogUtils.custom_tqdm(range(len(self))):
+            demo_id = self.index_to_demo_id[index]
+            # convert index in total_num_sequences to index in data
+            start_offset = 0 if self.pad_frame_stack else self.n_frame_stack
+            demo_index = index - self.demo_id_to_start_index[demo_id] + start_offset
+            data_seq_index, pad_mask = self.get_data_seq_index(demo_id=demo_id, index_in_demo=demo_index)
+            item = [data_seq_index]
+            if self.gc:
+                item.append(self.get_goal_seq_index(demo_id=demo_id, data_seq_index=data_seq_index))
+            if self.get_pad_mask:
+                item.append(pad_mask)
+            self.index_cache.append(item)
     
     def get_data_seq(self, demo_id, keys, seq_index):
         """
