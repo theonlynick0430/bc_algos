@@ -1,5 +1,6 @@
-from bc_algos.models.base_nets import SpatialSoftArgmax
-from transformers import ResNetModel
+import bc_algos.utils.obs_utils as ObsUtils
+import torchvision.transforms as transforms
+from transformers import ViTMAEModel
 import torch.nn as nn
 import torch
 import numpy as np
@@ -9,7 +10,7 @@ class EncoderCore(nn.Module):
     """
     Abstract class used to encode different modailities of data.
     """
-    def __init__(self, input_shape, output_shape=None, hidden_dim=[128]):
+    def __init__(self, input_shape, output_shape=None, hidden_dim=[128], freeze=True):
         """
         Args: 
             input_shape (array-like): shape of input excluding batch and temporal dim 
@@ -17,6 +18,8 @@ class EncoderCore(nn.Module):
             output_shape (array-like): (optional) shape of ouput excluding batch and temporal dim 
 
             hidden_dim (array-like): if output_shape not None, hidden dim of nueral net used for encoding
+
+            freeze (bool): whether to freeze backbone encoder
         """
         super(EncoderCore, self).__init__()
 
@@ -24,6 +27,7 @@ class EncoderCore(nn.Module):
         self._output_shape = output_shape
         self._project = self._output_shape is not None
         self._hidden_dim = hidden_dim
+        self._freeze = freeze
 
         self.create_layers()
 
@@ -66,18 +70,23 @@ class EncoderCore(nn.Module):
 
 class VisualCore(EncoderCore):
     """
-    Abstract class used to encode different modailities of data.
+    EncoderCore subclass used to encode visual data.
     """
     @property
     def output_shape(self):
-        return [2*self.resnet50.config.hidden_sizes[-1],]
+        return [self.vitmae.config.hidden_size,]
     
     def create_layers(self):
-        self.resnet50 = ResNetModel.from_pretrained("microsoft/resnet-50")
-        self.spatial_soft_argmax = SpatialSoftArgmax()
+        self.crop = transforms.CenterCrop(224)
+        self.vitmae = ViTMAEModel.from_pretrained("facebook/vit-mae-base")
+
+        # freeze resnet params
+        if self._freeze:
+            for param in self.vitmae.parameters():
+                param.requires_grad = False
 
         super(VisualCore, self).create_layers()
 
     def encode(self, inputs):
-        embed = self.resnet50(inputs).last_hidden_state
-        return self.spatial_soft_argmax(embed)
+        inputs = self.crop(inputs)
+        return self.vitmae(inputs).last_hidden_state[:, 0]
