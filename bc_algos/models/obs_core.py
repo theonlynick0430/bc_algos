@@ -1,4 +1,3 @@
-import bc_algos.utils.obs_utils as ObsUtils
 import torchvision.transforms as transforms
 from transformers import ViTMAEModel
 import torch.nn as nn
@@ -25,22 +24,32 @@ class EncoderCore(nn.Module):
 
         self._input_shape = input_shape
         self._output_shape = output_shape
-        self._project = self._output_shape is not None
+        self._project = output_shape is not None
         self._hidden_dim = hidden_dim
         self._freeze = freeze
 
         self.create_layers()
 
     @property
+    def enc_output_shape(self):
+        """
+        Returns: output shape of encoder backbone.
+        """
+        return self._input_shape
+    
+    @property
     def output_shape(self):
         """
-        Returns: output shape assuming no projection
+        Returns: output shape of encoder core.
         """
-        return [np.prod(self._input_shape),]
+        if self._project:
+            return self._output_shape
+        else:
+            return [np.prod(self.enc_output_shape),]
     
     def create_layers(self):
         if self._project:
-            layers = [nn.Linear(np.prod(self.output_shape), self._hidden_dim[0]), nn.ReLU()]
+            layers = [nn.Linear(np.prod(self.enc_output_shape), self._hidden_dim[0]), nn.ReLU()]
             for i in range(1, len(self._hidden_dim)):
                 layers.extend([nn.Linear(self._hidden_dim[i-1], self._hidden_dim[i]), nn.ReLU()])
             layers.append(nn.Linear(self._hidden_dim[-1], np.prod(self._output_shape)))
@@ -50,20 +59,19 @@ class EncoderCore(nn.Module):
 
     def forward(self, inputs):
         """
-        Forward pass through core.
-        Flatten encoded embedding and scale by learned param.
+        Forward pass through encoder core.
         """
         B = inputs.shape[0]
         embed = self.encode(inputs).view(B, -1)
         if self._project:
-            return self.linear(embed).view(torch.Size([B]+self._output_shape))
+            return self.linear(embed).view(B, *self._output_shape)
         else:
             return self.weight * embed
 
     def encode(self, inputs):
         """
         Main implementation of encoder.
-        For default encoder, just return input as is.
+        For default encoder, just return flattened input.
         """
         return inputs
 
@@ -73,7 +81,7 @@ class VisualCore(EncoderCore):
     EncoderCore subclass used to encode visual data.
     """
     @property
-    def output_shape(self):
+    def enc_output_shape(self):
         return [self.vitmae.config.hidden_size,]
     
     def create_layers(self):
