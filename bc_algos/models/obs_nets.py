@@ -12,11 +12,11 @@ class ObservationEncoder(nn.Module):
     Call @register_obs_key to register observation keys with encoder networks.
     """
     def __init__(self):
-        super().__init__()
+        super(ObservationEncoder, self).__init__()
 
         # maps observation key to encoder core
         # ex: {"robot0_eef_pos": EncoderCore, "agentview_image": VisualCore}
-        self.obs_key_to_enc_core = OrderedDict()
+        self.obs_key_to_enc_core = nn.ModuleDict()
 
     def register_obs_key(self, obs_key, modality, input_shape, **kwargs):
         """
@@ -66,11 +66,11 @@ class ObservationGroupEncoder(nn.Module):
     dictionary (observation group) an @ObservationEncoder object.
     """
     def __init__(self):
-        super().__init__()
+        super(ObservationGroupEncoder, self).__init__()
 
         # maps observation group to observation core
         # ex: {"obs": ObservationEncoder, "goal": ObservationEncoder}
-        self.obs_group_to_obs_enc = OrderedDict()
+        self.obs_group_to_obs_enc = nn.ModuleDict()
 
     def register_obs_group(self, obs_group, obs_enc):
         assert obs_group not in self.obs_group_to_obs_enc, f"observation group {obs_group} already registered"
@@ -97,4 +97,47 @@ class ObservationGroupEncoder(nn.Module):
                 embed = self.obs_group_to_obs_enc[obs_group](inputs[obs_group])
                 feats.append(embed)
         return torch.cat(feats, dim=-1)
+    
 
+class ActionDecoder(nn.Module):
+    """
+    Module that can generate action outputs using nueral network. Inputs are assumed
+    to be flat (usually outputs from policy backbone). Subclass this module for
+    implementing more complex schemes.
+    """
+    def __init__(
+        self,
+        action_dim,
+        input_feat_dim,
+        hidden_dim=[128,],
+    ):
+        """
+        Args:
+            action_dim (int): dim of actions
+
+            input_feat_dim (int): flat input dim
+
+            hidden_dim (array-like): hidden dim of nueral net used for decoding
+        """
+        super(ActionDecoder, self).__init__()
+
+        assert len(hidden_dim) != 0, "must provide at least one hidden dim"
+
+        self.action_dim = action_dim
+        self.input_feat_dim = input_feat_dim
+        self.hidden_dim = hidden_dim
+
+        self.create_layers()
+
+    def create_layers(self):
+        layers = [nn.Linear(self.input_feat_dim, self.hidden_dim[0]), nn.ReLU()]
+        for i in range(1, len(self.hidden_dim)):
+            layers.extend([nn.Linear(self.hidden_dim[i-1], self.hidden_dim[i]), nn.ReLU()])
+        layers.append(nn.Linear(self.hidden_dim[-1], self.action_dim))
+        self.mlp = nn.Sequential(*layers)
+
+    def forward(self, inputs):
+        """
+        Forward pass through action decoder.
+        """
+        return self.mlp(inputs)

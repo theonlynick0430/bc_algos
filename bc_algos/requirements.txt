@@ -14,3 +14,4 @@ torchvision
 wandb
 transformers
 datasets
+accelerate
