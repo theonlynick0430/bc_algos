@@ -7,28 +7,31 @@ import numpy as np
 
 class EncoderCore(nn.Module):
     """
-    Abstract class used to encode different modailities of data.
+    Module used to encode low-dim data. Subclass to implement encoders for different modalities of data.
     """
-    def __init__(self, input_shape, output_shape=None, hidden_dim=[128,], freeze=True):
+    def __init__(self, input_shape, output_shape=None, hidden_dims=[128,], freeze=True, activation=nn.ReLU):
         """
         Args: 
             input_shape (array-like): shape of input excluding batch and temporal dim 
 
             output_shape (array-like): (optional) shape of ouput excluding batch and temporal dim 
 
-            hidden_dim (array-like): if output_shape not None, hidden dim of nueral net used for encoding
+            hidden_dims (array-like): if output_shape not None, hidden dims of nueral net used for encoding
 
             freeze (bool): whether to freeze backbone encoder
+
+            activation (nn.Module): activation to use between linear layers
         """
         super(EncoderCore, self).__init__()
 
-        assert len(hidden_dim) != 0, "must provide at least one hidden dim"
+        assert len(hidden_dims) != 0, "must provide at least one hidden dim"
 
         self.input_shape = input_shape
         self._output_shape = output_shape
         self.project = output_shape is not None
-        self.hidden_dim = hidden_dim
+        self.hidden_dims = hidden_dims
         self.freeze = freeze
+        self.activation = activation
 
         self.create_layers()
 
@@ -51,10 +54,10 @@ class EncoderCore(nn.Module):
     
     def create_layers(self):
         if self.project:
-            layers = [nn.Linear(np.prod(self.enc_output_shape), self.hidden_dim[0]), nn.ReLU()]
-            for i in range(1, len(self.hidden_dim)):
-                layers.extend([nn.Linear(self.hidden_dim[i-1], self.hidden_dim[i]), nn.ReLU()])
-            layers.append(nn.Linear(self.hidden_dim[-1], np.prod(self._output_shape)))
+            layers = [nn.Linear(np.prod(self.enc_output_shape), self.hidden_dims[0]), self.activation()]
+            for i in range(1, len(self.hidden_dims)):
+                layers.extend([nn.Linear(self.hidden_dims[i-1], self.hidden_dims[i]), self.activation()])
+            layers.append(nn.Linear(self.hidden_dims[-1], np.prod(self._output_shape)))
             self.mlp = nn.Sequential(*layers)
         else:
             self.weight = nn.Parameter(torch.Tensor([1.0]))
@@ -81,6 +84,9 @@ class EncoderCore(nn.Module):
 class VisualCore(EncoderCore):
     """
     EncoderCore subclass used to encode visual data.
+
+    Adapted from "Real-World Robot Learning with Masked Visual Pre-training"
+    https://arxiv.org/pdf/2210.03109.pdf. 
     """
     @property
     def enc_output_shape(self):

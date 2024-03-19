@@ -37,14 +37,14 @@ class ObservationEncoder(nn.Module):
         self.obs_key_to_enc_core[obs_key] = enc_core
 
     @property
-    def output_shape(self):
+    def output_dim(self):
         """
-        Returns: output shape of observation encoder.
+        Returns: output dim of observation encoder.
         """
         dim = 0
         for enc_core in self.obs_key_to_enc_core.values():
             dim += np.prod(enc_core.output_shape)
-        return [dim,]
+        return dim
     
     def forward(self, inputs):
         """
@@ -78,14 +78,14 @@ class ObservationGroupEncoder(nn.Module):
         self.obs_group_to_obs_enc[obs_group] = obs_enc
 
     @property
-    def output_shape(self):
+    def output_dim(self):
         """
-        Returns: output shape of observation group encoder.
+        Returns: output dim of observation group encoder.
         """
         dim = 0
         for obs_enc in self.obs_group_to_obs_enc.values():
-            dim += obs_enc.output_shape[0]
-        return [dim,]
+            dim += obs_enc.output_dim
+        return dim
 
     def forward(self, inputs):
         """
@@ -107,37 +107,42 @@ class ActionDecoder(nn.Module):
     """
     def __init__(
         self,
-        action_dim,
-        input_feat_dim,
-        hidden_dim=[128,],
+        action_shape,
+        input_dim,
+        hidden_dims=[128,],
+        activation=nn.ReLU
     ):
         """
         Args:
-            action_dim (int): dim of actions
+            action_shape (int): shape of single action
 
-            input_feat_dim (int): flat input dim
+            input_dim (int): input dim
 
-            hidden_dim (array-like): hidden dim of nueral net used for decoding
+            hidden_dims (array-like): hidden dims of nueral net used for decoding
+
+            activation (nn.Module): activation to use between linear layers
         """
         super(ActionDecoder, self).__init__()
 
-        assert len(hidden_dim) != 0, "must provide at least one hidden dim"
+        assert len(hidden_dims) != 0, "must provide at least one hidden dim"
 
-        self.action_dim = action_dim
-        self.input_feat_dim = input_feat_dim
-        self.hidden_dim = hidden_dim
+        self.action_shape = action_shape
+        self.input_dim = input_dim
+        self.hidden_dims = hidden_dims
+        self.activation = activation
 
         self.create_layers()
 
     def create_layers(self):
-        layers = [nn.Linear(self.input_feat_dim, self.hidden_dim[0]), nn.ReLU()]
-        for i in range(1, len(self.hidden_dim)):
-            layers.extend([nn.Linear(self.hidden_dim[i-1], self.hidden_dim[i]), nn.ReLU()])
-        layers.append(nn.Linear(self.hidden_dim[-1], self.action_dim))
+        layers = [nn.Linear(self.input_dim, self.hidden_dims[0]), self.activation()]
+        for i in range(1, len(self.hidden_dims)):
+            layers.extend([nn.Linear(self.hidden_dims[i-1], self.hidden_dims[i]), self.activation()])
+        layers.append(nn.Linear(self.hidden_dims[-1], np.prod(self.action_shape)))
         self.mlp = nn.Sequential(*layers)
 
     def forward(self, inputs):
         """
         Forward pass through action decoder.
         """
-        return self.mlp(inputs)
+        B = inputs.shape[0]
+        return self.mlp(inputs).view(B, *self.action_shape)
