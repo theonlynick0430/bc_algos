@@ -30,10 +30,12 @@ class EncoderCore(nn.Module):
         self._output_shape = output_shape
         self.project = output_shape is not None
         self.hidden_dims = hidden_dims
-        self.freeze = freeze
         self.activation = activation
 
         self.create_layers()
+
+        if freeze:
+            self.freeze()
 
     @property
     def enc_output_shape(self):
@@ -51,6 +53,12 @@ class EncoderCore(nn.Module):
             return self._output_shape
         else:
             return [np.prod(self.enc_output_shape),]
+        
+    def freeze(self):
+        """
+        Freeze encoder network parameters.
+        """
+        return
     
     def create_layers(self):
         if self.project:
@@ -92,15 +100,14 @@ class VisualCore(EncoderCore):
     def enc_output_shape(self):
         return [self.vitmae.config.hidden_size,]
     
+    def freeze(self):
+        for param in self.vitmae.parameters():
+            param.requires_grad = False
+    
     def create_layers(self):
         self.crop = transforms.CenterCrop(224)
         self.vitmae = ViTMAEModel.from_pretrained("facebook/vit-mae-base")
-
-        # freeze resnet params
-        if self.freeze:
-            for param in self.vitmae.parameters():
-                param.requires_grad = False
-
+        
         super(VisualCore, self).create_layers()
 
     def encode(self, inputs):

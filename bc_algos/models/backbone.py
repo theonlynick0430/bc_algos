@@ -40,7 +40,7 @@ class MLP(Backbone):
 
         assert len(hidden_dims) != 0, "must provide at least one hidden dim"
 
-        self.output_dim = output_dim
+        self._output_dim = output_dim
         self.hidden_dims = hidden_dims
         self.activation = activation
         self._dropout = dropout
@@ -49,14 +49,14 @@ class MLP(Backbone):
 
     @property
     def output_dim(self):
-        return self.output_dim
+        return self._output_dim
 
     def create_layers(self):
         self.dropout = nn.Dropout(self._dropout)
         layers = [nn.Linear(self.input_dim, self.hidden_dims[0]), self.activation()]
         for i in range(1, len(self.hidden_dims)):
             layers.extend([nn.Linear(self.hidden_dims[i-1], self.hidden_dims[i]), self.activation()])
-        layers.append(nn.Linear(self.hidden_dims[-1], self.output_dim))
+        layers.append(nn.Linear(self.hidden_dims[-1], self._output_dim))
         self.mlp = nn.Sequential(*layers)
 
     def forward(self, inputs):
