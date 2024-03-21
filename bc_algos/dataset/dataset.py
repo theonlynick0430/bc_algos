@@ -17,7 +17,7 @@ class MIMODataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        obs_group_to_keys,
+        obs_group_to_key,
         dataset_keys,
         frame_stack=0,
         seq_length=1,
@@ -29,7 +29,7 @@ class MIMODataset(torch.utils.data.Dataset):
     ):
         """
         Args:
-            obs_group_to_keys (dict): dictionary from observation group to observation keys
+            obs_group_to_key (dict): dictionary from observation group to observation keys
 
             dataset_keys (tuple, list): keys to dataset items (actions, rewards, etc) to be fetched from the dataset.
 
@@ -54,8 +54,8 @@ class MIMODataset(torch.utils.data.Dataset):
             num_subgoal (int): Required if goal_mode is "subgoal". Number of subgoals provided for each trajectory.
             Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
         """
-        self.obs_group_to_keys = obs_group_to_keys # obs group -> obs keys
-        self.obs_keys = tuple(set([key for keys in self.obs_group_to_keys.values() for key in keys])) # obs keys for all obs groups (union)
+        self.obs_group_to_key = obs_group_to_key # obs group -> obs keys
+        self.obs_keys = tuple(set([key for keys in self.obs_group_to_key.values() for key in keys])) # obs keys for all obs groups (union)
         self.dataset_keys = tuple(dataset_keys) # obs keys for dataset
 
         self.n_frame_stack = frame_stack
@@ -83,20 +83,20 @@ class MIMODataset(torch.utils.data.Dataset):
         self.cache_index()
 
     @classmethod
-    def dataset_factory(cls, config, obs_group_to_keys):
+    def dataset_factory(cls, config, obs_group_to_key):
         """
         Create a MIMO_Dataset instance from config.
 
         Args:
             config (BaseConfig instance): config object
 
-            obs_group_to_keys (dict): dictionary from observation group to observation keys
+            obs_group_to_key (dict): dictionary from observation group to observation keys
 
         Returns:
             dataset (MIMO_Dataset instance): dataset object
         """
         ds_kwargs = dict(
-            obs_group_to_keys=obs_group_to_keys,
+            obs_group_to_key=obs_group_to_key,
             dataset_keys=config.train.dataset_keys,
             frame_stack=config.train.frame_stack,
             seq_length=config.train.seq_length,
@@ -125,7 +125,7 @@ class MIMODataset(torch.utils.data.Dataset):
 
     @property
     def gc(self):
-        return "goal" in self.obs_group_to_keys and self.goal_mode in ["last", "subgoal"]
+        return "goal" in self.obs_group_to_key and self.goal_mode in ["last", "subgoal"]
 
     def get_demo_len(self, demo_id):
         """
@@ -194,10 +194,10 @@ class MIMODataset(torch.utils.data.Dataset):
         cache = self.index_cache[index]
         data_seq_index = cache[0]
         meta = self.get_data_seq(demo_id=demo_id, keys=self.dataset_keys, seq_index=data_seq_index)
-        meta["obs"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_keys["obs"], seq_index=data_seq_index)
+        meta["obs"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
             goal_index = cache[1]
-            meta["goal"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_keys["goal"], seq_index=goal_index)
+            meta["goal"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
         if self.get_pad_mask:
             pad_mask = cache[2]
             meta["pad_mask"] = pad_mask

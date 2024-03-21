@@ -5,6 +5,7 @@ from enum import Enum
 class Modality(Enum):
     LOW_DIM="low_dim"
     RGB="rgb"
+    DEPTH="depth"
 
 # maps modality to encoder core class
 # Ex: {Modality.LOW_DIM: EncoderCore, Modality.RGB: VisualCore}

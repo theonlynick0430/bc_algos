@@ -17,7 +17,7 @@ class RobomimicDataset(MIMODataset):
     def __init__(
         self,
         hdf5_path,
-        obs_group_to_keys,
+        obs_group_to_key,
         dataset_keys,
         frame_stack=0,
         seq_length=1,
@@ -44,7 +44,7 @@ class RobomimicDataset(MIMODataset):
         self._demos = demos
 
         super(RobomimicDataset, self).__init__(
-            obs_group_to_keys=obs_group_to_keys,
+            obs_group_to_key=obs_group_to_key,
             dataset_keys=dataset_keys,
             frame_stack=frame_stack,
             seq_length=seq_length, 
@@ -56,39 +56,6 @@ class RobomimicDataset(MIMODataset):
             )
 
         self.close_and_delete_hdf5_handle()
-
-    @classmethod
-    def factory(cls, config, obs_group_to_keys, filter_by_attribute=None):
-        """
-        Create a RobomimicDataset instance from config.
-
-        Args:
-            config (BaseConfig instance): config object
-
-            obs_group_to_keys (dict(iterable)): dictionary that maps observation group (obs, goal etc) to 
-              observation keys (image, proprio, etc) to be fetched from the dataset
-
-            filter_by_attribute (str): if provided, use the provided filter key
-                to select a subset of demonstration trajectories to load
-
-        Returns:
-            dataset (RobomimicDataset instance)
-        """
-        ds_kwargs = dict(
-            hdf5_path=config.train.data,
-            obs_group_to_keys=obs_group_to_keys,
-            dataset_keys=config.train.dataset_keys,
-            frame_stack=config.train.frame_stack,
-            seq_length=config.train.seq_length,
-            pad_frame_stack=config.train.pad_frame_stack,
-            pad_seq_length=config.train.pad_seq_length,
-            get_pad_mask=False,
-            goal_mode=config.train.goal_mode,
-            num_subgoal=config.train.num_subgoal,
-            filter_by_attribute=filter_by_attribute
-        )
-        dataset = cls(**ds_kwargs)
-        return dataset
 
     @property
     def demos(self):
@@ -157,9 +124,9 @@ class RobomimicDataset(MIMODataset):
         Pretty print the class and important attributes on a call to `print`.
         """
         msg = str(self.__class__.__name__)
-        msg += " (\n\tpath={}\n\tobs_group_to_keys={}\n\tobs_keys={}\n\tfilter_key={}\n"
+        msg += " (\n\tpath={}\n\tobs_group_to_key={}\n\tobs_keys={}\n\tfilter_key={}\n"
         filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
-        msg = msg.format(self.hdf5_path, self.obs_group_to_keys, self.obs_keys, filter_key_str)
+        msg = msg.format(self.hdf5_path, self.obs_group_to_key, self.obs_keys, filter_key_str)
         return msg + super(RobomimicDataset, self).__repr__() + ")"
 
     def get_dataset_for_ep(self, ep, key):
