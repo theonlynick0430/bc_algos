@@ -173,7 +173,6 @@ def reshape_dimensions_single(x, begin_axis, end_axis, target_dims):
             final_s.append(s[i])
     return x.reshape(*final_s)
 
-
 def reshape_dimensions(x, begin_axis, end_axis, target_dims):
     """
     Reshape selected dimensions for all tensors in nested dictionary or list or tuple 
@@ -271,3 +270,114 @@ def time_distributed(inputs, op, activation=None, inputs_as_kwargs=False, inputs
         outputs = map_tensor(outputs, activation)
     outputs = reshape_dimensions(outputs, begin_axis=0, end_axis=0, target_dims=(batch_size, seq_len))
     return outputs
+
+def to_batch(x):
+    """
+    Introduces a leading batch dimension of 1 for all torch tensors and numpy 
+    arrays in nested dictionary or list or tuple and returns a new nested structure.
+
+    Args:
+        x (dict or list or tuple): a possibly nested dictionary or list or tuple
+
+    Returns:
+        y (dict or list or tuple): new nested dict-list-tuple
+    """
+    return recursive_dict_list_tuple_apply(
+        x,
+        {
+            torch.Tensor: lambda x: x[None, ...],
+            np.ndarray: lambda x: x[None, ...],
+            type(None): lambda x: x,
+        }
+    )
+
+def to_sequence(x):
+    """
+    Introduces a time dimension of 1 at dimension 1 for all torch tensors and numpy 
+    arrays in nested dictionary or list or tuple and returns a new nested structure.
+
+    Args:
+        x (dict or list or tuple): a possibly nested dictionary or list or tuple
+
+    Returns:
+        y (dict or list or tuple): new nested dict-list-tuple
+    """
+    return recursive_dict_list_tuple_apply(
+        x,
+        {
+            torch.Tensor: lambda x: x[:, None, ...],
+            np.ndarray: lambda x: x[:, None, ...],
+            type(None): lambda x: x,
+        }
+    )
+
+def repeat_seq(x, k):
+    """
+    Repeats the input along dimension 1 for torch tensors and numpy arrays in
+    nested dictionary or list or tuple and returns a new nested structure.
+
+    Args:
+        x (dict or list or tuple): a possibly nested dictionary or list or tuple
+
+        k (int): number of times to repeat along dim 1
+
+    Returns:
+        y (dict or list or tuple): new nested dict-list-tuple
+    """
+    return recursive_dict_list_tuple_apply(
+        x,
+        {
+            torch.Tensor: lambda x: torch.repeat_interleave(x, k, dim=1),
+            np.ndarray: lambda x: np.repeat(x, k, axis=1),
+            type(None): lambda x: x,
+        }
+    )
+
+def shift_seq(x, k):
+    """
+    Shifts the input by along dimension 1 for torch tensors and numpy arrays in 
+    nested dictionary or list or tuple and returns a new nested structure.
+
+    Args:
+        x (dict or list or tuple): a possibly nested dictionary or list or tuple
+
+        k (int): shift along dim 1
+
+    Returns:
+        y (dict or list or tuple): new nested dict-list-tuple
+    """
+    return recursive_dict_list_tuple_apply(
+        x,
+        {
+            torch.Tensor: lambda x: torch.roll(x, k, dims=1),
+            np.ndarray: lambda x: np.roll(x, k, axis=1),
+            type(None): lambda x: x,
+        }
+    )
+
+def slice(x, dim, start, end):
+    """
+    Slice the input by along dimension @dim from indices @start to @end 
+    for torch tensors and numpy arrays in nested dictionary or list or tuple 
+    and returns a new nested structure.
+
+    Args:
+        x (dict or list or tuple): a possibly nested dictionary or list or tuple
+
+        dim (int): dimension to slice along
+
+        start (int): start index
+
+        end (int): end index
+
+    Returns:
+        y (dict or list or tuple): new nested dict-list-tuple
+    """
+    return recursive_dict_list_tuple_apply(
+        x,
+        {
+            torch.Tensor: lambda x: torch.index_select(x, dim, torch.arange(start, end)),
+            np.ndarray: lambda x: np.take(x, np.arange(start, end), axis=dim),
+            type(None): lambda x: x,
+        }
+    )

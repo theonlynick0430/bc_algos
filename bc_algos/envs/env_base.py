@@ -50,9 +50,6 @@ class EnvBase(abc.ABC):
 
         Args:
             xml (str): scene xml
-
-        Returns: 
-            observation (dict): observation dictionary after loading environment
         """
         return
 
@@ -112,4 +109,11 @@ class EnvBase(abc.ABC):
     @abc.abstractmethod
     def get_observation(self):
         """Get environment observation"""
+        return
+    
+    @abc.abstractmethod
+    def is_success(self):
+        """
+        Check if the task conditions are reached.
+        """
         return

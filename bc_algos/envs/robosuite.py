@@ -44,7 +44,7 @@ class EnvRobosuite(EB.EnvBase):
         kwargs = deepcopy(kwargs)
         kwargs.update(dict(
             has_renderer=render,
-            has_offscreen_renderer=use_image_obs,
+            has_offscreen_renderer=use_image_obs or use_depth_obs,
             ignore_done=True,
             use_object_obs=True,
             use_camera_obs=use_image_obs,
@@ -73,7 +73,6 @@ class EnvRobosuite(EB.EnvBase):
         xml = self.env.edit_model_xml(xml)
         self.env.reset_from_xml_string(xml)
         self.env.sim.reset()
-        return self.reset()
 
     def reset_to(self, state):
         """
@@ -83,6 +82,13 @@ class EnvRobosuite(EB.EnvBase):
         self.env.sim.set_state_from_flattened(state)
         self.env.sim.forward()
         return self.get_observation()
+    
+    def is_success(self):
+        succ = self.env._check_success()
+        if isinstance(succ, dict):
+            return succ["task"]
+        else:
+            return succ
 
     def render(self, height=224, width=224, camera_name="agentview", on_screen=False):
         if on_screen:

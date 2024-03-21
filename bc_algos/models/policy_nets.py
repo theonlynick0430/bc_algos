@@ -38,20 +38,19 @@ class BC_MLP(BC):
 
         assert isinstance(backbone, MLP)
 
+        self.nets = nn.Sequential(obs_group_enc, backbone, act_dec)
+
     def forward(self, inputs):
         """
         Forward pass through BC_MLP.
 
         Args: 
             inputs (dict): nested dictionary that maps observation group to observation key
-            to data of shape [B, D,]
+            to data of shape [B, T=1, D,]
 
-        Returns: action in shape [B, action_dim,]
+        Returns: action in shape [B, T=1, action_dim,]
         """
-        embed = self.obs_group_enc(inputs)
-        embed = self.backbone(embed)
-        action = self.act_dec(embed)
-        return action
+        return TensorUtils.time_distributed(inputs=inputs, op=self.nets)
     
 
 class BC_Transformer(BC):
