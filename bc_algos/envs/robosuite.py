@@ -137,6 +137,13 @@ class EnvRobosuite(EB.EnvBase):
             return succ["task"]
         else:
             return succ
+        
+    def process_img(self, image):
+        """
+        Process image observation from Robosuite by transforming 
+        from shape (H, W, 3) to (3, H, W) and scaling from [0, 255] to [0,1].
+        """
+        return np.transpose(image.astype(float), (2, 0, 1))/255.
 
     def render(self, height=224, width=224, camera_name="agentview", on_screen=False):
         """
@@ -177,12 +184,12 @@ class EnvRobosuite(EB.EnvBase):
         for k in di:
             if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == ObsUtils.Modality.RGB:
                 # by default images from mujoco are flipped in height
-                obs[k] = di[k][::-1]
+                obs[k] = self.process_img(di[k][::-1])
             elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == ObsUtils.Modality.DEPTH:
                 # by default depth images from mujoco are flipped in height
                 obs[k] = di[k][::-1]
                 if len(obs[k].shape) == 2:
-                    obs[k] = obs[k][..., None] # (H, W, 1)
+                    obs[k] = obs[k][None, ...] # (1, H, W)
                 assert len(obs[k].shape) == 3 
                 # scale entries in depth map to correspond to real distance.
                 obs[k] = self.get_real_depth_map(obs[k])

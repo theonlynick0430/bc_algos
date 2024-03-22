@@ -42,6 +42,7 @@ class RobomimicRolloutEnv(RolloutEnv):
         )
 
         assert isinstance(validset, RobomimicDataset)
+        assert validset.pad_frame_stack and validset.pad_seq_length, "rollout requires padding"
 
         self.validset = validset
     
@@ -118,7 +119,7 @@ class RobomimicRolloutEnv(RolloutEnv):
             video_skip=video_skip, 
             horizon=horizon,
             terminate_on_success=terminate_on_success
-            )
+        )
         
         demo_len = self.validset.get_demo_len(demo_id=demo_id)
         horizon = demo_len if horizon is None else horizon
@@ -145,7 +146,7 @@ class RobomimicRolloutEnv(RolloutEnv):
             inputs = self.inputs_from_new_obs(x=inputs, obs=obs, demo_id=demo_id, t=demo_index+step_i)
 
             # get action from policy
-            ac = policy(**inputs)
+            ac = policy(inputs)
 
             # play action
             obs = self.env.step(ac)
