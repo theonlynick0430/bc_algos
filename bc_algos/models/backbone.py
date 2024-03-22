@@ -28,6 +28,8 @@ class MLP(Backbone):
     def __init__(self, input_dim, output_dim, hidden_dims=[128,], activation=nn.ReLU, dropout=0.1):
         """
         Args:
+            input_dim (int): dim of input embeddings
+
             output_dim (int): dim of output embeddings
 
             hidden_dims (array-like): hidden dims of nueral net used for policy backbone
@@ -74,6 +76,8 @@ class Transformer(Backbone):
     def __init__(self, input_dim, nlayers, nhead, pos_embed_kwargs={}, enc_kwargs={}):
         """
         Args:
+            input_dim (int): dim of input embeddings
+            
             nlayers (int): number of decoder layers
 
             nhead (int): number of heads in decoder layer

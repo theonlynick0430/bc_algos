@@ -14,7 +14,6 @@ class MIMODataset(torch.utils.data.Dataset):
     different dataset formats. 
     Length of the fetched sequence is equal to (@frame_stack + @seq_length)
     """
-
     def __init__(
         self,
         obs_group_to_key,
@@ -31,7 +30,7 @@ class MIMODataset(torch.utils.data.Dataset):
         Args:
             obs_group_to_key (dict): dictionary from observation group to observation keys
 
-            dataset_keys (tuple, list): keys to dataset items (actions, rewards, etc) to be fetched from the dataset.
+            dataset_keys (tuple, list): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
 
             frame_stack (int): numbers of stacked frames to fetch. Defaults to 0 (single frame).
 
@@ -52,7 +51,7 @@ class MIMODataset(torch.utils.data.Dataset):
             goal_mode (str): either "last", "subgoal", or None. Defaults to None, which is to not fetch goals
 
             num_subgoal (int): Required if goal_mode is "subgoal". Number of subgoals provided for each trajectory.
-            Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
+                Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
         """
         self.obs_group_to_key = obs_group_to_key # obs group -> obs keys
         self.obs_keys = tuple(set([key for keys in self.obs_group_to_key.values() for key in keys])) # obs keys for all obs groups (union)
@@ -81,33 +80,6 @@ class MIMODataset(torch.utils.data.Dataset):
         self.load_demo_info()
 
         self.cache_index()
-
-    @classmethod
-    def dataset_factory(cls, config, obs_group_to_key):
-        """
-        Create a MIMO_Dataset instance from config.
-
-        Args:
-            config (BaseConfig instance): config object
-
-            obs_group_to_key (dict): dictionary from observation group to observation keys
-
-        Returns:
-            dataset (MIMO_Dataset instance): dataset object
-        """
-        ds_kwargs = dict(
-            obs_group_to_key=obs_group_to_key,
-            dataset_keys=config.train.dataset_keys,
-            frame_stack=config.train.frame_stack,
-            seq_length=config.train.seq_length,
-            pad_frame_stack=config.train.pad_frame_stack,
-            pad_seq_length=config.train.pad_seq_length,
-            get_pad_mask=False,
-            goal_mode=config.train.goal_mode,
-            num_subgoal=config.train.num_subgoal
-        )
-        dataset = cls(**ds_kwargs)
-        return dataset
 
     @property
     def demos(self):

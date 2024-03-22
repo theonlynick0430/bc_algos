@@ -34,6 +34,14 @@ class BC_MLP(BC):
     Module for behavorial cloning policy that predicts actions from observations using MLP.
     """
     def __init__(self, obs_group_enc, backbone, act_dec):
+        """
+        Args:
+            obs_group_enc (ObservationGroupEncoder): input encoder
+
+            backbone (Backbone): policy backbone
+
+            act_dec (ActionDecoder): output decoder
+        """
         super(BC_MLP, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec)
 
         assert isinstance(backbone, MLP)
@@ -58,6 +66,14 @@ class BC_Transformer(BC):
     Module for behavorial cloning policy that predicts actions from observations using transformer.
     """
     def __init__(self, obs_group_enc, backbone, act_dec):
+        """
+        Args:
+            obs_group_enc (ObservationGroupEncoder): input encoder
+
+            backbone (Backbone): policy backbone
+
+            act_dec (ActionDecoder): output decoder
+        """
         super(BC_Transformer, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec)
 
         assert isinstance(backbone, Transformer)

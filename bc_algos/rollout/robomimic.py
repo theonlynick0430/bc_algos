@@ -22,6 +22,16 @@ class RobomimicRolloutEnv(RolloutEnv):
         """
         Args: 
             validset (RobomimicDataset): validation dataset for rollout
+
+            obs_group_to_key (dict): dictionary mapping observation group to observation key
+
+            obs_key_to_modality (dict): dictionary mapping observation key to modality
+
+            frame_stack (int): numbers of stacked frames to fetch. Defaults to 0 (single frame).
+
+            gc (bool): whether or not to condition on goals
+
+            render_video (bool): whether to render rollout on screen
         """
         super(RobomimicRolloutEnv, self).__init__(
             obs_group_to_key=obs_group_to_key,
@@ -36,6 +46,17 @@ class RobomimicRolloutEnv(RolloutEnv):
         self.validset = validset
     
     def fetch_goal(self, demo_id, t):
+        """
+        Get goal for specified demo and time if goal-conditioned.
+
+        Args: 
+            demo_id (str): id of the demo, e.g., demo_0
+
+            t (int): timestep in trajectory
+
+        Returns:
+            goal seq np.array of shape [B=1, T=validset.n_frame_stack+1, D]
+        """
         demo_length = self.validset.get_demo_len(demo_id=demo_id)
         if t >= demo_length:
             # reuse last goal
@@ -48,7 +69,7 @@ class RobomimicRolloutEnv(RolloutEnv):
         
     def create_env(self):
         """
-        Create environment associated with dataset.
+        Create Robosuite environment.
         """
         # load env metadata from training file
         self.env_meta = json.loads(self.validset.hdf5_file["data"].attrs["env_args"])
@@ -70,6 +91,26 @@ class RobomimicRolloutEnv(RolloutEnv):
             horizon=None,
             terminate_on_success=False
         ):
+        """
+        Run rollout on a single demo and save stats (and video if necessary).
+
+        Args:
+            policy (BC instance): policy to use for rollouts
+
+            demo_id (str): id of demo to rollout
+
+            video_writer (imageio Writer instance): if not None, use video writer object to append frames at 
+                rate given by @video_skip
+
+            video_skip (int): how often to write video frame
+
+            horizon (int): horizon of rollout episode. If None, use demo length instead.
+
+            terminate_on_success (bool): if True, terminate episode early as soon as a success is encountered
+
+        Returns:
+            results (dict): dictionary of results with the keys "horizon" and "success"
+        """
         super(RobomimicRolloutEnv, self).run_rollout(
             policy=policy,
             demo_id=demo_id,

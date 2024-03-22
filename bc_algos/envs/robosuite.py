@@ -32,6 +32,25 @@ class EnvRobosuite(EB.EnvBase):
         use_depth_obs=False, 
         **kwargs,
     ):
+        """
+        Args:
+            env_name (str): name of environment. Only needs to be provided if making a different
+                environment from the one in @env_meta.
+
+            obs_key_to_modality (dict): dictionary mapping observation key to modality
+
+            render (bool): if True, environment supports on-screen rendering
+
+            use_image_obs (bool): if True, environment is expected to render rgb image observations
+                on every env.step call. Set this to False for efficiency reasons, if image
+                observations are not required.
+
+            use_depth_obs (bool): if True, environment is expected to render depth image observations
+                on every env.step call. Set this to False for efficiency reasons, if depth
+                observations are not required.
+
+            kwargs (dict): environment specific parameters
+        """
         super(EnvRobosuite, self).__init__(
             env_name=env_name, 
             obs_key_to_modality=obs_key_to_modality,
@@ -62,28 +81,57 @@ class EnvRobosuite(EB.EnvBase):
         self.env = robosuite.make(self.env_name, **kwargs)
 
     def step(self, action):
+        """
+        Step in the environment with an action.
+
+        Args:
+            action (np.array): action to take
+
+        Returns:
+            observation (dict): new observation dictionary
+        """
         obs, _, _, _ = self.env.step(action)
         return self.get_observation(obs)
 
     def reset(self):
+        """
+        Reset environment.
+
+        Returns:
+            observation (dict): initial observation dictionary.
+        """
         obs = self.env.reset()
         return self.get_observation(obs)
     
     def load_env(self, xml):
+        """
+        Load environment from XML string.
+
+        Args:
+            xml (str): scene xml
+        """
         xml = self.env.edit_model_xml(xml)
         self.env.reset_from_xml_string(xml)
         self.env.sim.reset()
 
     def reset_to(self, state):
         """
+        Reset to a specific simulator state.
+
         Args:
             state (np.ndarray): initial state of the mujoco environment
+        
+        Returns:
+            observation (dict): observation dictionary after setting the simulator state
         """
         self.env.sim.set_state_from_flattened(state)
         self.env.sim.forward()
         return self.get_observation()
     
     def is_success(self):
+        """
+        Check if the task conditions are reached.
+        """
         succ = self.env._check_success()
         if isinstance(succ, dict):
             return succ["task"]
@@ -91,6 +139,19 @@ class EnvRobosuite(EB.EnvBase):
             return succ
 
     def render(self, height=224, width=224, camera_name="agentview", on_screen=False):
+        """
+        Render from simulation to either an on-screen window or off-screen to RGB array.
+
+        Args:
+            height (int): height of image to render - only used if mode is "rgb_array"
+
+            width (int): width of image to render - only used if mode is "rgb_array"
+
+            camera_name (str): camera name to use for rendering
+
+            on_screen (bool): if True, render to an on-screen window. otherwise, render
+                off-screen to RGB array.
+        """
         if on_screen:
             cam_id = self.env.sim.model.camera_name2id(camera_name)
             self.env.viewer.set_camera(cam_id)
@@ -104,6 +165,8 @@ class EnvRobosuite(EB.EnvBase):
 
     def get_observation(self, di=None):
         """
+        Get environment observation
+        
         Args:
             di (dict): current raw observation dictionary from robosuite to wrap and provide 
                 as a dictionary. If not provided, will be queried from robosuite.

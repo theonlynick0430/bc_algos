@@ -98,9 +98,15 @@ class VisualCore(EncoderCore):
     """
     @property
     def enc_output_shape(self):
+        """
+        Returns: output shape of ViTMAE backbone.
+        """
         return [self.vitmae.config.hidden_size,]
     
     def freeze(self):
+        """
+        Freeze encoder network parameters.
+        """
         for param in self.vitmae.parameters():
             param.requires_grad = False
     
@@ -111,5 +117,8 @@ class VisualCore(EncoderCore):
         super(VisualCore, self).create_layers()
 
     def encode(self, inputs):
+        """
+        Main implementation of visual encoder.
+        """
         inputs = self.crop(inputs)
         return self.vitmae(inputs).last_hidden_state[:, 0]
