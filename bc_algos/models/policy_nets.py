@@ -2,6 +2,12 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Backbone, MLP, Transformer
 import bc_algos.utils.tensor_utils as TensorUtils
 import torch.nn as nn
+from enum import Enum
+
+
+class PolicyType(Enum):
+    MLP="mlp"
+    TRANSFORMER="transformer"
 
 
 class BC(nn.Module):

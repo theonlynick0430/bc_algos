@@ -16,7 +16,7 @@ class RobomimicDataset(MIMODataset):
     """
     def __init__(
         self,
-        hdf5_path,
+        path,
         obs_group_to_key,
         dataset_keys,
         frame_stack=0,
@@ -33,7 +33,7 @@ class RobomimicDataset(MIMODataset):
         MIMO_Dataset subclass for fetching sequences of experience from HDF5 dataset.
 
         Args:
-            hdf5_path (str): path to hdf5
+            path (str): path to dataset
 
             obs_group_to_key (dict): dictionary from observation group to observation keys
 
@@ -65,12 +65,12 @@ class RobomimicDataset(MIMODataset):
 
             demos (list): if provided, use only load these selected demos
         """
-        self.hdf5_path = os.path.expanduser(hdf5_path)
         self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
         self._demos = demos
 
         super(RobomimicDataset, self).__init__(
+            path=path,
             obs_group_to_key=obs_group_to_key,
             dataset_keys=dataset_keys,
             frame_stack=frame_stack,
@@ -121,7 +121,7 @@ class RobomimicDataset(MIMODataset):
         This property allows for a lazy hdf5 file open.
         """
         if self._hdf5_file is None:
-            self._hdf5_file = h5py.File(self.hdf5_path, 'r', swmr=True, libver='latest')
+            self._hdf5_file = h5py.File(self.path, 'r', swmr=True, libver='latest')
         return self._hdf5_file  
     
     def close_and_delete_hdf5_handle(self):
@@ -153,7 +153,7 @@ class RobomimicDataset(MIMODataset):
         msg = str(self.__class__.__name__)
         msg += " (\n\tpath={}\n\tobs_group_to_key={}\n\tobs_keys={}\n\tfilter_key={}\n"
         filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
-        msg = msg.format(self.hdf5_path, self.obs_group_to_key, self.obs_keys, filter_key_str)
+        msg = msg.format(self.path, self.obs_group_to_key, self.obs_keys, filter_key_str)
         return msg + super(RobomimicDataset, self).__repr__() + ")"
 
     def get_dataset_for_ep(self, ep, key):

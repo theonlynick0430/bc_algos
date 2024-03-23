@@ -6,7 +6,12 @@ import numpy as np
 import torch.utils.data
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.log_utils as LogUtils
+from enum import Enum
+import os
 
+
+class DatasetType(Enum):
+    ROBOMIMIC="robomimic"
 
 class MIMODataset(torch.utils.data.Dataset):
     """
@@ -16,6 +21,7 @@ class MIMODataset(torch.utils.data.Dataset):
     """
     def __init__(
         self,
+        path,
         obs_group_to_key,
         dataset_keys,
         frame_stack=0,
@@ -28,6 +34,8 @@ class MIMODataset(torch.utils.data.Dataset):
     ):
         """
         Args:
+            path (str): path to dataset 
+
             obs_group_to_key (dict): dictionary from observation group to observation keys
 
             dataset_keys (tuple, list): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
@@ -53,6 +61,7 @@ class MIMODataset(torch.utils.data.Dataset):
             num_subgoal (int): Required if goal_mode is "subgoal". Number of subgoals provided for each trajectory.
                 Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
         """
+        self.path = os.path.expanduser(path)
         self.obs_group_to_key = obs_group_to_key # obs group -> obs keys
         self.obs_keys = tuple(set([key for keys in self.obs_group_to_key.values() for key in keys])) # obs keys for all obs groups (union)
         self.dataset_keys = tuple(dataset_keys) # obs keys for dataset

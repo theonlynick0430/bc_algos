@@ -4,7 +4,11 @@ to provide a standardized environment API for training policies and interacting
 with metadata present in datasets.
 """
 import abc
+from enum import Enum
 
+
+class EnvType(Enum):
+    ROBOSUITE="robosuite"
 
 class EnvBase(abc.ABC):
     """A base class method for environments used by this repo."""

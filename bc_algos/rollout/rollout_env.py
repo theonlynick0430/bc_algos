@@ -4,7 +4,11 @@ import imageio
 import time
 import os
 from collections import OrderedDict
+from enum import Enum
 
+
+class RolloutType(Enum):
+    ROBOMIMIC="robomimic"
 
 class RolloutEnv:
     """

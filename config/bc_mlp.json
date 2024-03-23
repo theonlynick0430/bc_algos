@@ -1,0 +1,76 @@
+{
+    "experiment": {
+        "name": "bc_mlp",
+        "validate_rate": 1,
+        "save_rate": 100, 
+        "rollout_rate": 100
+    },
+
+    "train": {
+        "batch_size": 16, 
+        "learning_rate": 0.0005,
+        "loss": "L2"
+    },
+
+    "observation": {
+        "obs_key_to_shape": {
+            "robot0_eef_pos": [3],
+            "robot0_eef_quat": [4],
+            "agentview_image": [3, 224, 224]
+        },
+        "modalities": {
+            "obs": {
+                "low_dim": [
+                    "robot0_eef_pos",
+                    "robot0_eef_quat"
+                ],
+                "rgb": ["agentview_image"]
+            },
+            "goal": {
+                "low_dim": [],
+                "rgb": ["agentview_image"]
+            }
+        }
+    },
+
+    "dataset": {
+        "type": "robomimic",
+        "path": "/Users/nikhilsridhar/Desktop/RoboDev/JJ/bc_algos/datasets/test/square_ph.hdf5",
+        "dataset_keys": [
+            "actions"
+        ],
+        "frame_stack": 9,
+        "seq_length": 10,
+        "pad_frame_stack": true,
+        "pad_seq_length": true,
+        "get_pad_mask": false,
+        "goal_mode": null,
+        "num_subgoal": null,
+        "train_kwargs": {
+            "filter_by_attribute": "train",
+            "demos": []
+        },
+        "valid_kwargs": {
+            "filter_by_attribute": "valid",
+            "demos": []
+        }
+    },
+
+    "policy": {
+        "type": "mlp",
+        "action_shape": [7],
+        "backbone_kwargs": {
+            "output_dim": 64,
+            "hidden_dims": [256, 128, 64]
+        },
+        "act_dec_kwargs": {
+            "hidden_dims": [32]
+        }
+    },
+
+    "rollout": {
+        "type": "robomimic",
+        "horizon": null,
+        "render_video": false
+    }
+}
