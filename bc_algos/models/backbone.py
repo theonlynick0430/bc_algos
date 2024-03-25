@@ -17,6 +17,24 @@ class Backbone(nn.Module):
 
         self.input_dim = input_dim
 
+    @classmethod
+    def factory(cls, config, input_dim):
+        """
+        Create a Backbone instance from config.
+
+        Args:
+            config (addict): config object
+
+            input_dim (int): dim of input embeddings
+
+        Returns:
+            Backbone instance
+        """
+        return cls(
+            input_dim=input_dim,
+            **config.policy.kwargs.backbone
+        )
+
     @property
     def output_dim(self):
         return NotImplementedError

@@ -15,3 +15,5 @@ wandb
 transformers
 datasets
 accelerate
+addict
+strenum

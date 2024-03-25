@@ -67,7 +67,6 @@ class RobomimicDataset(MIMODataset):
         """
         self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
-        self._demos = demos
 
         super(RobomimicDataset, self).__init__(
             path=path,
@@ -79,8 +78,9 @@ class RobomimicDataset(MIMODataset):
             pad_seq_length=pad_seq_length, 
             get_pad_mask=get_pad_mask, 
             goal_mode=goal_mode, 
-            num_subgoal=num_subgoal
-            )
+            num_subgoal=num_subgoal,
+            demos=demos,
+        )
 
         self.close_and_delete_hdf5_handle()
 

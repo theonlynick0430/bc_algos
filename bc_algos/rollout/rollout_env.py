@@ -5,10 +5,10 @@ import imageio
 import time
 import os
 from collections import OrderedDict
-from enum import Enum
+from strenum import StrEnum
 
 
-class RolloutType(Enum):
+class RolloutType(StrEnum):
     ROBOMIMIC="robomimic"
 
 class RolloutEnv:

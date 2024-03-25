@@ -6,11 +6,12 @@ import numpy as np
 import torch.utils.data
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.log_utils as LogUtils
-from enum import Enum
+import bc_algos.utils.obs_utils as ObsUtils
+from strenum import StrEnum
 import os
 
 
-class DatasetType(Enum):
+class DatasetType(StrEnum):
     ROBOMIMIC="robomimic"
 
 class MIMODataset(torch.utils.data.Dataset):
@@ -31,6 +32,7 @@ class MIMODataset(torch.utils.data.Dataset):
         get_pad_mask=False,
         goal_mode=None,
         num_subgoal=None,
+        demos=None,
     ):
         """
         Args:
@@ -60,11 +62,14 @@ class MIMODataset(torch.utils.data.Dataset):
 
             num_subgoal (int): Required if goal_mode is "subgoal". Number of subgoals provided for each trajectory.
                 Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
+    
+            demos (list): if provided, use only load these selected demos
         """
         self.path = os.path.expanduser(path)
         self.obs_group_to_key = obs_group_to_key # obs group -> obs keys
         self.obs_keys = tuple(set([key for keys in self.obs_group_to_key.values() for key in keys])) # obs keys for all obs groups (union)
         self.dataset_keys = tuple(dataset_keys) # obs keys for dataset
+        self._demos = demos
 
         self.n_frame_stack = frame_stack
         assert self.n_frame_stack >= 0
@@ -89,6 +94,35 @@ class MIMODataset(torch.utils.data.Dataset):
         self.load_demo_info()
 
         self.cache_index()
+
+    @classmethod
+    def factory(cls, config, train=True):
+        """
+        Create a MIMODataset instance from config.
+
+        Args:
+            config (addict): config object
+
+            train (bool): if True, use kwargs for training dataset. 
+                Otherwise, use kwargs for validation dataset
+
+        Returns:
+            MIMODataset instance
+        """
+        kwargs = config.dataset.kwargs.train if train else config.dataset.kwargs.valid
+        return cls(
+            path=config.dataset.path,
+            obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
+            dataset_keys=config.dataset.dataset_keys,
+            frame_stack=config.dataset.frame_stack,
+            seq_length=config.dataset.seq_length,
+            pad_frame_stack=config.dataset.pad_frame_stack,
+            pad_seq_length=config.dataset.pad_seq_length,
+            get_pad_mask=config.dataset.get_pad_mask,
+            goal_mode=config.dataset.goal_mode,
+            num_subgoal=config.dataset.num_subgoal,
+            **kwargs
+        )
 
     @property
     def demos(self):

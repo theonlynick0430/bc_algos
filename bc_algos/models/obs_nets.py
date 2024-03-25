@@ -72,6 +72,32 @@ class ObservationGroupEncoder(nn.Module):
         # ex: {"obs": ObservationEncoder, "goal": ObservationEncoder}
         self.obs_group_to_obs_enc = nn.ModuleDict()
 
+    @classmethod
+    def factory(cls, config):
+        """
+        Create a ObservationGroupEncoder instance from config.
+
+        Args:
+            config (addict): config object
+
+        Returns:
+            ObservationGroupEncoder instance
+        """
+        obs_group_enc = cls()
+        for obs_group, obs_keys in ObsUtils.OBS_GROUP_TO_KEY.items():
+            obs_enc = ObservationEncoder()
+            for obs_key in obs_keys:
+                shape = ObsUtils.OBS_KEY_TO_SHAPE[obs_key]
+                modality = ObsUtils.OBS_KEY_TO_MODALITY[obs_key]
+                obs_enc.register_obs_key(
+                    obs_key=obs_key,
+                    modality=modality,
+                    input_shape=shape,
+                    **config.observation.kwargs[modality]
+                )
+            obs_group_enc.register_obs_group(obs_group=obs_group, obs_enc=obs_enc)
+        return obs_group_enc
+
     def register_obs_group(self, obs_group, obs_enc):
         assert obs_group not in self.obs_group_to_obs_enc, f"observation group {obs_group} already registered"
         assert isinstance(obs_enc, ObservationEncoder)
@@ -132,6 +158,25 @@ class ActionDecoder(nn.Module):
         self.activation = activation
 
         self.create_layers()
+
+    @classmethod
+    def factory(cls, config, input_dim):
+        """
+        Create a ActionDecoder instance from config.
+
+        Args:
+            config (addict): config object
+
+            input_dim (int): dim of input embeddings
+
+        Returns:
+            ActionDecoder instance
+        """
+        return cls(
+            action_shape=config.policy.action_shape,
+            input_dim=input_dim,
+            **config.policy.kwargs.action_decoder
+        )
 
     def create_layers(self):
         layers = [nn.Linear(self.input_dim, self.hidden_dims[0]), self.activation()]
