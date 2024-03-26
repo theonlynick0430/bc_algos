@@ -102,11 +102,14 @@ def train(config):
     wandb.init(project=config.experiment.name)
 
     # iterate epochs
-    valid_ct = 1
-    rollout_ct = 1
-    save_ct = 1
+    valid_ct = 0
+    rollout_ct = 0
+    save_ct = 0
     for epoch in range(config.train.epochs):
         print(f"epoch {epoch}")
+        valid_ct += 1
+        rollout_ct += 1
+        save_ct += 1
 
         # TRAINING
         print("training...")
@@ -132,7 +135,7 @@ def train(config):
                 validate=True,
                 device=accelerator.device,
             )
-            valid_ct = 1
+            valid_ct = 0
 
         # ROLLOUT
         if rollout_ct == config.experiment.rollout_rate:
@@ -148,13 +151,13 @@ def train(config):
                         device=accelerator.device,
                     )
                     progress.update(1)
-            rollout_ct = 1
+            rollout_ct = 0
 
         # SAVE WEIGHTS
         if save_ct == config.experiment.save_rate:
             print("saving weights...")
             torch.save(policy.state_dict(), os.path.join(weights_dir, f"model_{epoch}.pth"))
-            save_ct = 1
+            save_ct = 0
 
     # save final model
     torch.save(policy.state_dict(), os.path.join(weights_dir, f"model.pth"))

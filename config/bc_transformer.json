@@ -4,7 +4,7 @@
         "ouput_dir": null,
         "valid_rate": 1,
         "save_rate": 1001, 
-        "rollout_rate": 100
+        "rollout_rate": 10
     },
 
     "train": {
