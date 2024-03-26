@@ -5,10 +5,10 @@ to fetch batches from datasets.
 import numpy as np
 import torch.utils.data
 import bc_algos.utils.tensor_utils as TensorUtils
-import bc_algos.utils.log_utils as LogUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from strenum import StrEnum
 import os
+from tqdm import tqdm
 
 
 class DatasetType(StrEnum):
@@ -222,19 +222,22 @@ class MIMODataset(torch.utils.data.Dataset):
         """
         Cache all index required for get_item calls to speed up training and reduce memory.
         """
+        print("caching index...")
         self.index_cache = []
-        for index in LogUtils.custom_tqdm(range(len(self))):
-            demo_id = self.index_to_demo_id[index]
-            # convert index in total_num_sequences to index in data
-            start_offset = 0 if self.pad_frame_stack else self.n_frame_stack
-            demo_index = index - self.demo_id_to_start_index[demo_id] + start_offset
-            data_seq_index, pad_mask = self.get_data_seq_index(demo_id=demo_id, index_in_demo=demo_index)
-            item = [data_seq_index]
-            if self.gc:
-                item.append(self.get_goal_seq_index(demo_id=demo_id, data_seq_index=data_seq_index))
-            if self.get_pad_mask:
-                item.append(pad_mask)
-            self.index_cache.append(item)
+        with tqdm(total=len(self), unit='demo') as progress:
+            for index in range(len(self)):
+                demo_id = self.index_to_demo_id[index]
+                # convert index in total_num_sequences to index in data
+                start_offset = 0 if self.pad_frame_stack else self.n_frame_stack
+                demo_index = index - self.demo_id_to_start_index[demo_id] + start_offset
+                data_seq_index, pad_mask = self.get_data_seq_index(demo_id=demo_id, index_in_demo=demo_index)
+                item = [data_seq_index]
+                if self.gc:
+                    item.append(self.get_goal_seq_index(demo_id=demo_id, data_seq_index=data_seq_index))
+                if self.get_pad_mask:
+                    item.append(pad_mask)
+                self.index_cache.append(item)
+                progress.update(1)
     
     def get_data_seq(self, demo_id, keys, seq_index):
         """

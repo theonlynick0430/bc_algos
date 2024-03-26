@@ -1,8 +1,12 @@
 # pip distribution folder
 dist/
 
+# wandb
+wandb/
+
 # trial output
 output
+outputs/
 
 # datasets folder at top-level (leading slash)
 /datasets/

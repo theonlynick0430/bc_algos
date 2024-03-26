@@ -1,12 +1,14 @@
 {
     "experiment": {
         "name": "bc_mlp",
-        "validate_rate": 1,
+        "ouput_dir": null,
+        "valid_rate": 1,
         "save_rate": 100, 
         "rollout_rate": 100
     },
 
     "train": {
+        "epochs": 1000,
         "batch_size": 16, 
         "learning_rate": 0.0005,
         "loss": "L2"

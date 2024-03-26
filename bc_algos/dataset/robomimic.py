@@ -3,10 +3,10 @@ This file contains Dataset classes that are used by torch dataloaders
 to fetch batches from hdf5 files.
 """
 from bc_algos.dataset.dataset import MIMODataset
-import os
 import h5py
 import numpy as np
 from contextlib import contextmanager
+from tqdm import tqdm
 
 
 class RobomimicDataset(MIMODataset):
@@ -82,7 +82,36 @@ class RobomimicDataset(MIMODataset):
             demos=demos,
         )
 
+        self.dataset = self.load_dataset_in_memory()
+
         self.close_and_delete_hdf5_handle()
+
+    def load_dataset_in_memory(self):
+        """
+        Loads the hdf5 dataset into memory, preserving the structure of the file.
+
+        Returns:
+            dataset (dict): dictionary of loaded data
+        """
+        print("loading dataset into memory...")
+        dataset = dict()
+        with tqdm(total=self.num_demos, unit='demo') as progress_bar:
+            for demo in self.demos:
+                dataset[demo] = {}
+
+                # get observations
+                dataset[demo]["obs"] = {k: self.hdf5_file["data/{}/obs/{}".format(demo, k)][()] for k in self.obs_keys}
+
+                # get other dataset keys
+                for k in self.dataset_keys:
+                    if k in self.hdf5_file["data/{}".format(demo)]:
+                        dataset[demo][k] = self.hdf5_file["data/{}/{}".format(demo, k)][()].astype('float32')
+                    else:
+                        dataset[demo][k] = np.zeros((dataset[demo]["attrs"]["num_samples"], 1), dtype=np.float32)
+
+                progress_bar.update(1)
+
+        return dataset
 
     @property
     def demos(self):
@@ -155,13 +184,6 @@ class RobomimicDataset(MIMODataset):
         filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
         msg = msg.format(self.path, self.obs_group_to_key, self.obs_keys, filter_key_str)
         return msg + super(RobomimicDataset, self).__repr__() + ")"
-
-    def get_dataset_for_ep(self, ep, key):
-        """
-        Helper utility to get a dataset for a specific demonstration.
-        """
-        hd5key = "data/{}/{}".format(ep, key)
-        return self.hdf5_file[hd5key]
     
     def get_data_seq(self, demo_id, keys, seq_index):
         """
@@ -178,7 +200,7 @@ class RobomimicDataset(MIMODataset):
         # fetch observation from the dataset file
         seq = dict()
         for k in keys:
-            data = self.get_dataset_for_ep(demo_id, k)
+            data = self.dataset[demo_id][k]
             seq[k] = data[seq_index]
 
         return seq
@@ -195,10 +217,8 @@ class RobomimicDataset(MIMODataset):
         Returns:
             a dictionary of extracted items.
         """
-        seq = self.get_data_seq(
-            demo_id=demo_id,
-            keys=['{}/{}'.format("obs", k) for k in keys], 
-            seq_index=seq_index
-            )
-        seq = {k.split('/')[1]: seq[k] for k in seq}  # strip the prefix
+        seq = dict()
+        for k in keys:
+            data = self.dataset[demo_id]["obs"][k]
+            seq[k] = data[seq_index]
         return seq
