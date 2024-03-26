@@ -220,7 +220,7 @@ class RolloutEnv:
 
             # get action from policy
             y = policy(x)
-            action = y[0, 0, :].detach().numpy()
+            action = y[0, 0, :].detach().cpu().numpy()
 
             # play action
             obs = self.env.step(action)

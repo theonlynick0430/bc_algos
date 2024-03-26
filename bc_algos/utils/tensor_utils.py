@@ -63,15 +63,16 @@ def pad_single(seq, dim, padding, pad_same=True, pad_values=None):
     repeat_func = np.repeat if isinstance(seq, np.ndarray) else torch.repeat_interleave
     concat_func = np.concatenate if isinstance(seq, np.ndarray) else torch.cat
     ones_like_func = np.ones_like if isinstance(seq, np.ndarray) else torch.ones_like
+    device_kwargs = {} if isinstance(seq, np.ndarray) else {"device": seq.device}
 
     begin_pad = []
     end_pad = []
 
     if padding[0] > 0:
-        pad = seq[[0]] if pad_same else ones_like_func(seq[[0]]) * pad_values
+        pad = seq[[0]] if pad_same else ones_like_func(seq[[0]], *device_kwargs) * pad_values
         begin_pad.append(repeat_func(pad, padding[0], dim))
     if padding[1] > 0:
-        pad = seq[[-1]] if pad_same else ones_like_func(seq[[-1]]) * pad_values
+        pad = seq[[-1]] if pad_same else ones_like_func(seq[[-1]], *device_kwargs) * pad_values
         end_pad.append(repeat_func(pad, padding[1], dim))
 
     return concat_func(begin_pad + [seq] + end_pad, dim)
@@ -376,7 +377,7 @@ def slice(x, dim, start, end):
     return recursive_dict_list_tuple_apply(
         x,
         {
-            torch.Tensor: lambda x: torch.index_select(x, dim, torch.arange(start, end)),
+            torch.Tensor: lambda x: torch.index_select(x, dim, torch.arange(start, end, device=x.device)),
             np.ndarray: lambda x: np.take(x, np.arange(start, end), axis=dim),
             type(None): lambda x: x,
         }
