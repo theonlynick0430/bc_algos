@@ -3,7 +3,7 @@
         "name": "bc_mlp",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 100, 
+        "save_rate": 10001, 
         "rollout_rate": 100
     },
 
@@ -18,7 +18,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 84, 84]
+            "agentview_image": [3, 224, 224]
         },
         "modalities": {
             "obs": {

@@ -107,7 +107,7 @@ def train(config):
     save_ct = 1
     for epoch in range(config.train.epochs):
         print(f"epoch {epoch}")
-        
+
         # TRAINING
         print("training...")
         TrainUtils.run_epoch(
@@ -137,14 +137,17 @@ def train(config):
         # ROLLOUT
         if rollout_ct == config.experiment.rollout_rate:
             print("rolling out...")
+            rollout_epoch_dir = os.path.join(rollout_dir, f"{epoch}")
+            os.mkdir(rollout_epoch_dir)
             with tqdm(total=validset.num_demos, unit='demo') as progress:
                 for demo in validset.demos:
                     _ = rollout_env.rollout_with_stats(
                         policy=policy,
                         demo_id=demo,
-                        video_dir=os.path.join(rollout_dir, f"{epoch}"),
+                        video_dir=rollout_epoch_dir,
                         device=accelerator.device,
                     )
+                    progress.update(1)
             rollout_ct = 1
 
         # SAVE WEIGHTS

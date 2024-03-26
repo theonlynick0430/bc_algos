@@ -3,7 +3,7 @@
         "name": "bc_transformer",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 100, 
+        "save_rate": 1001, 
         "rollout_rate": 100
     },
 
@@ -18,7 +18,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 84, 84]
+            "agentview_image": [3, 224, 224]
         },
         "modalities": {
             "obs": {
@@ -48,8 +48,8 @@
         "dataset_keys": [
             "actions"
         ],
-        "frame_stack": 9,
-        "seq_length": 10,
+        "frame_stack": 3,
+        "seq_length": 4,
         "pad_frame_stack": true,
         "pad_seq_length": true,
         "get_pad_mask": false,
