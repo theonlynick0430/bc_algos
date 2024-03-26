@@ -1,14 +1,17 @@
 import bc_algos.utils.obs_utils as ObsUtils
-import bc_algos.utils.tensor_utils as TensorUtils
+import bc_algos.utils.train_utils as TrainUtils
 from bc_algos.models.obs_core import EncoderCore, VisualCore
 from bc_algos.dataset.dataset import DatasetType
 from bc_algos.dataset.robomimic import RobomimicDataset
 from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP, PolicyType
+from bc_algos.rollout.rollout_env import RolloutType
+from bc_algos.rollout.robomimic import RobomimicRolloutEnv
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch.nn as nn
+import torch
 from accelerate import Accelerator
 import wandb
 import argparse
@@ -83,46 +86,75 @@ def train(config):
         print(f"loss type {config.train.loss} not supported")
         exit(1)
 
-    # accelerator = Accelerator()
-    # train_loader, valid_loader, policy, optimizer = accelerator.prepare(
-    #     train_loader, valid_loader, policy, optimizer
-    # )
+    # create env for rollout
+    if config.rollout.type == RolloutType.ROBOMIMIC:
+        rollout_env = RobomimicRolloutEnv.factory(config=config, validset=validset)
+    else:
+        print(f"rollout env {config.rollout.type} not supported")
+        exit(1)
+
+    accelerator = Accelerator()
+    train_loader, valid_loader, policy, optimizer = accelerator.prepare(
+        train_loader, valid_loader, policy, optimizer
+    )
 
     # wandb login
     wandb.init(project=config.experiment.name)
 
     # iterate epochs
     valid_ct = 1
+    rollout_ct = 1
+    save_ct = 1
     for epoch in range(config.train.epochs):
         print(f"epoch {epoch}")
-
-        # train loop
+        
+        # TRAINING
         print("training...")
-        policy.train()
-        with tqdm(total=len(train_loader), unit='batch') as progress_bar:
-            for batch in train_loader:
-                target = batch["actions"][:, config.dataset.frame_stack:, :]
-                inputs = TensorUtils.slice(x=batch, dim=1, start=0, end=config.dataset.frame_stack+1)
-                action = policy(inputs)
-                loss = loss_fn(action, target)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                wandb.log({"train_loss": loss})
-                progress_bar.update(1)
+        TrainUtils.run_epoch(
+            model=policy,
+            data_loader=train_loader,
+            loss_fn=loss_fn,
+            frame_stack=config.dataset.frame_stack,
+            optimizer=optimizer,
+            validate=False,
+            device=accelerator.device,
+        )
 
-        # valid loop
+        # VALIDATION
         if valid_ct == config.experiment.valid_rate:
             print("validating...")
-            policy.eval()
-            with tqdm(total=len(valid_loader), unit='batch') as progress_bar:
-                for batch in valid_loader:
-                    target = batch["actions"][:, config.dataset.frame_stack:, :]
-                    inputs = TensorUtils.slice(x=batch, dim=1, start=0, end=config.dataset.frame_stack+1)
-                    action = policy(inputs)
-                    loss = loss_fn(action, target)
-                    wandb.log({"valid_loss": loss})
-                    progress_bar.update(1)
+            TrainUtils.run_epoch(
+                model=policy,
+                data_loader=valid_loader,
+                loss_fn=loss_fn,
+                frame_stack=config.dataset.frame_stack,
+                optimizer=optimizer,
+                validate=True,
+                device=accelerator.device,
+            )
+            valid_ct = 1
+
+        # ROLLOUT
+        if rollout_ct == config.experiment.rollout_rate:
+            print("rolling out...")
+            with tqdm(total=validset.num_demos, unit='demo') as progress:
+                for demo in validset.demos:
+                    _ = rollout_env.rollout_with_stats(
+                        policy=policy,
+                        demo_id=demo,
+                        video_dir=os.path.join(rollout_dir, f"{epoch}"),
+                        device=accelerator.device,
+                    )
+            rollout_ct = 1
+
+        # SAVE WEIGHTS
+        if save_ct == config.experiment.save_rate:
+            print("saving weights...")
+            torch.save(policy.state_dict(), os.path.join(weights_dir, f"model_{epoch}.pth"))
+            save_ct = 1
+
+    # save final model
+    torch.save(policy.state_dict(), os.path.join(weights_dir, f"model.pth"))
 
     # unregister encoder cores
     ObsUtils.unregister_encoder_core(ObsUtils.Modality.LOW_DIM)

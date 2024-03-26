@@ -1,5 +1,6 @@
 from bc_algos.dataset.dataset import MIMODataset
 import bc_algos.utils.tensor_utils as TensorUtils
+import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.models.policy_nets import BC
 import imageio
 import time
@@ -50,6 +51,28 @@ class RolloutEnv:
         self.render_video = render_video
 
         self.env = self.create_env()
+
+    @classmethod
+    def factory(cls, config, validset):
+        """
+        Create a RolloutEnv instance from config.
+
+        Args:
+            config (addict): config object
+
+            validset (MIMODataset): validation dataset for rollout
+
+        Returns:
+            RolloutEnv instance
+        """
+        return cls(
+            validset=validset,
+            obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
+            obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
+            frame_stack=config.dataset.frame_stack,
+            gc=(config.dataset.goal_mode is not None),
+            render_video=False,
+        )
 
     def create_env(self):
         """
@@ -149,6 +172,7 @@ class RolloutEnv:
             video_skip=5,
             horizon=None,
             terminate_on_success=False,
+            device=None,
         ):
         """
         Run rollout on a single demo and save stats (and video if necessary).
@@ -167,6 +191,8 @@ class RolloutEnv:
 
             terminate_on_success (bool): if True, terminate episode early as soon as a success is encountered
 
+            device: (optional) device to send tensors to
+
         Returns:
             results (dict): dictionary of results with the keys "horizon" and "success"
         """
@@ -178,7 +204,7 @@ class RolloutEnv:
         # switch to eval mode
         policy.eval()
 
-        obs = self.init_demo()
+        obs = self.init_demo(demo_id=demo_id)
 
         # policy inputs from initial observation
         inputs = self.inputs_from_initial_obs(obs=obs, demo_id=demo_id)
@@ -189,13 +215,15 @@ class RolloutEnv:
 
         for step_i in range(horizon):
             # compute new inputs
-            inputs = self.inputs_from_new_obs(x=inputs, obs=obs, demo_id=demo_id, t=step_i)
+            inputs = self.inputs_from_new_obs(inputs=inputs, obs=obs, demo_id=demo_id, t=step_i)
+            x = BC.prepare_inputs(inputs=inputs, device=device)
 
             # get action from policy
-            ac = policy(inputs)
+            y = policy(x)
+            action = y[0, 0, :].detach().numpy()
 
             # play action
-            obs = self.env.step(ac)
+            obs = self.env.step(action)
 
             success = self.env.is_success()
 
@@ -225,6 +253,7 @@ class RolloutEnv:
             horizon=None,
             terminate_on_success=False, 
             verbose=False,
+            device=None,
         ):        
         """
         Configure video writer, run rollout, and log progress. 
@@ -246,6 +275,8 @@ class RolloutEnv:
             terminate_on_success (bool): if True, terminate episode early as soon as a success is encountered
 
             verbose (bool): if True, print results of each rollout
+
+            device: (optional) device to send tensors to
 
         Returns:
             results (dict): dictionary of results with the keys 
@@ -271,6 +302,7 @@ class RolloutEnv:
             video_skip=video_skip, 
             horizon=horizon,
             terminate_on_success=terminate_on_success, 
+            device=device,
         )
 
         rollout_info["time"] = time.time() - rollout_timestamp

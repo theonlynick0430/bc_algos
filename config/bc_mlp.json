@@ -18,7 +18,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 224, 224]
+            "agentview_image": [3, 84, 84]
         },
         "modalities": {
             "obs": {
@@ -30,12 +30,12 @@
             },
             "goal": {
                 "low_dim": [],
-                "rgb": ["agentview_image"]
+                "rgb": []
             }
         },
         "kwargs": {
             "low_dim": {
-                "output_shape": [9],
+                "output_shape": [8],
                 "hidden_dims": [32]
             },
             "rgb": {}

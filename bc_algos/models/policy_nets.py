@@ -34,6 +34,23 @@ class BC(nn.Module):
         self.backbone = backbone
         self.act_dec = act_dec
 
+    @classmethod
+    def prepare_inputs(cls, inputs, device=None):
+        """
+        Prepares inputs to be processed by model by converting to float tensor, and moving 
+        to specified device.
+
+        Args:
+            inputs (dict): nested dictionary that maps observation group to observation key
+                to data of shape [B, T, D,]
+
+            device: (optional) device to send tensors to
+
+        Returns: prepared inputs
+        """
+        inputs = TensorUtils.to_tensor(x=inputs, device=device)
+        return TensorUtils.to_float(x=inputs)
+
 
 class BC_MLP(BC):
     """
@@ -60,7 +77,7 @@ class BC_MLP(BC):
 
         Args: 
             inputs (dict): nested dictionary that maps observation group to observation key
-            to data of shape [B, T=1, D,]
+                to data of shape [B, T=1, D,]
 
         Returns: action in shape [B, T=1, action_dim,]
         """
@@ -90,7 +107,7 @@ class BC_Transformer(BC):
 
         Args: 
             inputs (dict): nested dictionary that maps observation group to observation key
-            to data of shape [B, T, D,]
+                to data of shape [B, T, D,]
 
         Returns: actions in shape [B, T, action_dim,]
         """
