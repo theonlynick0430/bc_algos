@@ -88,7 +88,7 @@ class RobomimicDataset(MIMODataset):
 
     def load_dataset_in_memory(self):
         """
-        Loads the hdf5 dataset into memory, preserving the structure of the file.
+        Load the hdf5 dataset into memory, preserving the structure of the file.
 
         Returns:
             dataset (dict): dictionary of loaded data
@@ -100,14 +100,15 @@ class RobomimicDataset(MIMODataset):
                 dataset[demo] = {}
 
                 # get observations
-                dataset[demo]["obs"] = {k: self.hdf5_file["data/{}/obs/{}".format(demo, k)][()] for k in self.obs_keys}
+                dataset[demo]["obs"] = {}
+                for obs_key in self.obs_keys:
+                    assert obs_key in self.hdf5_file[f"data/{demo}/obs"], f"obs_key {obs_key} not found in dataset"
+                    dataset[demo]["obs"][obs_key] = self.hdf5_file[f"data/{demo}/obs/{obs_key}"][()].astype('float32')
 
                 # get other dataset keys
-                for k in self.dataset_keys:
-                    if k in self.hdf5_file["data/{}".format(demo)]:
-                        dataset[demo][k] = self.hdf5_file["data/{}/{}".format(demo, k)][()].astype('float32')
-                    else:
-                        dataset[demo][k] = np.zeros((dataset[demo]["attrs"]["num_samples"], 1), dtype=np.float32)
+                for dataset_key in self.dataset_keys:
+                    assert dataset_key in self.hdf5_file[f"data/{demo}"], f"dataset_key {dataset_key} not found in dataset"
+                    dataset[demo][dataset_key] = self.hdf5_file[f"data/{demo}/{dataset_key}"][()].astype('float32')
 
                 progress_bar.update(1)
 
@@ -123,7 +124,7 @@ class RobomimicDataset(MIMODataset):
         demos = []
         # filter demo trajectory by mask
         if self.filter_by_attribute is not None:
-            demos = [elem.decode("utf-8") for elem in np.array(self.hdf5_file["mask/{}".format(self.filter_by_attribute)][:])]
+            demos = [elem.decode("utf-8") for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
         else:
             demos = list(self.hdf5_file["data"].keys())
         # sort demo keys
@@ -142,7 +143,7 @@ class RobomimicDataset(MIMODataset):
         """
         Get length of demo with demo_id
         """
-        return self.hdf5_file["data/{}".format(demo_id)].attrs["num_samples"] 
+        return self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
 
     @property
     def hdf5_file(self):

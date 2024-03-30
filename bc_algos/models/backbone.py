@@ -1,4 +1,4 @@
-from bc_algos.models.base_nets import PositionalEncoding
+# from bc_algos.models.base_nets import PositionalEncoding
 import torch.nn as nn
 import math
 
@@ -119,6 +119,7 @@ class Transformer(Backbone):
 
     def create_layers(self):
         self.pos_embed = PositionalEncoding(d_model=self.input_dim, **self.pos_embed_kwargs)
+        nn.TransformerDecoderLayer
         enc_layer = nn.TransformerEncoderLayer(
             d_model=self.input_dim,
             nhead=self.nhead,

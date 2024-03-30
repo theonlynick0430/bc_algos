@@ -9,12 +9,13 @@ import bc_algos.utils.obs_utils as ObsUtils
 from strenum import StrEnum
 import os
 from tqdm import tqdm
+from abc import ABC, abstractmethod
 
 
 class DatasetType(StrEnum):
     ROBOMIMIC="robomimic"
 
-class MIMODataset(torch.utils.data.Dataset):
+class MIMODataset(ABC, torch.utils.data.Dataset):
     """
     Abstract class for fetching sequences of experience. Inherit from this class for 
     different dataset formats. 
@@ -125,6 +126,7 @@ class MIMODataset(torch.utils.data.Dataset):
         )
 
     @property
+    @abstractmethod
     def demos(self):
         """
         Get all demo ids
@@ -132,6 +134,7 @@ class MIMODataset(torch.utils.data.Dataset):
         return NotImplementedError      
 
     @property
+    @abstractmethod
     def num_demos(self):
         """
         Get number of demos
@@ -142,6 +145,7 @@ class MIMODataset(torch.utils.data.Dataset):
     def gc(self):
         return "goal" in self.obs_group_to_key and self.goal_mode in ["last", "subgoal"]
 
+    @abstractmethod
     def get_demo_len(self, demo_id):
         """
         Get length of demo with demo_id
@@ -239,6 +243,7 @@ class MIMODataset(torch.utils.data.Dataset):
                 self.index_cache.append(item)
                 progress.update(1)
     
+    @abstractmethod
     def get_data_seq(self, demo_id, keys, seq_index):
         """
         Extract a (sub)sequence of data items from a demo given the @keys of the items.
@@ -253,6 +258,7 @@ class MIMODataset(torch.utils.data.Dataset):
         """
         return NotImplementedError
     
+    @abstractmethod
     def get_obs_seq(self, demo_id, keys, seq_index):
         """
         Extract a (sub)sequence of observation items from a demo given the @keys of the items.
