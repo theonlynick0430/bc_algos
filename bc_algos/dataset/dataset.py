@@ -6,14 +6,10 @@ import numpy as np
 import torch.utils.data
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
-from strenum import StrEnum
 import os
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 
-
-class DatasetType(StrEnum):
-    ROBOMIMIC="robomimic"
 
 class MIMODataset(ABC, torch.utils.data.Dataset):
     """

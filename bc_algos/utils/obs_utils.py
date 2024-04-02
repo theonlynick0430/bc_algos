@@ -108,7 +108,7 @@ def deinit_obs_utils():
     """
     Deinitialize mappings.
     """
-    for obs_key in OBS_KEY_TO_ENC_CORE:
+    for obs_key in list(OBS_KEY_TO_ENC_CORE.keys()):
         unregister_encoder_core(obs_key=obs_key)
-    for modality in MODALITY_TO_ENC_CORE_CLASS:
+    for modality in list(MODALITY_TO_ENC_CORE_CLASS.keys()):
         unregister_encoder_core_class(modality=modality)

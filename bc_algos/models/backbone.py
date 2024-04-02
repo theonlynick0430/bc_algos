@@ -8,30 +8,30 @@ class Backbone(ABC, nn.Module):
     Abstract class for policy backbone. Subclass to implement different 
     backbone algorithms. 
     """
-    def __init__(self, input_dim):
+    def __init__(self, embed_dim):
         """
         Args:
-            input_dim (int): dim of input embeddings
+            embed_dim (int): input embedding dim
         """
         super(Backbone, self).__init__()
 
-        self.input_dim = input_dim
+        self.embed_dim = embed_dim
 
     @classmethod
-    def factory(cls, config, input_dim):
+    def factory(cls, config, embed_dim):
         """
         Create a Backbone instance from config.
 
         Args:
             config (addict): config object
 
-            input_dim (int): dim of input embeddings
+            embed_dim (int): input embedding dim
 
         Returns:
             Backbone instance
         """
         return cls(
-            input_dim=input_dim,
+            embed_dim=embed_dim,
             **config.policy.kwargs.backbone
         )
 
@@ -44,10 +44,10 @@ class MLP(Backbone):
     """
     MLP policy backbone.
     """
-    def __init__(self, input_dim, output_dim, hidden_dims=[], activation=nn.ReLU, dropout=0.1):
+    def __init__(self, embed_dim, output_dim, hidden_dims=[], activation=nn.ReLU, dropout=0.1):
         """
         Args:
-            input_dim (int): dim of input embeddings
+            embed_dim (int): input embedding dim
 
             output_dim (int): dim of output embeddings
 
@@ -57,7 +57,7 @@ class MLP(Backbone):
 
             dropout (float): dropout probability
         """
-        super(MLP, self).__init__(input_dim=input_dim)
+        super(MLP, self).__init__(embed_dim=embed_dim)
 
         self._output_dim = output_dim
         self.hidden_dims = hidden_dims
@@ -73,7 +73,7 @@ class MLP(Backbone):
     def create_layers(self):
         self.dropout = nn.Dropout(self._dropout)
         layers = []
-        prev_dim = np.prod(self.input_dim)
+        prev_dim = np.prod(self.embed_dim)
         for hidden_dim in self.hidden_dims:
             layers.extend([nn.Linear(prev_dim, hidden_dim), self.activation()])
             prev_dim = hidden_dim
@@ -92,25 +92,41 @@ class Transformer(Backbone):
     """
     Transformer policy backbone.
     """
-    def __init__(self, input_dim, kwargs={}):
+    def __init__(self, embed_dim, **kwargs):
         """
         Args:
-            input_dim (int): embedding dim
+            embed_dim (int): input embedding dim
 
             kwargs (dict): args for transformer
         """
-        super(Transformer, self).__init__(input_dim=input_dim)
+        super(Transformer, self).__init__(embed_dim=embed_dim)
 
         self.kwargs = kwargs
 
         self.create_layers()
 
+    @classmethod
+    def factory(cls, config):
+        """
+        Create a Transformer instance from config.
+
+        Args:
+            config (addict): config object
+
+        Returns:
+            Transformer instance
+        """
+        return cls(
+            embed_dim=config.policy.embed_dim,
+            **config.policy.kwargs.backbone
+        )
+
     @property
     def output_dim(self):
-        return self.input_dim
+        return self.embed_dim
 
     def create_layers(self):
-        self.transformer = nn.Transformer(d_model=self.input_dim, batch_first=True, **self.kwargs)
+        self.transformer = nn.Transformer(d_model=self.embed_dim, batch_first=True, **self.kwargs)
 
     def forward(self, src, tgt):
         """

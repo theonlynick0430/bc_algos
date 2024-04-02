@@ -1,7 +1,7 @@
 from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.robomimic import RobomimicDataset
 import bc_algos.utils.tensor_utils as TensorUtils
-import bc_algos.utils.obs_utils as ObsUtils
+import bc_algos.utils.constants as Const
 from bc_algos.envs.robosuite import EnvRobosuite
 import json
 
@@ -76,8 +76,8 @@ class RobomimicRolloutEnv(RolloutEnv):
             env_name=env_meta["env_name"],
             obs_key_to_modality=self.obs_key_to_modality,
             render=self.render_video,
-            use_image_obs=(ObsUtils.Modality.RGB in self.obs_key_to_modality.values()),
-            use_depth_obs=(ObsUtils.Modality.DEPTH in self.obs_key_to_modality.values()),
+            use_image_obs=(Const.Modality.RGB in self.obs_key_to_modality.values()),
+            use_depth_obs=(Const.Modality.DEPTH in self.obs_key_to_modality.values()),
             **env_meta["env_kwargs"]
         )
 

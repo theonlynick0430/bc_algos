@@ -1,13 +1,11 @@
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.train_utils as TrainUtils
-from bc_algos.models.obs_core import EncoderCore, VisualCore
-from bc_algos.dataset.dataset import DatasetType
 from bc_algos.dataset.robomimic import RobomimicDataset
 from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
-from bc_algos.models.policy_nets import BC_Transformer, BC_MLP, PolicyType
-from bc_algos.rollout.rollout_env import RolloutType
+from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
+import bc_algos.utils.constants as Const
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch.nn as nn
@@ -23,19 +21,14 @@ from tqdm import tqdm
 
 def train(config):
     # enforce policy constraints
-    if config.policy.type == PolicyType.MLP:
+    if config.policy.type == Const.PolicyType.MLP:
         assert config.dataset.frame_stack == 0, "mlp does not support history"
         assert config.dataset.seq_length == 1, "mlp does not support multi-action output"
-    elif config.policy.type == PolicyType.TRANSFORMER:
-        assert config.dataset.frame_stack+1 == config.dataset.seq_length, \
-            "history must = # predicted actions for transformer"
+    elif config.policy.type == Const.PolicyType.TRANSFORMER:
+        assert config.policy.embed_dim%2 == 0, "transformer embedded dim must be even"
     else:
         print(f"unsupported policy type {config.policy.type}")
         exit(1)
-
-    # register encoder cores
-    ObsUtils.register_encoder_core_class(EncoderCore, ObsUtils.Modality.LOW_DIM)
-    ObsUtils.register_encoder_core_class(VisualCore, ObsUtils.Modality.RGB)
 
     # init obs utils
     ObsUtils.init_obs_utils(config=config)
@@ -49,7 +42,7 @@ def train(config):
     os.makedirs(rollout_dir)
 
     # load datasets and dataloaders
-    if config.dataset.type == DatasetType.ROBOMIMIC:
+    if config.dataset.type == Const.DatasetType.ROBOMIMIC:
         trainset = RobomimicDataset.factory(config=config, train=True)
         validset = RobomimicDataset.factory(config=config, train=False)
     else:
@@ -59,22 +52,22 @@ def train(config):
     valid_loader = DataLoader(validset, batch_size=config.train.batch_size, shuffle=True)
 
     # load obs encoder
-    obs_group_enc = ObservationGroupEncoder.factory(config=config)
+    obs_group_enc = ObservationGroupEncoder(obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY)
 
     # load backbone network
-    if config.policy.type == PolicyType.MLP:
-        backbone = MLP.factory(config=config, input_dim=obs_group_enc.output_dim)
-    elif config.policy.type == PolicyType.TRANSFORMER:
-        backbone = Transformer.factory(config=config, input_dim=obs_group_enc.output_dim)
+    if config.policy.type == Const.PolicyType.MLP:
+        backbone = MLP.factory(config=config, embed_dim=obs_group_enc.output_dim)
+    elif config.policy.type == Const.PolicyType.TRANSFORMER:
+        backbone = Transformer.factory(config=config)
 
     # load action decoder
     act_dec = ActionDecoder.factory(config=config, input_dim=backbone.output_dim)
 
     # load policy
-    if config.policy.type == PolicyType.MLP:
+    if config.policy.type == Const.PolicyType.MLP:
         policy = BC_MLP(obs_group_enc, backbone, act_dec)
-    elif config.policy.type == PolicyType.TRANSFORMER:
-        policy = BC_Transformer(obs_group_enc, backbone, act_dec)
+    elif config.policy.type == Const.PolicyType.TRANSFORMER:
+        policy = BC_Transformer(obs_group_enc, backbone, act_dec, act_chunk=config.dataset.seq_length)
 
     # create optimizer and loss function
     optimizer = optim.Adam(policy.parameters(), lr=config.train.learning_rate)
@@ -87,7 +80,7 @@ def train(config):
         exit(1)
 
     # create env for rollout
-    if config.rollout.type == RolloutType.ROBOMIMIC:
+    if config.rollout.type == Const.RolloutType.ROBOMIMIC:
         rollout_env = RobomimicRolloutEnv.factory(config=config, validset=validset)
     else:
         print(f"rollout env {config.rollout.type} not supported")
@@ -162,9 +155,8 @@ def train(config):
     # save final model
     torch.save(policy.state_dict(), os.path.join(weights_dir, f"model.pth"))
 
-    # unregister encoder cores
-    ObsUtils.unregister_encoder_core_class(ObsUtils.Modality.LOW_DIM)
-    ObsUtils.unregister_encoder_core_class(ObsUtils.Modality.RGB)
+    # deinit obs utils
+    ObsUtils.deinit_obs_utils()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,9 @@
 from strenum import StrEnum
 
 
+class DatasetType(StrEnum):
+    ROBOMIMIC="robomimic"
+
 class Modality(StrEnum):
     LOW_DIM="low_dim"
     RGB="rgb"
@@ -10,3 +13,7 @@ class Modality(StrEnum):
 class PolicyType(StrEnum):
     MLP="mlp"
     TRANSFORMER="transformer"
+
+
+class RolloutType(StrEnum):
+    ROBOMIMIC="robomimic"

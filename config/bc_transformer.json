@@ -18,7 +18,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 256, 256]
+            "agentview_image": [3, 224, 224]
         },
         "modalities": {
             "obs": {
@@ -48,8 +48,8 @@
         "dataset_keys": [
             "actions"
         ],
-        "frame_stack": 0,
-        "seq_length": 1,
+        "frame_stack": 9,
+        "seq_length": 10,
         "pad_frame_stack": true,
         "pad_seq_length": true,
         "get_pad_mask": false,
@@ -72,16 +72,8 @@
         "embed_dim": 512,
         "action_shape": [7],
         "kwargs": {
-            "backbone": {
-                "nlayers": 6,
-                "nhead": 8, 
-                "pos_embed_kwargs": {},
-                "enc_kwargs": {},
-                "dec_kwargs": {}
-            },
-            "action_decoder": {
-                "hidden_dims": []
-            }
+            "backbone": {},
+            "action_decoder": {}
         }
     },
 

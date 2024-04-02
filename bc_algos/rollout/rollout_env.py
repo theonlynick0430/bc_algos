@@ -6,11 +6,7 @@ import imageio
 import time
 import os
 from collections import OrderedDict
-from strenum import StrEnum
 
-
-class RolloutType(StrEnum):
-    ROBOMIMIC="robomimic"
 
 class RolloutEnv:
     """

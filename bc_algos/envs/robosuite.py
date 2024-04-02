@@ -11,7 +11,7 @@ import robosuite
 import robosuite.utils.transform_utils as T
 
 import bc_algos.envs.env_base as EB
-import bc_algos.utils.obs_utils as ObsUtils
+import bc_algos.utils.constants as Const
 
 # protect against missing mujoco-py module, since robosuite might be using mujoco-py or DM backend
 try:
@@ -182,10 +182,10 @@ class EnvRobosuite(EB.EnvBase):
             di = self.env._get_observations(force_update=True)
         obs = {}
         for k in di:
-            if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == ObsUtils.Modality.RGB:
+            if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
                 # by default images from mujoco are flipped in height
                 obs[k] = self.process_img(di[k][::-1])
-            elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == ObsUtils.Modality.DEPTH:
+            elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.DEPTH:
                 # by default depth images from mujoco are flipped in height
                 obs[k] = di[k][::-1]
                 if len(obs[k].shape) == 2:

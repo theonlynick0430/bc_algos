@@ -10,7 +10,7 @@ class BC(nn.Module):
     Abstract class for behavorial cloning policy that predicts actions from observations.
     Subclass to implement different behavorial cloning policies.
     """
-    def __init__(self, obs_group_enc, backbone, act_dec, device=None):
+    def __init__(self, obs_group_enc, backbone, act_dec):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder
@@ -18,8 +18,6 @@ class BC(nn.Module):
             backbone (Backbone): policy backbone
 
             act_dec (ActionDecoder): output decoder
-
-            device: (optional) device to send tensors to
         """
         super(BC, self).__init__()
 
@@ -30,9 +28,9 @@ class BC(nn.Module):
         self.obs_group_enc = obs_group_enc
         self.backbone = backbone
         self.act_dec = act_dec
-        self.device = device
 
-    def prepare_inputs(self, inputs):
+    @classmethod
+    def prepare_inputs(cls, inputs, device=None):
         """
         Prepares inputs to be processed by model by converting to float tensor, and moving 
         to specified device.
@@ -41,9 +39,11 @@ class BC(nn.Module):
             inputs (dict): nested dictionary that maps observation group to observation key
                 to data of shape [B, T, D,]
 
-        Returns: prepared inputs.
+            device: (optional) device to send tensors to
+
+        Returns: prepared inputs
         """
-        inputs = TensorUtils.to_tensor(x=inputs, device=self.device)
+        inputs = TensorUtils.to_tensor(x=inputs, device=device)
         return TensorUtils.to_float(x=inputs)
 
 
@@ -51,7 +51,7 @@ class BC_MLP(BC):
     """
     Module for behavorial cloning policy that predicts actions from observations using MLP.
     """
-    def __init__(self, obs_group_enc, backbone, act_dec, device=None):
+    def __init__(self, obs_group_enc, backbone, act_dec):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder
@@ -59,10 +59,8 @@ class BC_MLP(BC):
             backbone (Backbone): policy backbone
 
             act_dec (ActionDecoder): output decoder
-
-            device: (optional) device to send tensors to
         """
-        super(BC_MLP, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec, device=device)
+        super(BC_MLP, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec)
 
         assert isinstance(backbone, MLP)
 
@@ -85,7 +83,7 @@ class BC_Transformer(BC):
     """
     Module for behavorial cloning policy that predicts actions from observations using transformer.
     """
-    def __init__(self, obs_group_enc, backbone, act_dec, act_chunk, device=None):
+    def __init__(self, obs_group_enc, backbone, act_dec, act_chunk):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder
@@ -95,15 +93,13 @@ class BC_Transformer(BC):
             act_dec (ActionDecoder): output decoder
 
             act_chunk (int): number of actions to predict in a single model pass
-
-            device: (optional) device to send tensors to
         """
-        super(BC_Transformer, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec, device=device)
+        super(BC_Transformer, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec)
 
         assert isinstance(backbone, Transformer)
 
         self.act_chunk = act_chunk
-        self.embed_dim = backbone.input_dim
+        self.embed_dim = backbone.embed_dim
 
     def forward(self, inputs):
         """
@@ -116,12 +112,13 @@ class BC_Transformer(BC):
         Returns: actions in shape [B, T, action_dim,]
         """
         src = TensorUtils.time_distributed(inputs=inputs, op=self.obs_group_enc)
+        device = src.device
         B, T, _ = src.shape
         src = src.view(B, T, -1, self.embed_dim)
         _, _, N, _ = src.shape
-        src += pos_enc_1d(d_model=self.embed_dim, T=T, device=self.device).unsqueeze(1).repeat(1, N, 1)
+        src += pos_enc_1d(d_model=self.embed_dim, T=T, device=device).unsqueeze(1).repeat(1, N, 1)
         src = src.view(B, -1, self.embed_dim)
-        tgt = pos_enc_1d(d_model=self.embed_dim, T=self.act_chunk, device=self.device).unsqueeze(0).repeat(B, 1, 1)
+        tgt = pos_enc_1d(d_model=self.embed_dim, T=self.act_chunk, device=device).unsqueeze(0).repeat(B, 1, 1)
         embed = self.backbone(src, tgt)
         actions = TensorUtils.time_distributed(inputs=embed, op=self.act_dec)
         return actions
