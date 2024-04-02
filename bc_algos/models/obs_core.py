@@ -156,7 +156,7 @@ class ResNet18Core(EncoderCore):
         """
         Returns: output shape of ResNet-18 encoder core.
         """
-        return [512, 2]
+        return [2, 512,]
     
     def freeze(self):
         """
@@ -175,5 +175,4 @@ class ResNet18Core(EncoderCore):
         """
         Forward pass through ResNet-18 encoder core.
         """
-        B = inputs.shape[0]
-        return self.spatial_softmax(self.resnet18(inputs)).view(B, *self.output_shape)
+        return self.spatial_softmax(self.resnet18(inputs)).view(-1, *self.output_shape)
