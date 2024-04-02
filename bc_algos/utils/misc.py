@@ -1,8 +1,6 @@
 import gzip
 import pickle
 import os
-import torch
-
 
 def save_gzip_pickle(data, filename):
     """
