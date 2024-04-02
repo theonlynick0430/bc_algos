@@ -3,8 +3,8 @@
         "name": "bc_transformer",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 1001, 
-        "rollout_rate": 10
+        "save_rate": 100, 
+        "rollout_rate": 100
     },
 
     "train": {
@@ -18,7 +18,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 224, 224]
+            "agentview_image": [3, 256, 256]
         },
         "modalities": {
             "obs": {
@@ -35,8 +35,8 @@
         },
         "kwargs": {
             "low_dim": {
-                "output_shape": [8],
-                "hidden_dims": [32]
+                "output_shape": [512],
+                "hidden_dims": []
             },
             "rgb": {}
         }
@@ -48,8 +48,8 @@
         "dataset_keys": [
             "actions"
         ],
-        "frame_stack": 3,
-        "seq_length": 4,
+        "frame_stack": 0,
+        "seq_length": 1,
         "pad_frame_stack": true,
         "pad_seq_length": true,
         "get_pad_mask": false,
@@ -69,16 +69,18 @@
 
     "policy": {
         "type": "transformer",
+        "embed_dim": 512,
         "action_shape": [7],
         "kwargs": {
             "backbone": {
                 "nlayers": 6,
                 "nhead": 8, 
                 "pos_embed_kwargs": {},
-                "enc_kwargs": {}
+                "enc_kwargs": {},
+                "dec_kwargs": {}
             },
             "action_decoder": {
-                "hidden_dims": [32]
+                "hidden_dims": []
             }
         }
     },

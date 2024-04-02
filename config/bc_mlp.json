@@ -3,8 +3,8 @@
         "name": "bc_mlp",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 1001, 
-        "rollout_rate": 10
+        "save_rate": 100, 
+        "rollout_rate": 100
     },
 
     "train": {
@@ -35,8 +35,8 @@
         },
         "kwargs": {
             "low_dim": {
-                "output_shape": [8],
-                "hidden_dims": [32]
+                "output_shape": [16],
+                "hidden_dims": []
             },
             "rgb": {}
         }
@@ -72,12 +72,10 @@
         "action_shape": [7],
         "kwargs": {
             "backbone": {
-                "output_dim": 64,
-                "hidden_dims": [256, 128, 64]
+                "output_dim": 32,
+                "hidden_dims": [512, 256, 128, 64]
             },
-            "action_decoder": {
-                "hidden_dims": [32]
-            }
+            "action_decoder": {}
         }
     },
 

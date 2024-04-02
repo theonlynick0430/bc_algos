@@ -34,8 +34,8 @@ def train(config):
         exit(1)
 
     # register encoder cores
-    ObsUtils.register_encoder_core(EncoderCore, ObsUtils.Modality.LOW_DIM)
-    ObsUtils.register_encoder_core(VisualCore, ObsUtils.Modality.RGB)
+    ObsUtils.register_encoder_core_class(EncoderCore, ObsUtils.Modality.LOW_DIM)
+    ObsUtils.register_encoder_core_class(VisualCore, ObsUtils.Modality.RGB)
 
     # init obs utils
     ObsUtils.init_obs_utils(config=config)
@@ -163,8 +163,8 @@ def train(config):
     torch.save(policy.state_dict(), os.path.join(weights_dir, f"model.pth"))
 
     # unregister encoder cores
-    ObsUtils.unregister_encoder_core(ObsUtils.Modality.LOW_DIM)
-    ObsUtils.unregister_encoder_core(ObsUtils.Modality.RGB)
+    ObsUtils.unregister_encoder_core_class(ObsUtils.Modality.LOW_DIM)
+    ObsUtils.unregister_encoder_core_class(ObsUtils.Modality.RGB)
 
 
 if __name__ == "__main__":

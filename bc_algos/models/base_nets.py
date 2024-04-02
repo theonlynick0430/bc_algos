@@ -1,6 +1,33 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
+
+
+def pos_enc_1d(d_model, T, device=None):
+    """
+    Return 1D positional encodings for transformer model.
+
+    Args: 
+        d_model: embedding dim
+
+        T: temporal dim
+
+        device: (optional) device to send tensors to
+    """
+    if d_model % 2 != 0:
+        raise ValueError("cannot use sin/cos positional encoding with "
+                         "odd dim (got dim={:d})".format(d_model))
+    
+    pe = torch.zeros(T, d_model, device=device)
+
+    position = torch.arange(0, T, device=device).unsqueeze(1)
+    div_term = torch.exp((torch.arange(0, d_model, 2, device=device, dtype=torch.float) *
+                         -(math.log(10000.0) / d_model)))
+    pe[:, 0::2] = torch.sin(position.float() * div_term)
+    pe[:, 1::2] = torch.cos(position.float() * div_term)
+
+    return pe
 
 
 class SpatialSoftArgmax(nn.Module):

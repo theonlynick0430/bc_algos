@@ -83,7 +83,7 @@ class LowDimCore(EncoderCore):
         B = inputs.shape[0]
         inputs = inputs.view(B, -1)
         if self.project:
-            return self.mlp(inputs).view(B, *self._output_shape)
+            return self.mlp(inputs).view(-1, *self._output_shape)
         else:
             return self.weight * inputs
 

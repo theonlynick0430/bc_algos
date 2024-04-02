@@ -39,7 +39,7 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         Args:
             path (str): path to dataset 
 
-            obs_group_to_key (dict): dictionary from observation group to observation keys
+            obs_group_to_key (dict): dictionary from observation group to observation key
 
             dataset_keys (tuple, list): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
 
