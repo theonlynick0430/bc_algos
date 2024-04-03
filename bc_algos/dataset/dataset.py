@@ -31,7 +31,7 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         goal_mode=None,
         num_subgoal=None,
         demos=None,
-        preprocess=True,
+        preprocess=False,
     ):
         """
         Args:

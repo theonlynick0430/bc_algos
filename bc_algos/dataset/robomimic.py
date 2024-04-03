@@ -31,7 +31,7 @@ class RobomimicDataset(MIMODataset):
         num_subgoal=None,
         filter_by_attribute=None,
         demos=None,
-        preprocess=True,
+        preprocess=False,
     ):
         """
         MIMO_Dataset subclass for fetching sequences of experience from HDF5 dataset.
@@ -108,14 +108,14 @@ class RobomimicDataset(MIMODataset):
                 dataset[demo] = {}
 
                 # get observations
-                dataset[demo]["obs"] = {}
-                for obs_key in self.obs_keys:
-                    assert obs_key in self.hdf5_file[f"data/{demo}/obs"], f"obs_key {obs_key} not found in dataset"
-                    dataset[demo]["obs"][obs_key] = self.hdf5_file[f"data/{demo}/obs/{obs_key}"][()].astype('float32')
+                dataset[demo]["obs"] = {obs_key: self.hdf5_file[f"data/{demo}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
+                if preprocess:
+                    for obs_key in self.obs_keys:
+                        if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
+                            dataset[demo]["obs"][obs_key] = ObsUtils.preprocess_img(dataset[demo]["obs"][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
-                    assert dataset_key in self.hdf5_file[f"data/{demo}"], f"dataset_key {dataset_key} not found in dataset"
                     dataset[demo][dataset_key] = self.hdf5_file[f"data/{demo}/{dataset_key}"][()].astype('float32')
 
                 progress_bar.update(1)
