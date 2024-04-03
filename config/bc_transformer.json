@@ -58,11 +58,11 @@
         "kwargs": {
             "train": {
                 "filter_by_attribute": "train",
-                "demos": null
+                "demos": ["demo_0"]
             },
             "valid": {
                 "filter_by_attribute": "valid",
-                "demos": null
+                "demos": ["demo_0"]
             }
         }
     },

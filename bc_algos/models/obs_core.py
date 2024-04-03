@@ -1,6 +1,8 @@
 from bc_algos.models.base_nets import SpatialSoftArgmax
+import bc_algos.utils.constants as Const
 from transformers import ViTMAEModel
 import torchvision.models as models
+from torchvision.transforms import Normalize
 import torch.nn as nn
 import torch
 import numpy as np
@@ -120,17 +122,19 @@ class ViTMAECore(EncoderCore):
         """
         Freeze encoder network parameters.
         """
-        for param in self.vitmae.parameters():
+        for param in self.network.parameters():
             param.requires_grad = False
     
     def create_layers(self):
+        preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
         self.vitmae = ViTMAEModel.from_pretrained("facebook/vit-mae-base")
+        self.network = nn.Sequential(preprocessor, self.vitmae)
 
     def forward(self, inputs):
         """
         Forward pass through ViTMAE encoder core.
         """
-        return self.vitmae(inputs).last_hidden_state[:, 0]
+        return self.network(inputs).last_hidden_state[:, 0]
     
 
 class ResNet18Core(EncoderCore):
@@ -162,17 +166,19 @@ class ResNet18Core(EncoderCore):
         """
         Freeze encoder network parameters.
         """
-        for param in self.resnet18.parameters():
+        for param in self.network.parameters():
             param.requires_grad = False
     
     def create_layers(self):
+        preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
         resnet18_classifier = models.resnet18(pretrained=True)
         # remove pooling and fc layers
-        self.resnet18 = torch.nn.Sequential(*(list(resnet18_classifier.children())[:-2]))
-        self.spatial_softmax = SpatialSoftArgmax()
+        resnet18 = torch.nn.Sequential(*(list(resnet18_classifier.children())[:-2]))
+        spatial_softmax = SpatialSoftArgmax()
+        self.network = nn.Sequential(preprocessor, resnet18, spatial_softmax)
 
     def forward(self, inputs):
         """
         Forward pass through ResNet-18 encoder core.
         """
-        return self.spatial_softmax(self.resnet18(inputs)).view(-1, *self.output_shape)
+        return self.network(inputs).view(-1, *self.output_shape)

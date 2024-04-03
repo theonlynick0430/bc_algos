@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import bc_algos.utils.constants as Const
 from bc_algos.models.obs_core import LowDimCore, ViTMAECore, ResNet18Core
+import numpy as np
 
 
 # maps modality to encoder core class
@@ -112,3 +113,16 @@ def deinit_obs_utils():
         unregister_encoder_core(obs_key=obs_key)
     for modality in list(MODALITY_TO_ENC_CORE_CLASS.keys()):
         unregister_encoder_core_class(modality=modality)
+
+def preprocess_img(img):
+    """
+    Helper function to preprocess images. Specifically does the following:
+    1) Changes shape of @img from [H, W, 3] to [3, H, W]
+    2) Changes scale of @img from [0, 255] to [0, 1]
+
+    Args: 
+        img (np.array): image data with shape [..., H, W, 3]
+    """
+    img = np.moveaxis(img.astype(float), -1, -3)
+    img /= 255.
+    return img.clip(0., 1.)

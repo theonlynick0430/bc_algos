@@ -7,6 +7,8 @@ import h5py
 import numpy as np
 from contextlib import contextmanager
 from tqdm import tqdm
+import bc_algos.utils.constants as Const
+import bc_algos.utils.obs_utils as ObsUtils
 
 
 class RobomimicDataset(MIMODataset):
@@ -17,6 +19,7 @@ class RobomimicDataset(MIMODataset):
     def __init__(
         self,
         path,
+        obs_key_to_modality,
         obs_group_to_key,
         dataset_keys,
         frame_stack=0,
@@ -28,12 +31,15 @@ class RobomimicDataset(MIMODataset):
         num_subgoal=None,
         filter_by_attribute=None,
         demos=None,
+        preprocess=True,
     ):
         """
         MIMO_Dataset subclass for fetching sequences of experience from HDF5 dataset.
 
         Args:
             path (str): path to dataset
+
+            obs_key_to_modality (dict): dictionary mapping observation key to modality
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
@@ -64,12 +70,15 @@ class RobomimicDataset(MIMODataset):
                 demonstrations to load
 
             demos (list): if provided, use only load these selected demos
+
+            preprocess (bool): if True, preprocess data while loading it into memory
         """
         self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
 
         super(RobomimicDataset, self).__init__(
             path=path,
+            obs_key_to_modality=obs_key_to_modality,
             obs_group_to_key=obs_group_to_key,
             dataset_keys=dataset_keys,
             frame_stack=frame_stack,
@@ -80,22 +89,21 @@ class RobomimicDataset(MIMODataset):
             goal_mode=goal_mode, 
             num_subgoal=num_subgoal,
             demos=demos,
+            preprocess=preprocess
         )
-
-        self.dataset = self.load_dataset_in_memory()
 
         self.close_and_delete_hdf5_handle()
 
-    def load_dataset_in_memory(self):
+    def load_dataset_in_memory(self, preprocess):
         """
-        Load the hdf5 dataset into memory, preserving the structure of the file.
+        Load the dataset into memory and store it at @self.dataset.
 
-        Returns:
-            dataset (dict): dictionary of loaded data
+        Args: 
+            preprocess (bool): if True, preprocess data while loading it into memory
         """
-        print("loading dataset into memory...")
         dataset = dict()
-        with tqdm(total=self.num_demos, unit='demo') as progress_bar:
+
+        with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
             for demo in self.demos:
                 dataset[demo] = {}
 
@@ -112,7 +120,7 @@ class RobomimicDataset(MIMODataset):
 
                 progress_bar.update(1)
 
-        return dataset
+        self.dataset = dataset
 
     @property
     def demos(self):

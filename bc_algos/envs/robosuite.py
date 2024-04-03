@@ -12,6 +12,7 @@ import robosuite.utils.transform_utils as T
 
 import bc_algos.envs.env_base as EB
 import bc_algos.utils.constants as Const
+import bc_algos.utils.obs_utils as ObsUtils
 
 # protect against missing mujoco-py module, since robosuite might be using mujoco-py or DM backend
 try:
@@ -137,15 +138,8 @@ class EnvRobosuite(EB.EnvBase):
             return succ["task"]
         else:
             return succ
-        
-    def process_img(self, image):
-        """
-        Process image observation from Robosuite by transforming 
-        from shape (H, W, 3) to (3, H, W) and scaling from [0, 255] to [0,1].
-        """
-        return np.transpose(image.astype(float), (2, 0, 1))/255.
 
-    def render(self, height=224, width=224, camera_name="agentview", on_screen=False):
+    def render(self, height=256, width=256, camera_name="agentview", on_screen=False):
         """
         Render from simulation to either an on-screen window or off-screen to RGB array.
 
@@ -184,7 +178,7 @@ class EnvRobosuite(EB.EnvBase):
         for k in di:
             if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
                 # by default images from mujoco are flipped in height
-                obs[k] = self.process_img(di[k][::-1])
+                obs[k] = ObsUtils.preprocess_img(di[k][::-1])
             elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.DEPTH:
                 # by default depth images from mujoco are flipped in height
                 obs[k] = di[k][::-1]

@@ -37,7 +37,7 @@ class BC(nn.Module):
 
         Args:
             inputs (dict): nested dictionary that maps observation group to observation key
-                to data of shape [B, T, D,]
+                to data of shape [B, T, ...]
 
             device: (optional) device to send tensors to
 
@@ -72,7 +72,7 @@ class BC_MLP(BC):
 
         Args: 
             inputs (dict): nested dictionary that maps observation group to observation key
-                to data of shape [B, T=1, D,]
+                to data of shape [B, T=1, ...]
 
         Returns: action in shape [B, T=1, action_dim,]
         """
@@ -107,7 +107,7 @@ class BC_Transformer(BC):
 
         Args: 
             inputs (dict): nested dictionary that maps observation group to observation key
-                to data of shape [B, T, D,]
+                to data of shape [B, T, ...]
 
         Returns: actions in shape [B, T, action_dim,]
         """

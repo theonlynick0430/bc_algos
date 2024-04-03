@@ -20,6 +20,7 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
     def __init__(
         self,
         path,
+        obs_key_to_modality,
         obs_group_to_key,
         dataset_keys,
         frame_stack=0,
@@ -30,10 +31,13 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         goal_mode=None,
         num_subgoal=None,
         demos=None,
+        preprocess=True,
     ):
         """
         Args:
             path (str): path to dataset 
+
+            obs_key_to_modality (dict): dictionary mapping observation key to modality
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
@@ -61,11 +65,14 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
                 Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
     
             demos (list): if provided, use only load these selected demos
+
+            preprocess (bool): if True, preprocess data while loading it into memory
         """
         self.path = os.path.expanduser(path)
-        self.obs_group_to_key = obs_group_to_key # obs group -> obs keys
-        self.obs_keys = tuple(set([key for keys in self.obs_group_to_key.values() for key in keys])) # obs keys for all obs groups (union)
-        self.dataset_keys = tuple(dataset_keys) # obs keys for dataset
+        self.obs_key_to_modality = obs_key_to_modality
+        self.obs_group_to_key = obs_group_to_key
+        self.obs_keys = tuple(set([key for keys in self.obs_group_to_key.values() for key in keys]))
+        self.dataset_keys = tuple(dataset_keys)
         self._demos = demos
 
         self.n_frame_stack = frame_stack
@@ -82,15 +89,23 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         if self.goal_mode is not None:
             assert self.goal_mode in ["last", "subgoal"]
 
-        # init data structures 
+        # INTERNAL DATA STRUCTURES
+            
         self.total_num_sequences = 0
-        self.index_to_demo_id = [] # index in total_num_sequences -> demo_id
-        self.demo_id_to_start_index = dict()  # demo_id -> start index in total_num_sequences
-        self.demo_id_to_demo_length = dict() # demo_id -> length of demo in data
+        # maps index in total_num_sequences to demo_id
+        self.index_to_demo_id = []
+        # maps demo_id to start index in total_num_sequences
+        self.demo_id_to_start_index = dict()
+        # maps demo_id to length of demo in data
+        self.demo_id_to_demo_length = dict()
+        # index cache for get_item calls
+        self.index_cache = []
+        # data loaded from dataset
+        self.dataset = None
 
         self.load_demo_info()
-
         self.cache_index()
+        self.load_dataset_in_memory(preprocess=preprocess)
 
     @classmethod
     def factory(cls, config, train=True):
@@ -109,6 +124,7 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         kwargs = config.dataset.kwargs.train if train else config.dataset.kwargs.valid
         return cls(
             path=config.dataset.path,
+            obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
             dataset_keys=config.dataset.dataset_keys,
             frame_stack=config.dataset.frame_stack,
@@ -172,7 +188,17 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
 
             for _ in range(num_sequences):
                 self.index_to_demo_id.append(demo_id)
-                self.total_num_sequences += 1    
+                self.total_num_sequences += 1   
+
+    @abstractmethod
+    def load_dataset_in_memory(self, preprocess):
+        """
+        Load the dataset into memory and store it at @self.dataset.
+
+        Args: 
+            preprocess (bool): if True, preprocess data while loading it into memory
+        """
+        return NotImplementedError
 
     def __len__(self):
         """
@@ -222,9 +248,8 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         """
         Cache all index required for get_item calls to speed up training and reduce memory.
         """
-        print("caching index...")
         self.index_cache = []
-        with tqdm(total=len(self), unit='demo') as progress:
+        with tqdm(total=len(self), desc="caching index", unit='demo') as progress:
             for index in range(len(self)):
                 demo_id = self.index_to_demo_id[index]
                 # convert index in total_num_sequences to index in data
