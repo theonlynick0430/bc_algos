@@ -1,4 +1,4 @@
-from bc_algos.models.base_nets import SpatialSoftArgmax
+from bc_algos.models.base_nets import pos_enc_2d
 import bc_algos.utils.constants as Const
 from transformers import ViTMAEModel
 import torchvision.models as models
@@ -17,7 +17,7 @@ class EncoderCore(ABC, nn.Module):
     def __init__(self, input_shape):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch and temporal dim 
+            input_shape (array-like): input shape excluding batch dim 
         """
         super(EncoderCore, self).__init__()
 
@@ -39,7 +39,7 @@ class LowDimCore(EncoderCore):
     def __init__(self, input_shape, output_shape=None, hidden_dims=[], activation=nn.ReLU):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch and temporal dim 
+            input_shape (array-like): input shape excluding batch dim 
 
             output_shape (array-like): (optional) ouput shape
 
@@ -100,7 +100,7 @@ class ViTMAECore(EncoderCore):
     def __init__(self, input_shape, freeze=True):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch and temporal dim 
+            input_shape (array-like): input shape excluding batch dim 
 
             freeze (bool): whether or not to freeze VitMAE backbone
         """
@@ -141,14 +141,18 @@ class ResNet18Core(EncoderCore):
     """
     EncoderCore subclass used to encode visual data with ResNet-18 backbone.
     """
-    def __init__(self, input_shape, freeze=True):
+    def __init__(self, input_shape, embed_shape=[512, 8, 8,], freeze=True):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch and temporal dim 
+            input_shape (array-like): input shape excluding batch dim 
+
+            embed_shape (array-like): output shape of ResNet-18 backbone excluding batch dim. 
+                Defaults to output shape for inputs images of resolution 256x256.
 
             freeze (bool): whether or not to freeze ResNet-18 backbone
         """
         super(ResNet18Core, self).__init__(input_shape=input_shape)
+        self.embed_shape = embed_shape
 
         self.create_layers()
 
@@ -160,7 +164,8 @@ class ResNet18Core(EncoderCore):
         """
         Returns: output shape of ResNet-18 encoder core.
         """
-        return [2, 512,]
+        C, H, W = self.embed_shape
+        return [H*W, C,]
     
     def freeze(self):
         """
@@ -174,11 +179,13 @@ class ResNet18Core(EncoderCore):
         resnet18_classifier = models.resnet18(pretrained=True)
         # remove pooling and fc layers
         resnet18 = torch.nn.Sequential(*(list(resnet18_classifier.children())[:-2]))
-        spatial_softmax = SpatialSoftArgmax()
-        self.network = nn.Sequential(preprocessor, resnet18, spatial_softmax)
+        self.network = nn.Sequential(preprocessor, resnet18)
 
     def forward(self, inputs):
         """
         Forward pass through ResNet-18 encoder core.
         """
-        return self.network(inputs).view(-1, *self.output_shape)
+        C, H, W = self.embed_shape
+        embed = self.network(inputs)
+        embed += pos_enc_2d(d_model=C, H=H, W=W)
+        return torch.transpose(embed.view(-1, C, H*W), -1, -2).contiguous()
