@@ -3,14 +3,14 @@
         "name": "bc_mlp",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 100, 
-        "rollout_rate": 100
+        "save_rate": 50, 
+        "rollout_rate": 10
     },
 
     "train": {
-        "epochs": 1000,
-        "batch_size": 16, 
-        "learning_rate": 0.0005,
+        "epochs": 100,
+        "batch_size": 64, 
+        "learning_rate": 0.00005,
         "loss": "L2"
     },
 
@@ -73,7 +73,7 @@
         "kwargs": {
             "backbone": {
                 "output_dim": 32,
-                "hidden_dims": [512, 256, 128, 64]
+                "hidden_dims": [512, 256, 64]
             },
             "action_decoder": {}
         }

@@ -3,14 +3,14 @@
         "name": "bc_transformer",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 100, 
-        "rollout_rate": 100
+        "save_rate": 50, 
+        "rollout_rate": 10
     },
 
     "train": {
-        "epochs": 1000,
-        "batch_size": 16, 
-        "learning_rate": 0.0005,
+        "epochs": 100,
+        "batch_size": 64, 
+        "learning_rate": 0.00005,
         "loss": "L2"
     },
 
@@ -48,8 +48,8 @@
         "dataset_keys": [
             "actions"
         ],
-        "frame_stack": 9,
-        "seq_length": 10,
+        "frame_stack": 3,
+        "seq_length": 4,
         "pad_frame_stack": true,
         "pad_seq_length": true,
         "get_pad_mask": false,

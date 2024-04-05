@@ -64,7 +64,7 @@ class EnvRobosuite(EB.EnvBase):
         kwargs = deepcopy(kwargs)
         kwargs.update(dict(
             has_renderer=render,
-            has_offscreen_renderer=use_image_obs or use_depth_obs,
+            has_offscreen_renderer=True,
             ignore_done=True,
             use_object_obs=True,
             use_camera_obs=use_image_obs,
