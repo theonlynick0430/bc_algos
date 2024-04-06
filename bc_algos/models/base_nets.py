@@ -49,10 +49,10 @@ def pos_enc_2d(d_model, H, W, device=None):
     pe = torch.zeros(d_model, H, W, device=device)
 
     d_model = int(d_model / 2)
-    div_term = torch.exp(torch.arange(0., d_model, 2) *
+    div_term = torch.exp(torch.arange(0., d_model, 2, device=device) *
                          -(math.log(10000.0) / d_model))
-    pos_w = torch.arange(0., W).unsqueeze(1)
-    pos_h = torch.arange(0., H).unsqueeze(1)
+    pos_w = torch.arange(0., W, device=device).unsqueeze(1)
+    pos_h = torch.arange(0., H, device=device).unsqueeze(1)
     pe[0:d_model:2, :, :] = torch.sin(pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, H, 1)
     pe[1:d_model:2, :, :] = torch.cos(pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, H, 1)
     pe[d_model::2, :, :] = torch.sin(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, W)

@@ -185,7 +185,8 @@ class ResNet18Core(EncoderCore):
         """
         Forward pass through ResNet-18 encoder core.
         """
+        device = inputs.device
         C, H, W = self.embed_shape
         embed = self.network(inputs)
-        embed += pos_enc_2d(d_model=C, H=H, W=W)
+        embed += pos_enc_2d(d_model=C, H=H, W=W, device=device)
         return torch.transpose(embed.view(-1, C, H*W), -1, -2).contiguous()
