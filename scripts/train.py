@@ -69,21 +69,27 @@ def train(config):
     elif config.policy.type == Const.PolicyType.TRANSFORMER:
         policy = BC_Transformer(obs_group_enc, backbone, act_dec, act_chunk=config.dataset.seq_length)
 
-    # create optimizer and loss function
-    optimizer = optim.Adam(policy.parameters(), lr=config.train.learning_rate)
+    # create env for rollout
+    if config.rollout.type == Const.RolloutType.ROBOMIMIC:
+        rollout_env = RobomimicRolloutEnv.factory(config=config, validset=validset)
+    else:
+        print(f"rollout env {config.rollout.type} not supported")
+        exit(1)
+
+    # create optimizer, lr scheduler, and loss function
+    # TODO: - Switch to PyTorch Lightning when they support testing every n epochs
+    optimizer = optim.AdamW(
+        policy.parameters(), 
+        lr=config.train.lr, 
+        weight_decay=config.train.weight_decay, 
+        betas=config.train.betas,
+    )
     if config.train.loss == "L2":
         loss_fn = nn.MSELoss()
     elif config.train.loss == "L1":
         loss_fn = nn.L1Loss()
     else:
         print(f"loss type {config.train.loss} not supported")
-        exit(1)
-
-    # create env for rollout
-    if config.rollout.type == Const.RolloutType.ROBOMIMIC:
-        rollout_env = RobomimicRolloutEnv.factory(config=config, validset=validset)
-    else:
-        print(f"rollout env {config.rollout.type} not supported")
         exit(1)
 
     accelerator = Accelerator()

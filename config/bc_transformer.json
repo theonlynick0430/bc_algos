@@ -9,9 +9,11 @@
 
     "train": {
         "epochs": 100,
-        "batch_size": 64, 
-        "learning_rate": 0.00005,
-        "loss": "L2"
+        "batch_size": 8, 
+        "loss": "L1",
+        "lr": 1e-5,
+        "weight_decay": 1e-4,
+        "betas": [0.9, 0.95]
     },
 
     "observation": {
@@ -49,7 +51,7 @@
             "actions"
         ],
         "frame_stack": 3,
-        "seq_length": 4,
+        "seq_length": 100,
         "pad_frame_stack": true,
         "pad_seq_length": true,
         "get_pad_mask": false,
@@ -62,7 +64,7 @@
             },
             "valid": {
                 "filter_by_attribute": "valid",
-                "demos": null
+                "demos": ["demo_1", "demo_2", "demo_3", "demo_4", "demo_6", "demo_0", "demo_5", "demo_14", "demo_21", "demo_27"]
             }
         }
     },
