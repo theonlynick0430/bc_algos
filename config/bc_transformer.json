@@ -74,7 +74,12 @@
         "embed_dim": 512,
         "action_shape": [7],
         "kwargs": {
-            "backbone": {},
+            "backbone": {
+                "num_encoder_layers": 4,
+                "num_decoder_layers": 7,
+                "nhead": 8,
+                "dim_feedforward": 3200
+            },
             "action_decoder": {}
         }
     },
