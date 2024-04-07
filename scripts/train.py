@@ -78,7 +78,7 @@ def train(config):
 
     # create optimizer, lr scheduler, and loss function
     # TODO: - Switch to PyTorch Lightning when they support testing every n epochs
-    optimizer = optim.AdamW(
+    optimizer = optim.Adam(
         policy.parameters(), 
         lr=config.train.lr, 
         weight_decay=config.train.weight_decay, 
