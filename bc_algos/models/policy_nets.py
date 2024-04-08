@@ -41,7 +41,7 @@ class BC(nn.Module):
 
             device: (optional) device to send tensors to
 
-        Returns: prepared inputs
+        Returns: prepared inputs.
         """
         inputs = TensorUtils.to_tensor(x=inputs, device=device)
         return TensorUtils.to_float(x=inputs)
@@ -74,7 +74,7 @@ class BC_MLP(BC):
             inputs (dict): nested dictionary that maps observation group to observation key
                 to data of shape [B, T=1, ...]
 
-        Returns: action in shape [B, T=1, action_dim,]
+        Returns: action (tensor) in shape [B, T=1, action_dim,].
         """
         return TensorUtils.time_distributed(inputs=inputs, op=self.nets)
     
@@ -109,7 +109,7 @@ class BC_Transformer(BC):
             inputs (dict): nested dictionary that maps observation group to observation key
                 to data of shape [B, T, ...]
 
-        Returns: actions in shape [B, T, action_dim,]
+        Returns: actions (tensor) in shape [B, T, action_dim,].
         """
         src = TensorUtils.time_distributed(inputs=inputs, op=self.obs_group_enc)
         device = src.device

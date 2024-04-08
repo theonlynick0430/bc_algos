@@ -70,7 +70,7 @@ def register_encoder_core(obs_key, modality, input_shape, **kwargs):
 
         modality (Modality): modality of @obs_key
 
-        input_shape (array-like): shape of data corresponding to @obs_key excluding batch and temporal dim
+        input_shape (array): shape of data corresponding to @obs_key excluding batch and temporal dim
 
         kwargs (dict): arguments for encoder core
     """

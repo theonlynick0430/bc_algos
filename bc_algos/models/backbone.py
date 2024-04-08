@@ -51,7 +51,7 @@ class MLP(Backbone):
 
             output_dim (int): dim of output embeddings
 
-            hidden_dims (array-like): hidden dims of nueral net used for policy backbone
+            hidden_dims (array): hidden dims of nueral net used for policy backbone
 
             activation (nn.Module): activation to use between linear layers
 

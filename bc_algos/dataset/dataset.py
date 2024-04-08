@@ -327,7 +327,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             seq_index (list): sequence indices
 
-        Returns: ordered dictionary of extracted items
+        Returns: ordered dictionary of extracted items.
         """
         return NotImplementedError
 
@@ -340,7 +340,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             index_in_demo (int): beginning index of the sequence wrt the demo
 
-        Returns: data sequence indices and pad mask
+        Returns: data sequence indices and pad mask.
         """
         demo_length = self.demo_id_to_demo_length[demo_id]
         assert index_in_demo < demo_length
@@ -375,7 +375,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             data_seq_index (list): sequence indices
 
-        Returns: goal sequence indices
+        Returns: goal sequence indices.
         """
         demo_length = self.demo_id_to_demo_length[demo_id]
         goal_index = None

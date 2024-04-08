@@ -86,7 +86,7 @@ class EnvBase(abc.ABC):
         Reset to a specific simulator state.
 
         Args:
-            state (array-like): current simulator state
+            state (array): current simulator state
         
         Returns:
             observation (dict): observation dictionary after setting the simulator state

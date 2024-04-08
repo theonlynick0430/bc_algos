@@ -36,6 +36,12 @@ class ObservationEncoder(nn.Module):
     def forward(self, inputs):
         """
         Forward pass through observation encoder.
+
+        Args:
+            inputs (dict): nested dictionary that maps observation key
+                to data of shape [B, ...]
+
+        Returns: output data (tensor) with shape [B, @self.output_dim].
         """
         feats = []
         for obs_key in inputs:
@@ -79,6 +85,12 @@ class ObservationGroupEncoder(nn.Module):
     def forward(self, inputs):
         """
         Forward pass through observation group encoder.
+
+        Args:
+            inputs (dict): nested dictionary that maps observation group to observation key
+                to data of shape [B, ...]
+
+        Returns: output data (tensor) with shape [B, @self.output_dim].
         """
         feats = []
         for obs_group in inputs:
@@ -107,7 +119,7 @@ class ActionDecoder(nn.Module):
 
             input_dim (int): input dim
 
-            hidden_dims (array-like): hidden dims of nueral net used for decoding
+            hidden_dims (array): hidden dims of nueral net used for decoding
 
             activation (nn.Module): activation to use between linear layers
         """
@@ -151,5 +163,10 @@ class ActionDecoder(nn.Module):
     def forward(self, inputs):
         """
         Forward pass through action decoder.
+
+        Args:
+            inputs (tensor): data with shape [B, @self.input_shape]
+
+        Returns: output data (tensor) with shape [B, @self.output_shape].
         """
         return self.mlp(inputs).view(-1, *self.action_shape)

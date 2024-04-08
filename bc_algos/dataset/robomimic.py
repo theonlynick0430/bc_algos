@@ -239,7 +239,7 @@ class RobomimicDataset(SequenceDataset):
 
             seq_index (list): sequence indices
 
-        Returns: ordered dictionary of extracted items
+        Returns: ordered dictionary of extracted items.
         """
         # fetch observation from the dataset file
         seq = OrderedDict()

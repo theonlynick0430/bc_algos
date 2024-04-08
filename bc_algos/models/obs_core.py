@@ -17,7 +17,7 @@ class EncoderCore(ABC, nn.Module):
     def __init__(self, input_shape):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch dim 
+            input_shape (array): input shape excluding batch dim 
         """
         super(EncoderCore, self).__init__()
 
@@ -39,11 +39,11 @@ class LowDimCore(EncoderCore):
     def __init__(self, input_shape, output_shape=None, hidden_dims=[], activation=nn.ReLU):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch dim 
+            input_shape (array): input shape excluding batch dim 
 
-            output_shape (array-like): (optional) ouput shape
+            output_shape (array): (optional) ouput shape
 
-            hidden_dims (array-like): if @output_dim not None, hidden dims of mlp head
+            hidden_dims (array): if @output_dim not None, hidden dims of mlp head
 
             activation (nn.Module): if @output_dim not None, activation for mlp head
         """
@@ -81,6 +81,11 @@ class LowDimCore(EncoderCore):
     def forward(self, inputs):
         """
         Forward pass through low-dim encoder core.
+
+        Args:
+            inputs (tensor): input data with shape [B, @self.input_shape]
+
+        Returns: output data (tensor) with shape [B, @self.output_shape].
         """
         B = inputs.shape[0]
         inputs = inputs.view(B, -1)
@@ -100,7 +105,8 @@ class ViTMAECore(EncoderCore):
     def __init__(self, input_shape, freeze=True):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch dim 
+            input_shape (array): input shape excluding batch dim. 
+                Expected to follow [B, C, H, W,].
 
             freeze (bool): whether or not to freeze VitMAE backbone
         """
@@ -133,6 +139,11 @@ class ViTMAECore(EncoderCore):
     def forward(self, inputs):
         """
         Forward pass through ViTMAE encoder core.
+
+        Args:
+            inputs (tensor): data with shape [B, @self.input_shape]
+
+        Returns: output data (tensor) with shape [B, @self.output_shape].
         """
         return self.network(inputs).last_hidden_state[:, 0]
     
@@ -144,9 +155,10 @@ class ResNet18Core(EncoderCore):
     def __init__(self, input_shape, embed_shape=[512, 8, 8,], freeze=True):
         """
         Args: 
-            input_shape (array-like): input shape excluding batch dim 
+            input_shape (array): input shape excluding batch dim .
+                Expected to follow [B, C, H, W,].
 
-            embed_shape (array-like): output shape of ResNet-18 backbone excluding batch dim. 
+            embed_shape (array): output shape of ResNet-18 backbone excluding batch dim. 
                 Defaults to output shape for inputs images of resolution 256x256.
 
             freeze (bool): whether or not to freeze ResNet-18 backbone
@@ -184,6 +196,11 @@ class ResNet18Core(EncoderCore):
     def forward(self, inputs):
         """
         Forward pass through ResNet-18 encoder core.
+
+        Args:
+            inputs (tensor): data with shape [B, @self.input_shape]
+
+        Returns: output data (tensor) with shape [B, @self.output_shape].
         """
         device = inputs.device
         C, H, W = self.embed_shape
