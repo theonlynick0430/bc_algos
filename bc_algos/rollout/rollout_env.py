@@ -1,4 +1,4 @@
-from bc_algos.dataset.dataset import MIMODataset
+from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.models.policy_nets import BC
@@ -24,7 +24,7 @@ class RolloutEnv:
             ):
         """
         Args:
-            validset (MIMODataset): validation dataset for rollout
+            validset (SequenceDataset): validation dataset for rollout
 
             obs_group_to_key (dict): dictionary mapping observation group to observation key
 
@@ -36,7 +36,7 @@ class RolloutEnv:
 
             render_video (bool): whether to render rollout on screen
         """
-        assert isinstance(validset, MIMODataset)
+        assert isinstance(validset, SequenceDataset)
         assert validset.pad_frame_stack and validset.pad_seq_length, "rollout requires padding"
 
         self.validset = validset
@@ -56,7 +56,7 @@ class RolloutEnv:
         Args:
             config (addict): config object
 
-            validset (MIMODataset): validation dataset for rollout
+            validset (SequenceDataset): validation dataset for rollout
 
         Returns:
             RolloutEnv instance

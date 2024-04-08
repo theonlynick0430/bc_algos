@@ -2,7 +2,7 @@
 A collection of utilities for working with nested tensor structures consisting
 of numpy arrays and torch tensors.
 """
-import collections
+from collections import OrderedDict
 import numpy as np
 import torch
 
@@ -14,8 +14,9 @@ def recursive_dict_list_tuple_apply(x, type_func_dict):
 
     Args:
         x (dict or list or tuple): a possibly nested dictionary or list or tuple
+
         type_func_dict (dict): a mapping from data types to the functions to be 
-            applied for each data type.
+            applied for each data type
 
     Returns:
         y (dict or list or tuple): new nested dict-list-tuple
@@ -24,23 +25,24 @@ def recursive_dict_list_tuple_apply(x, type_func_dict):
     assert(tuple not in type_func_dict)
     assert(dict not in type_func_dict)
 
-    if isinstance(x, (dict, collections.OrderedDict)):
-        new_x = collections.OrderedDict() if isinstance(x, collections.OrderedDict) else dict()
-        for k, v in x.items():
-            new_x[k] = recursive_dict_list_tuple_apply(v, type_func_dict)
-        return new_x
+    if isinstance(x, (dict, OrderedDict)):
+        y = { k: recursive_dict_list_tuple_apply(v, type_func_dict) for k,v in x.items() }
+        if isinstance(x, OrderedDict):
+            return OrderedDict(y)
+        else:
+            return y
     elif isinstance(x, (list, tuple)):
-        ret = [recursive_dict_list_tuple_apply(v, type_func_dict) for v in x]
+        y = [recursive_dict_list_tuple_apply(v, type_func_dict) for v in x]
         if isinstance(x, tuple):
-            ret = tuple(ret)
-        return ret
+            return tuple(y)
+        else:
+            return y
     else:
         for t, f in type_func_dict.items():
             if isinstance(x, t):
                 return f(x)
         else:
-            raise NotImplementedError(
-                'Cannot handle data type %s' % str(type(x)))
+            raise NotImplementedError('Cannot handle data type %s' % str(type(x)))
         
 def pad_single(seq, dim, padding, pad_same=True, pad_values=None):
     """
@@ -48,9 +50,13 @@ def pad_single(seq, dim, padding, pad_same=True, pad_values=None):
 
     Args:
         seq (np.ndarray or torch.Tensor): sequence to be padded
+
         dim (int): dimension in which to pad
+
         padding (tuple): begin and end padding, e.g. [1, 1] pads both begin and end of the sequence by 1
+
         pad_same (bool): if pad by duplicating
+
         pad_values (scalar or (ndarray, Tensor)): values to be padded if not pad_same
 
     Returns:
@@ -84,9 +90,13 @@ def pad(seq, dim, padding, pad_same=True, pad_values=None):
     Args:
         seq (dict or list or tuple): a possibly nested dictionary or list or tuple with tensors
             of leading dimensions [B, T, ...]
+
         dim (int): dimension in which to pad
+
         padding (tuple): begin and end padding, e.g. [1, 1] pads both begin and end of the sequence by 1
+
         pad_same (bool): if pad by duplicating
+        
         pad_values (scalar or (ndarray, Tensor)): values to be padded if not pad_same
 
     Returns:

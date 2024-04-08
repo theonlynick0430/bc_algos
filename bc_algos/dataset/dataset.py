@@ -11,7 +11,7 @@ from tqdm import tqdm
 from abc import ABC, abstractmethod
 
 
-class MIMODataset(ABC, torch.utils.data.Dataset):
+class SequenceDataset(ABC, torch.utils.data.Dataset):
     """
     Abstract class for fetching sequences of experience. Inherit from this class for 
     different dataset formats. 
@@ -32,6 +32,7 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         num_subgoal=None,
         demos=None,
         preprocess=False,
+        normalize=False,
     ):
         """
         Args:
@@ -67,6 +68,8 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
             demos (list): if provided, use only load these selected demos
 
             preprocess (bool): if True, preprocess data while loading it into memory
+
+            normalize (bool): if True, normalize data using mean and stdv from dataset
         """
         self.path = os.path.expanduser(path)
         self.obs_key_to_modality = obs_key_to_modality
@@ -102,15 +105,23 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         self.index_cache = []
         # data loaded from dataset
         self.dataset = None
+        # maps dataset/observation key to normalization stat
+        self.normalization_stats = dict()
 
         self.load_demo_info()
         self.cache_index()
+
         self.load_dataset_in_memory(preprocess=preprocess)
+
+        self.normalize = normalize
+        if normalize:
+            self.compute_normalization_stats()
+            self.normalize_data()
 
     @classmethod
     def factory(cls, config, train=True):
         """
-        Create a MIMODataset instance from config.
+        Create a SequenceDataset instance from config.
 
         Args:
             config (addict): config object
@@ -119,7 +130,7 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
                 Otherwise, use kwargs for validation dataset
 
         Returns:
-            MIMODataset instance
+            SequenceDataset instance
         """
         kwargs = config.dataset.kwargs.train if train else config.dataset.kwargs.valid
         return cls(
@@ -134,6 +145,7 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
             get_pad_mask=config.dataset.get_pad_mask,
             goal_mode=config.dataset.goal_mode,
             num_subgoal=config.dataset.num_subgoal,
+            normalize=config.dataset.normalize,
             **kwargs
         )
 
@@ -155,15 +167,57 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
 
     @property
     def gc(self):
+        """
+        Returns whether this dataset contains goals
+        """
         return "goal" in self.obs_group_to_key and self.goal_mode in ["last", "subgoal"]
 
     @abstractmethod
     def get_demo_len(self, demo_id):
         """
-        Get length of demo with demo_id
+        Get length of demo with @demo_id
         """
         return NotImplementedError
+    
+    def normalization_stat(self, key):
+        """
+        Get mean and stdv for dataset item with @key.
+        """
+        assert self.normalize, "cannot fetch normalization stats when @self.normalize is false"
+        assert key in self.normalization_stats, f"no normalization stats computed for data with key {key}"
+        return self.normalization_stats[key]["mean"], self.normalization_stats[key]["stdv"]
 
+    def __len__(self):
+        """
+        Ensure that the torch dataloader will do a complete pass through all sequences in 
+        the dataset before starting a new iteration.
+        """
+        return self.total_num_sequences
+    
+    def __getitem__(self, index):
+        """
+        Fetch dataset sequence for @index.
+        """
+        return self.get_item(index)
+    
+    def __repr__(self):
+        """
+        Pretty print the class and important attributes on a call to `print`.
+        """
+        msg = "\tpath={}\n"
+        msg += "\tframe_stack={}\n\tseq_length={}\n\tpad_frame_stack={}\n\tpad_seq_length={}\n"
+        msg += "\tgoal_mode={}\n\tnum_subgoal={}\n"
+        msg += "\tnum_demos={}\n\tnum_sequences={}\n"
+        goal_mode_str = self.goal_mode if self.goal_mode is not None else "none"
+        num_subgoal_str = self.num_subgoal if self.num_subgoal is not None else "none"
+        msg = msg.format(
+            self.path,
+            self.n_frame_stack, self.seq_length, self.pad_frame_stack, self.pad_seq_length, 
+            goal_mode_str, num_subgoal_str,
+            self.num_demos, self.total_num_sequences
+        )
+        return msg
+    
     def load_demo_info(self):
         """
         Populate internal data structures
@@ -193,39 +247,36 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
     @abstractmethod
     def load_dataset_in_memory(self, preprocess):
         """
-        Load the dataset into memory and store it at @self.dataset.
+        Load the dataset into memory.
 
         Args: 
             preprocess (bool): if True, preprocess data while loading it into memory
         """
         return NotImplementedError
+    
+    @abstractmethod
+    def compute_normalization_stats(self):
+        """
+        Compute the mean and stdv for dataset items and store stats at @self.normalization_stats.
+        The format for @self.normalization_stats should be a dictionary that maps from dataset/observation
+        key to a dictionary that contains mean and stdv. 
 
-    def __len__(self):
+        Example:
+        {
+            "actions": {
+                "mean": ...,
+                "stdv": ...
+            }
+        }
         """
-        Ensure that the torch dataloader will do a complete pass through all sequences in 
-        the dataset before starting a new iteration.
-        """
-        return self.total_num_sequences
+        return NotImplementedError
     
-    def __getitem__(self, index):
+    @abstractmethod
+    def normalize_data(self):
         """
-        Fetch dataset sequence @index (inferred through internal index map) using the getitem_cache.
+        Normalize dataset items according to @self.normalization_stats.
         """
-        return self.get_item(index)
-    
-    def __repr__(self):
-        """
-        Pretty print the class and important attributes on a call to `print`.
-        """
-        msg = "\tframe_stack={}\n\tseq_length={}\n"
-        msg += "\tpad_seq_length={}\n\tpad_frame_stack={}\n\tgoal_mode={}\n\tnum_subgoal={}\n"
-        msg += "\tnum_demos={}\n\tnum_sequences={}\n"
-        goal_mode_str = self.goal_mode if self.goal_mode is not None else "none"
-        num_subgoal_str = self.num_subgoal if self.num_subgoal is not None else "none"
-        msg = msg.format(self.n_frame_stack, self.seq_length,
-                         self.pad_seq_length, self.pad_frame_stack, goal_mode_str, num_subgoal_str,
-                         self.num_demos, self.total_num_sequences)
-        return msg
+        return NotImplementedError
     
     def get_item(self, index):
         """
@@ -235,10 +286,10 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         cache = self.index_cache[index]
         data_seq_index = cache[0]
         meta = self.get_data_seq(demo_id=demo_id, keys=self.dataset_keys, seq_index=data_seq_index)
-        meta["obs"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
+        meta["obs"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
             goal_index = cache[1]
-            meta["goal"] = self.get_obs_seq(demo_id=demo_id, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
+            meta["goal"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
         if self.get_pad_mask:
             pad_mask = cache[2]
             meta["pad_mask"] = pad_mask
@@ -267,30 +318,16 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
     @abstractmethod
     def get_data_seq(self, demo_id, keys, seq_index):
         """
-        Extract a (sub)sequence of data items from a demo given the @keys of the items.
+        Extract a (sub)sequence of dataset items from a demo.
 
         Args:
-            demo_id (str): id of the demo, e.g., demo_0
-            keys (tuple): list of keys to extract
+            demo_id (str): demo id
+
+            keys (tuple): keys to extract
+
             seq_index (list): sequence indices
 
-        Returns:
-            a dictionary of extracted items.
-        """
-        return NotImplementedError
-    
-    @abstractmethod
-    def get_obs_seq(self, demo_id, keys, seq_index):
-        """
-        Extract a (sub)sequence of observation items from a demo given the @keys of the items.
-
-        Args:
-            demo_id (str): id of the demo, e.g., demo_0
-            keys (tuple): list of keys to extract
-            seq_index (list): sequence indices
-
-        Returns:
-            a dictionary of extracted items.
+        Returns: ordered dictionary of extracted items
         """
         return NotImplementedError
 
@@ -299,11 +336,11 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         Get sequence indices and pad mask to extract data from a demo. 
 
         Args:
-            demo_id (key): id of the demo.
-            index_in_demo (int): beginning index of the sequence wrt the demo.
+            demo_id (key): demo id
 
-        Returns:
-            data sequence indices and pad mask.
+            index_in_demo (int): beginning index of the sequence wrt the demo
+
+        Returns: data sequence indices and pad mask
         """
         demo_length = self.demo_id_to_demo_length[demo_id]
         assert index_in_demo < demo_length
@@ -334,11 +371,11 @@ class MIMODataset(ABC, torch.utils.data.Dataset):
         Get sequence indices to extract goals from a demo. 
 
         Args:
-            demo_id (key): id of the demo.
-            data_seq_index (list): sequence indices.
+            demo_id (key): demo id
 
-        Returns:
-            goal sequence indices.
+            data_seq_index (list): sequence indices
+
+        Returns: goal sequence indices
         """
         demo_length = self.demo_id_to_demo_length[demo_id]
         goal_index = None

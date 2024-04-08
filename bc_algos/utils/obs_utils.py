@@ -4,24 +4,39 @@ from bc_algos.models.obs_core import LowDimCore, ViTMAECore, ResNet18Core
 import numpy as np
 
 
-# maps modality to encoder core class
-# Ex: {Modality.LOW_DIM: LowDimCore, Modality.RGB: ResNet18Core}
+"""
+Map from modality to encoder core class
+
+Ex: {Modality.LOW_DIM: LowDimCore, Modality.RGB: ResNet18Core}
+"""
 MODALITY_TO_ENC_CORE_CLASS = OrderedDict()
 
-# maps observation key to encoder core instance
-# Ex: {"robot0_eef_pos": LowDimCore(), "robot0_eef_quat": LowDimCore(), "agentview_image": ResNet18Core()}
+"""
+Map from observation key to encoder core instance
+
+Ex: {"robot0_eef_pos": LowDimCore(), "robot0_eef_quat": LowDimCore(), "agentview_image": ResNet18Core()}
+"""
 OBS_KEY_TO_ENC_CORE = OrderedDict()
 
-# maps observation key to shape
-# Ex: {"robot0_eef_pos": [3,], "robot0_eef_quat": [4,], "agentview_image": [3, 224, 224,]}
+"""
+Map from observation key to shape.
+
+Ex: {"robot0_eef_pos": [3,], "robot0_eef_quat": [4,], "agentview_image": [3, 224, 224,]}
+"""
 OBS_KEY_TO_SHAPE = OrderedDict()
 
-# maps observation key to modality
-# Ex: {"robot0_eef_pos": Modality.LOW_DIM, "robot0_eef_quat": Modality.LOW_DIM, "agentview_image": Modality.RGB}
+"""
+Map from observation key to modality.
+
+Ex: {"robot0_eef_pos": Modality.LOW_DIM, "robot0_eef_quat": Modality.LOW_DIM, "agentview_image": Modality.RGB}
+"""
 OBS_KEY_TO_MODALITY = OrderedDict()
 
-# maps observation group to observation key
-# Ex: {"obs": ["robot0_eef_pos", "robot0_eef_quat",], "goal": ["agentview_image",]}
+"""
+Map from observation group to observation key.
+
+Ex: {"obs": ["robot0_eef_pos", "robot0_eef_quat",], "goal": ["agentview_image",]}
+"""
 OBS_GROUP_TO_KEY = OrderedDict()
 
 def register_encoder_core_class(core, modality):
@@ -126,3 +141,47 @@ def preprocess_img(img):
     img = np.moveaxis(img.astype(float), -1, -3)
     img /= 255.
     return img.clip(0., 1.)
+
+def compute_traj_stats(traj_dict):
+    """
+    Helper function to compute statistics over a trajectory of data.
+
+    Args:
+        traj_dict (dict): nested dictionary that maps dataset/observation key
+            to data of shape [T, ...]
+
+    Returns:
+        traj_stats (dict): nested dictionary that maps dataset/observation key
+            to a dictionary that contains trajectory stats
+    """
+    traj_stats = { k : {} for k in traj_dict }
+    for k in traj_dict:
+        traj_stats[k]["n"] = traj_dict[k].shape[0]
+        traj_stats[k]["mean"] = traj_dict[k].mean(axis=0)
+        traj_stats[k]["sqdiff"] = ((traj_dict[k] - traj_stats[k]["mean"]) ** 2).sum(axis=0)
+    return traj_stats
+
+def aggregate_traj_stats(traj_stats_a, traj_stats_b):
+    """
+    Helper function to aggregate trajectory statistics.
+    See https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
+    for more information.
+
+    Args:
+        traj_stats_a, traj_stats_b (dict): nested dictionary that maps dataset/observation key
+            to a dictionary that contains trajectory stats
+
+    Returns:
+        merged_stats (dict): nested dictionary that maps dataset/observation key
+            to a dictionary that contains merged trajectory stats
+    """
+    merged_stats = {}
+    for k in traj_stats_a:
+        n_a, avg_a, M2_a = traj_stats_a[k]["n"], traj_stats_a[k]["mean"], traj_stats_a[k]["sqdiff"]
+        n_b, avg_b, M2_b = traj_stats_b[k]["n"], traj_stats_b[k]["mean"], traj_stats_b[k]["sqdiff"]
+        n = n_a + n_b
+        mean = (n_a * avg_a + n_b * avg_b) / n
+        delta = (avg_b - avg_a)
+        M2 = M2_a + M2_b + (delta ** 2) * (n_a * n_b) / n
+        merged_stats[k] = dict(n=n, mean=mean, sqdiff=M2)
+    return merged_stats
