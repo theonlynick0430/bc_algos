@@ -108,7 +108,7 @@ class ViTMAECore(EncoderCore):
             input_shape (array): input shape excluding batch dim. 
                 Expected to follow [B, C, H, W,].
 
-            freeze (bool): whether or not to freeze VitMAE backbone
+            freeze (bool): if True, freeze VitMAE backbone
         """
         super(ViTMAECore, self).__init__(input_shape=input_shape)
 
@@ -161,7 +161,7 @@ class ResNet18Core(EncoderCore):
             embed_shape (array): output shape of ResNet-18 backbone excluding batch dim. 
                 Defaults to output shape for inputs images of resolution 256x256.
 
-            freeze (bool): whether or not to freeze ResNet-18 backbone
+            freeze (bool): if True, freeze ResNet-18 backbone
         """
         super(ResNet18Core, self).__init__(input_shape=input_shape)
         self.embed_shape = embed_shape

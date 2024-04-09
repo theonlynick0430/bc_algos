@@ -18,10 +18,13 @@ class RolloutEnv:
             validset,  
             obs_group_to_key,
             obs_key_to_modality,
-            frame_stack=0,
+            frame_stack,
+            act_chunk,
+            closed_loop=True,
             gc=False,
-            render_video=False
-            ):
+            act_normalization_stats=None,
+            render_video=False,
+        ):
         """
         Args:
             validset (SequenceDataset): validation dataset for rollout
@@ -30,11 +33,19 @@ class RolloutEnv:
 
             obs_key_to_modality (dict): dictionary mapping observation key to modality
 
-            frame_stack (int): numbers of stacked frames to fetch. Defaults to 0 (single frame).
+            frame_stack (int): number of stacked frames to fetch
 
-            gc (bool): whether or not to condition on goals
+            act_chunk (int): number of actions generated from single policy query
 
-            render_video (bool): whether to render rollout on screen
+            closed_loop (bool): if True, query policy at every timstep and execute first action.
+                Otherwise, execute full action chunk before querying the policy again.
+
+            gc (bool): if True, policy uses goals
+
+            act_normalization_stats (dict): (optional) dictionary containing action mean and stdv from 
+                training dataset
+
+            render_video (bool): if True, render rollout on screen
         """
         assert isinstance(validset, SequenceDataset)
         assert validset.pad_frame_stack and validset.pad_seq_length, "rollout requires padding"
@@ -43,13 +54,16 @@ class RolloutEnv:
         self.obs_group_to_key = obs_group_to_key
         self.obs_key_to_modality = obs_key_to_modality
         self.n_frame_stack = frame_stack
+        self.act_chunk = act_chunk
+        self.closed_loop = closed_loop
         self.gc = gc
+        self.act_normalization_stats = act_normalization_stats
         self.render_video = render_video
 
         self.env = self.create_env()
 
     @classmethod
-    def factory(cls, config, validset):
+    def factory(cls, config, validset, act_normalization_stats=None):
         """
         Create a RolloutEnv instance from config.
 
@@ -57,6 +71,9 @@ class RolloutEnv:
             config (addict): config object
 
             validset (SequenceDataset): validation dataset for rollout
+
+            act_normalization_stats (dict): (optional) dictionary containing action mean and stdv from 
+                training dataset
 
         Returns:
             RolloutEnv instance
@@ -66,7 +83,10 @@ class RolloutEnv:
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             frame_stack=config.dataset.frame_stack,
+            act_chunk=config.dataset.seq_length,
+            closed_loop=config.rollout.closed_loop,
             gc=(config.dataset.goal_mode is not None),
+            act_normalization_stats=act_normalization_stats,
             render_video=False,
         )
 
@@ -209,32 +229,44 @@ class RolloutEnv:
         video_count = 0  # video frame counter
         success = False
 
-        for step_i in range(horizon):
+        step_i = 0
+        # iterate until horizon reached or termination on success
+        while step_i < horizon and not (terminate_on_success and success):
             # compute new inputs
             inputs = self.inputs_from_new_obs(inputs=inputs, obs=obs, demo_id=demo_id, t=step_i)
             x = BC.prepare_inputs(inputs=inputs, device=device)
 
-            # get action from policy
-            y = policy(x)
-            action = y[0, 0, :].detach().cpu().numpy()
+            # query policy for actions
+            actions = policy(x)
+            actions = actions.squeeze(0).detach().cpu().numpy()
+            if self.closed_loop:
+                actions = actions[:1, :] # execute only first action
+            else:
+                actions = actions[:horizon-step_i, :] # execute full action chunk (unless horizon reached)
 
-            # play action
-            obs = self.env.step(action)
+            # normalize actions if necessary
+            if self.act_normalization_stats is not None:
+                actions = actions*self.act_normalization_stats["stdv"] + self.act_normalization_stats["mean"]
 
-            success = self.env.is_success()
+            # execute actions
+            for action in actions:
+                obs = self.env.step(action)
+                step_i += 1
 
-            # visualization
-            if video_writer is not None:
-                if video_count % video_skip == 0:
-                    video_img = self.env.render()
-                    video_writer.append_data(video_img)
-                video_count += 1
+                success = self.env.is_success()
 
-            # break if success
-            if terminate_on_success and success:
-                break
-        
-        results["horizon"] = step_i + 1
+                # visualization
+                if video_writer is not None:
+                    if video_count % video_skip == 0:
+                        video_img = self.env.render()
+                        video_writer.append_data(video_img)
+                    video_count += 1
+
+                # break if success
+                if terminate_on_success and success:
+                    break
+                
+        results["horizon"] = step_i
         results["success"] = success
         
         return results

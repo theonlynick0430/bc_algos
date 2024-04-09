@@ -50,11 +50,11 @@ class RobomimicDataset(SequenceDataset):
 
             seq_length (int): length of sequences to sample. Defaults to 1 (single frame).
 
-            pad_frame_stack (int): whether to pad sequence for frame stacking at the beginning of a demo. This
+            pad_frame_stack (int): if True, pad sequence for frame stacking at the beginning of a demo. This
                 ensures that partial frame stacks are observed, such as (s_0, s_0, s_0, s_1). Otherwise, the
                 first frame stacked observation would be (s_0, s_1, s_2, s_3).
 
-            pad_seq_length (int): whether to pad sequence for sequence fetching at the end of a demo. This
+            pad_seq_length (int): if True, to pad sequence for sequence fetching at the end of a demo. This
                 ensures that partial sequences at the end of a demonstration are observed, such as
                 (s_{T-1}, s_{T}, s_{T}, s_{T}). Otherwise, the last sequence provided would be
                 (s_{T-3}, s_{T-2}, s_{T-1}, s_{T}).
@@ -226,7 +226,7 @@ class RobomimicDataset(SequenceDataset):
                     self.dataset[demo][key] = (self.dataset[demo][key] - self.normalization_stats[key]["mean"]) \
                         / self.normalization_stats[key]["stdv"]
                     
-            progress_bar.update(1)
+                progress_bar.update(1)
     
     def get_data_seq(self, demo_id, keys, seq_index):
         """

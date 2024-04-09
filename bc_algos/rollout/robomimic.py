@@ -11,27 +11,38 @@ class RobomimicRolloutEnv(RolloutEnv):
     Class used to rollout policies in Robomimic environments. 
     """
     def __init__(
-            self,  
-            validset,
+            self,
+            validset,  
             obs_group_to_key,
             obs_key_to_modality,
-            frame_stack=0,
+            frame_stack,
+            act_chunk,
+            closed_loop=True,
             gc=False,
-            render_video=False
-            ):
+            act_normalization_stats=None,
+            render_video=False,
+        ):
         """
-        Args: 
-            validset (RobomimicDataset): validation dataset for rollout
+        Args:
+            validset (SequenceDataset): validation dataset for rollout
 
             obs_group_to_key (dict): dictionary mapping observation group to observation key
 
             obs_key_to_modality (dict): dictionary mapping observation key to modality
 
-            frame_stack (int): numbers of stacked frames to fetch. Defaults to 0 (single frame).
+            frame_stack (int): number of stacked frames to fetch
 
-            gc (bool): whether or not to condition on goals
+            act_chunk (int): number of actions generated from single policy query
 
-            render_video (bool): whether to render rollout on screen
+            closed_loop (bool): if True, query policy at every timstep and execute first action.
+                Otherwise, execute full action chunk before querying the policy again.
+
+            gc (bool): if True, policy uses goals
+
+            act_normalization_stats (dict): (optional) dictionary containing action mean and stdv from 
+                training dataset
+
+            render_video (bool): if True, render rollout on screen
         """
         assert isinstance(validset, RobomimicDataset)
 
@@ -40,7 +51,10 @@ class RobomimicRolloutEnv(RolloutEnv):
             obs_group_to_key=obs_group_to_key,
             obs_key_to_modality=obs_key_to_modality,
             frame_stack=frame_stack,
+            act_chunk=act_chunk,
+            closed_loop=closed_loop,
             gc=gc,
+            act_normalization_stats=act_normalization_stats,
             render_video=render_video,
         )
     

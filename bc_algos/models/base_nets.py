@@ -75,7 +75,7 @@ class SpatialSoftArgmax(nn.Module):
     def __init__(self, normalize=True):
         """Constructor.
         Args:
-            normalize (bool): Whether to use normalized
+            normalize (bool): if True, use normalized
                 image coordinates, i.e. coordinates in
                 the range `[-1, 1]`.
         """

@@ -48,11 +48,11 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             seq_length (int): length of sequences to sample. Defaults to 1 (single frame).
 
-            pad_frame_stack (int): whether to pad sequence for frame stacking at the beginning of a demo. This
+            pad_frame_stack (int): if True, pad sequence for frame stacking at the beginning of a demo. This
                 ensures that partial frame stacks are observed, such as (s_0, s_0, s_0, s_1). Otherwise, the
                 first frame stacked observation would be (s_0, s_1, s_2, s_3).
 
-            pad_seq_length (int): whether to pad sequence for sequence fetching at the end of a demo. This
+            pad_seq_length (int): if True, to pad sequence for sequence fetching at the end of a demo. This
                 ensures that partial sequences at the end of a demonstration are observed, such as
                 (s_{T-1}, s_{T}, s_{T}, s_{T}). Otherwise, the last sequence provided would be
                 (s_{T-3}, s_{T-2}, s_{T-1}, s_{T}).
@@ -181,11 +181,11 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     
     def normalization_stat(self, key):
         """
-        Get mean and stdv for dataset item with @key.
+        Get normalization stats for dataset item with @key.
         """
         assert self.normalize, "cannot fetch normalization stats when @self.normalize is false"
         assert key in self.normalization_stats, f"no normalization stats computed for data with key {key}"
-        return self.normalization_stats[key]["mean"], self.normalization_stats[key]["stdv"]
+        return self.normalization_stats[key]
 
     def __len__(self):
         """
