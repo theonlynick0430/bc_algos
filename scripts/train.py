@@ -71,15 +71,11 @@ def train(config):
         policy = BC_Transformer(obs_group_enc, backbone, act_dec, act_chunk=config.dataset.seq_length)
 
     # create env for rollout
-    act_normalization_stats = None
-    if config.dataset.normalize:
-        # TODO: - find action key in dataset_keys
-        act_normalization_stats = trainset.normalization_stat(key=config.dataset.dataset_keys[0])
     if config.rollout.type == Const.RolloutType.ROBOMIMIC:
         rollout_env = RobomimicRolloutEnv.factory(
             config=config, 
             validset=validset,
-            act_normalization_stats=act_normalization_stats,
+            normalization_stats=trainset.normalization_stats,
         )
     else:
         print(f"rollout env {config.rollout.type} not supported")

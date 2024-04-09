@@ -74,8 +74,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.path = os.path.expanduser(path)
         self.obs_key_to_modality = obs_key_to_modality
         self.obs_group_to_key = obs_group_to_key
-        self.obs_keys = tuple(set([key for keys in self.obs_group_to_key.values() for key in keys]))
-        self.dataset_keys = tuple(dataset_keys)
+        self.obs_keys = list(set([key for keys in self.obs_group_to_key.values() for key in keys]))
+        self.dataset_keys = list(dataset_keys)
         self._demos = demos
 
         self.n_frame_stack = frame_stack
@@ -105,8 +105,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.index_cache = []
         # data loaded from dataset
         self.dataset = None
-        # maps dataset/observation key to normalization stat
-        self.normalization_stats = dict()
+        # maps dataset/observation key to normalization stats
+        self.normalization_stats = None
 
         self.load_demo_info()
         self.cache_index()
@@ -127,7 +127,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             config (addict): config object
 
             train (bool): if True, use kwargs for training dataset. 
-                Otherwise, use kwargs for validation dataset
+                Otherwise, use kwargs for validation dataset.
 
         Returns:
             SequenceDataset instance
@@ -153,39 +153,44 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     @abstractmethod
     def demos(self):
         """
-        Get all demo ids
+        Returns: all demo ids.
         """
         return NotImplementedError      
 
     @property
-    @abstractmethod
     def num_demos(self):
         """
-        Get number of demos
+        Returns: number of demos.
         """
-        return NotImplementedError
+        return len(self.demos)
 
     @property
     def gc(self):
         """
-        Returns whether this dataset contains goals
+        Returns: whether this dataset contains goals.
         """
         return "goal" in self.obs_group_to_key and self.goal_mode in ["last", "subgoal"]
 
     @abstractmethod
-    def get_demo_len(self, demo_id):
+    def demo_len(self, demo_id):
         """
-        Get length of demo with @demo_id
+        Args: 
+            demo_id: demo id, ie. "demo_0"
+        
+        Returns: length of demo with @demo_id.
         """
         return NotImplementedError
     
-    def normalization_stat(self, key):
+    def index_from_timestep(self, demo_id, t):
         """
-        Get normalization stats for dataset item with @key.
+        Args: 
+            demo_id: demo id, ie. "demo_0"
+
+            t (int): timestep in demo
+
+        Returns: get_item index for timestep @t in demo with @demo_id.
         """
-        assert self.normalize, "cannot fetch normalization stats when @self.normalize is false"
-        assert key in self.normalization_stats, f"no normalization stats computed for data with key {key}"
-        return self.normalization_stats[key]
+        return self.demo_id_to_start_index[demo_id] + t
 
     def __len__(self):
         """
@@ -196,7 +201,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     
     def __getitem__(self, index):
         """
-        Fetch dataset sequence for @index.
+        Returns: dataset sequence for @index.
         """
         return self.get_item(index)
     
@@ -220,10 +225,10 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     
     def load_demo_info(self):
         """
-        Populate internal data structures
+        Populate internal data structures.
         """
         for demo_id in self.demos:
-            demo_length = self.get_demo_len(demo_id=demo_id)
+            demo_length = self.demo_len(demo_id=demo_id)
             self.demo_id_to_start_index[demo_id] = self.total_num_sequences
             self.demo_id_to_demo_length[demo_id] = demo_length
 
@@ -321,7 +326,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Extract a (sub)sequence of dataset items from a demo.
 
         Args:
-            demo_id (str): demo id
+            demo_id: demo id, ie. "demo_0"
 
             keys (tuple): keys to extract
 
@@ -336,7 +341,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Get sequence indices and pad mask to extract data from a demo. 
 
         Args:
-            demo_id (key): demo id
+            demo_id: demo id, ie. "demo_0"
 
             index_in_demo (int): beginning index of the sequence wrt the demo
 
@@ -371,7 +376,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Get sequence indices to extract goals from a demo. 
 
         Args:
-            demo_id (key): demo id
+            demo_id: demo id, ie. "demo_0"
 
             data_seq_index (list): sequence indices
 

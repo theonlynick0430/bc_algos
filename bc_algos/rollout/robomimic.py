@@ -19,7 +19,7 @@ class RobomimicRolloutEnv(RolloutEnv):
             act_chunk,
             closed_loop=True,
             gc=False,
-            act_normalization_stats=None,
+            normalization_stats=None,
             render_video=False,
         ):
         """
@@ -39,8 +39,8 @@ class RobomimicRolloutEnv(RolloutEnv):
 
             gc (bool): if True, policy uses goals
 
-            act_normalization_stats (dict): (optional) dictionary containing action mean and stdv from 
-                training dataset
+            normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
+                normalization stats from training dataset
 
             render_video (bool): if True, render rollout on screen
         """
@@ -54,7 +54,7 @@ class RobomimicRolloutEnv(RolloutEnv):
             act_chunk=act_chunk,
             closed_loop=closed_loop,
             gc=gc,
-            act_normalization_stats=act_normalization_stats,
+            normalization_stats=normalization_stats,
             render_video=render_video,
         )
     
@@ -63,18 +63,18 @@ class RobomimicRolloutEnv(RolloutEnv):
         Get goal for specified demo and time if goal-conditioned.
 
         Args: 
-            demo_id (str): id of the demo, e.g., demo_0
+            demo_id: demo id, ie. "demo_0"
 
             t (int): timestep in trajectory
 
         Returns:
-            goal seq np.array of shape [B=1, T=validset.n_frame_stack+1, D]
+            goal seq np.array of shape [B=1, T=validset.n_frame_stack+1, ...]
         """
-        demo_length = self.validset.get_demo_len(demo_id=demo_id)
+        demo_length = self.validset.demo_len(demo_id=demo_id)
         if t >= demo_length:
             # reuse last goal
             t = demo_length-1
-        index = self.validset.demo_id_to_start_index[demo_id] + t
+        index = self.validset.index_from_timestep(demo_id=demo_id, t=t)
         goal = self.validset[index]["goal"]
         goal = TensorUtils.slice(x=goal, dim=0, start=0, end=self.n_frame_stack+1)
         goal = TensorUtils.to_batch(x=goal)
@@ -101,7 +101,7 @@ class RobomimicRolloutEnv(RolloutEnv):
         and setting simulator state. 
 
         Args:
-            demo_id (str): id of the demo, e.g., demo_0
+            demo_id: demo id, ie. "demo_0"
 
         Returns: 
             observation (dict): observation dictionary after initializing demo

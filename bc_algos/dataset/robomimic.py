@@ -99,7 +99,7 @@ class RobomimicDataset(SequenceDataset):
     @property
     def demos(self):
         """
-        Get all demo ids
+        Returns: all demo ids.
         """
         if self._demos is not None:
             return self._demos
@@ -115,13 +115,6 @@ class RobomimicDataset(SequenceDataset):
         return demos
 
     @property
-    def num_demos(self):
-        """
-        Get number of demos
-        """
-        return len(self.demos)  
-
-    @property
     def hdf5_file(self):
         """
         This property allows for a lazy hdf5 file open.
@@ -130,9 +123,12 @@ class RobomimicDataset(SequenceDataset):
             self._hdf5_file = h5py.File(self.path, 'r', swmr=True, libver='latest')
         return self._hdf5_file   
 
-    def get_demo_len(self, demo_id):
+    def demo_len(self, demo_id):
         """
-        Get length of demo with demo_id
+        Args: 
+            demo_id: demo id, ie. "demo_0"
+        
+        Returns: length of demo with @demo_id.
         """
         return self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
     
@@ -170,7 +166,7 @@ class RobomimicDataset(SequenceDataset):
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo][obs_key] = ObsUtils.preprocess_img(dataset[demo]["obs"][obs_key])
+                            dataset[demo][obs_key] = ObsUtils.preprocess_img(img=dataset[demo]["obs"][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
@@ -197,24 +193,22 @@ class RobomimicDataset(SequenceDataset):
         traj_dict = dict()
         merged_stats = dict()
 
+        # don't compute normalization stats for RGB data since we use backbone encoders
+        # with their own normalization stats
+        keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + self.dataset_keys
+
         with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
             for i, demo in enumerate(self.demos):
-                # don't compute normalization stats for RGB data since we use backbone encoders
-                # with their own normalization stats
-                traj_dict = {k:v for k,v in self.dataset[demo].items() if k not in self.obs_keys or self.obs_key_to_modality[k] != Const.Modality.RGB}
+                traj_dict = {key: self.dataset[demo][key] for key in keys}
                 if i == 0:
-                    merged_stats = ObsUtils.compute_traj_stats(traj_dict)
+                    merged_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
                 else:
-                    traj_stats = ObsUtils.compute_traj_stats(traj_dict)
-                    merged_stats = ObsUtils.aggregate_traj_stats(merged_stats, traj_stats)
+                    traj_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
+                    merged_stats = ObsUtils.aggregate_traj_stats(traj_stats_a=merged_stats, traj_stats_b=traj_stats)
 
                 progress_bar.update(1)
         
-        normalization_stats = { k: {} for k in merged_stats }
-        for key in merged_stats:
-            normalization_stats[key]["mean"] = merged_stats[key]["mean"]
-            normalization_stats[key]["stdv"] =  np.sqrt(merged_stats[key]["sqdiff"] / merged_stats[key]["n"])
-        self.normalization_stats = normalization_stats
+        self.normalization_stats = ObsUtils.compute_normalization_stats(traj_stats=merged_stats)
 
     def normalize_data(self):
         """
@@ -223,8 +217,7 @@ class RobomimicDataset(SequenceDataset):
         with tqdm(total=self.num_demos, desc="normalizing data", unit="demo") as progress_bar:
             for demo in self.demos:
                 for key in self.normalization_stats:
-                    self.dataset[demo][key] = (self.dataset[demo][key] - self.normalization_stats[key]["mean"]) \
-                        / self.normalization_stats[key]["stdv"]
+                    self.dataset[demo][key] = ObsUtils.normalize(data=self.dataset[demo][key], normalization_stats=self.normalization_stats[key])
                     
                 progress_bar.update(1)
     
@@ -233,7 +226,7 @@ class RobomimicDataset(SequenceDataset):
         Extract a (sub)sequence of dataset items from a demo.
 
         Args:
-            demo_id (str): demo id
+            demo_id: demo id, ie. "demo_0"
 
             keys (tuple): keys to extract
 

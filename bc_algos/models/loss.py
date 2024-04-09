@@ -33,7 +33,7 @@ class DiscountedMSELoss(nn.Module):
         loss = torch.square(src-tgt).view(B, T, -1)
         loss = torch.mean(loss, [0, 2,])
         coef = torch.pow(torch.full([T], self.discount, device=src.device), torch.arange(T, device=src.device))
-        return torch.sum(loss*coef)/torch.sum(coef)
+        return torch.sum(coef*loss)/torch.sum(coef)
     
 
 class DiscountedL1Loss(nn.Module):
@@ -67,4 +67,4 @@ class DiscountedL1Loss(nn.Module):
         loss = torch.abs(src-tgt).view(B, T, -1)
         loss = torch.mean(loss, [0, 2,])
         coef = torch.pow(torch.full([T], self.discount, device=src.device), torch.arange(T, device=src.device))
-        return torch.sum(loss*coef)/torch.sum(coef)
+        return torch.sum(coef*loss)/torch.sum(coef)

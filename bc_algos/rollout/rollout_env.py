@@ -6,6 +6,7 @@ import imageio
 import time
 import os
 from collections import OrderedDict
+from copy import deepcopy
 
 
 class RolloutEnv:
@@ -22,7 +23,7 @@ class RolloutEnv:
             act_chunk,
             closed_loop=True,
             gc=False,
-            act_normalization_stats=None,
+            normalization_stats=None,
             render_video=False,
         ):
         """
@@ -42,8 +43,8 @@ class RolloutEnv:
 
             gc (bool): if True, policy uses goals
 
-            act_normalization_stats (dict): (optional) dictionary containing action mean and stdv from 
-                training dataset
+            normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
+                normalization stats from training dataset
 
             render_video (bool): if True, render rollout on screen
         """
@@ -57,13 +58,14 @@ class RolloutEnv:
         self.act_chunk = act_chunk
         self.closed_loop = closed_loop
         self.gc = gc
-        self.act_normalization_stats = act_normalization_stats
+        self.normalize = normalization_stats is not None
+        self.normalization_stats = normalization_stats
         self.render_video = render_video
 
         self.env = self.create_env()
 
     @classmethod
-    def factory(cls, config, validset, act_normalization_stats=None):
+    def factory(cls, config, validset, normalization_stats=None):
         """
         Create a RolloutEnv instance from config.
 
@@ -72,8 +74,8 @@ class RolloutEnv:
 
             validset (SequenceDataset): validation dataset for rollout
 
-            act_normalization_stats (dict): (optional) dictionary containing action mean and stdv from 
-                training dataset
+            normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
+                normalization stats from training dataset
 
         Returns:
             RolloutEnv instance
@@ -86,7 +88,7 @@ class RolloutEnv:
             act_chunk=config.dataset.seq_length,
             closed_loop=config.rollout.closed_loop,
             gc=(config.dataset.goal_mode is not None),
-            act_normalization_stats=act_normalization_stats,
+            normalization_stats=normalization_stats,
             render_video=False,
         )
 
@@ -96,33 +98,52 @@ class RolloutEnv:
         """
         return NotImplementedError
     
+    def normalize_obs(self, obs):
+        """
+        Normalize observation from environment according to @self.normalization_stats.
+
+        Args: 
+            obs (dict): maps obs_key to data
+
+        Returns: normalized @obs
+        """
+        obs = deepcopy(obs)
+        for key in self.normalization_stats:
+            if key in obs:
+                obs[key] = ObsUtils.normalize(data=obs[key], normalization_stats=self.normalization_stats[key])
+        return obs
+    
     def inputs_from_initial_obs(self, obs, demo_id):
         """
         Create inputs for model from initial observation.
         For models with history, this requires padding.
 
         Args: 
-            obs (dict): maps obs_key to data of shape [D]
+            obs (dict): maps obs_key to data
 
-            demo_id: id of the demo
+            demo_id: demo id, ie. "demo_0"
 
         Returns:
             x (dict): maps obs_group to obs_key to 
-                np.array of shape [B=1, T=n_frame_stack+1, D]
+                np.array of shape [B=1, T=n_frame_stack+1, ...]
         """
+        if self.normalize:
+            obs = self.normalize_obs(obs)
+        
         inputs = OrderedDict()
+
         inputs["obs"] = OrderedDict()
         for obs_key in self.obs_group_to_key["obs"]:
             assert obs_key in obs, f"could not find observation key {obs_key} in observation from environment"
             inputs["obs"][obs_key] = obs[obs_key]
-        # add batch, seq dim
+
         inputs = TensorUtils.to_batch(inputs)
         inputs = TensorUtils.to_sequence(inputs)
-        # repeat along seq dim n_frame_stack+1 times to prepare history
-        inputs = TensorUtils.repeat_seq(x=inputs, k=self.n_frame_stack+1)
+        inputs = TensorUtils.repeat_seq(x=inputs, k=self.n_frame_stack+1) # prepare history
+
         if self.gc:
-            # fetch initial goal
             inputs["goal"] = self.fetch_goal(demo_id=demo_id, t=0)
+            
         return inputs
     
     def inputs_from_new_obs(self, inputs, obs, demo_id, t):
@@ -131,26 +152,30 @@ class RolloutEnv:
 
         Args: 
             inputs (dict): maps obs_group to obs_key to
-              np.array of shape [B=1, T=pad_frame_stack+1, D]
+              np.array of shape [B=1, T=pad_frame_stack+1, ...]
 
-            obs (dict): maps obs_key to data of shape [D]
+            obs (dict): maps obs_key to data
 
-            demo_id: id of the demo
+            demo_id: demo id, ie. "demo_0"
 
             t (int): timestep in trajectory
 
         Returns:
             updated input @inputs
         """
-        # update input using new obs
+        if self.normalize:
+            obs = self.normalize_obs(obs)
+        
         inputs = TensorUtils.shift_seq(x=inputs, k=-1)
+
         for obs_key in self.obs_group_to_key["obs"]:
             assert obs_key in obs, f"could not find obs_key {obs_key} in obs from environment"
             # only update last seq index to preserve history
             inputs["obs"][obs_key][:, -1, :] = obs[obs_key]
+        
         if self.gc:
-            # fetch new goal
             inputs["goal"] = self.fetch_goal(demo_id=demo_id, t=t)
+
         return inputs
     
     def fetch_goal(self, demo_id, t):
@@ -158,12 +183,12 @@ class RolloutEnv:
         Get goal for specified demo and time if goal-conditioned.
 
         Args: 
-            demo_id: id of the demo
+            demo_id: demo id, ie. "demo_0"
 
             t (int): timestep in trajectory
 
         Returns:
-            goal seq np.array of shape [B=1, T=validset.n_frame_stack+1, D]
+            goal seq np.array of shape [B=1, T=validset.n_frame_stack+1, ...]
         """
         return NotImplementedError
     
@@ -173,7 +198,7 @@ class RolloutEnv:
         and setting simulator state. 
 
         Args:
-            demo_id: id of the demo
+            demo_id: demo id, ie. "demo_0"
 
         Returns: 
             observation (dict): observation dictionary after initializing demo
@@ -196,7 +221,7 @@ class RolloutEnv:
         Args:
             policy (BC instance): policy to use for rollouts
 
-            demo_id: id of the demo to rollout
+            demo_id: demo id, ie. "demo_0", to rollout
 
             video_writer (imageio Writer instance): if not None, use video writer object to append frames at 
                 rate given by @video_skip
@@ -214,7 +239,7 @@ class RolloutEnv:
         """
         assert isinstance(policy, BC)
 
-        demo_len = self.validset.get_demo_len(demo_id=demo_id)
+        demo_len = self.validset.demo_len(demo_id=demo_id)
         horizon = demo_len if horizon is None else horizon
 
         # switch to eval mode
@@ -244,9 +269,9 @@ class RolloutEnv:
             else:
                 actions = actions[:horizon-step_i, :] # execute full action chunk (unless horizon reached)
 
-            # normalize actions if necessary
-            if self.act_normalization_stats is not None:
-                actions = actions*self.act_normalization_stats["stdv"] + self.act_normalization_stats["mean"]
+            # unnormalize actions if necessary
+            if self.normalize:
+                actions = ObsUtils.unnormalize(actions, self.normalization_stats["actions"])
 
             # execute actions
             for action in actions:
@@ -289,7 +314,7 @@ class RolloutEnv:
         Args:
             policy (RolloutPolicy instance): policy to use for rollouts
 
-            demo_id: id of the demo to rollout
+            demo_id: demo id, ie. "demo_0", to rollout
 
             video_dir (str): (optional) directory to save rollout videos
 

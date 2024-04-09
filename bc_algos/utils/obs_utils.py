@@ -144,7 +144,9 @@ def preprocess_img(img):
 
 def compute_traj_stats(traj_dict):
     """
-    Helper function to compute statistics over a trajectory of data.
+    Compute stats over a trajectory of numpy data. Specifically, compute for each key
+    1) mean 
+    2) sum of square distances from the mean 
 
     Args:
         traj_dict (dict): nested dictionary that maps dataset/observation key
@@ -163,7 +165,7 @@ def compute_traj_stats(traj_dict):
 
 def aggregate_traj_stats(traj_stats_a, traj_stats_b):
     """
-    Helper function to aggregate trajectory statistics.
+    Aggregate trajectory stats.
     See https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     for more information.
 
@@ -185,3 +187,49 @@ def aggregate_traj_stats(traj_stats_a, traj_stats_b):
         M2 = M2_a + M2_b + (delta ** 2) * (n_a * n_b) / n
         merged_stats[k] = dict(n=n, mean=mean, sqdiff=M2)
     return merged_stats
+
+def compute_normalization_stats(traj_stats):
+    """
+    Compute normalization stats over a trajectory of numpy data. Specifically, compute for each key
+    1) mean 
+    2) stdv
+
+    Args:
+        traj_stats (dict): nested dictionary that maps dataset/observation key
+            to a dictionary that contains trajectory stats
+
+    Returns:
+        normalization_stats (dict): nested dictionary that maps dataset/observation key
+            to a dictionary that contains normalization stats
+    """
+    normalization_stats = {key: {} for key in traj_stats}
+    for key in traj_stats:
+        normalization_stats[key]["mean"] = traj_stats[key]["mean"]
+        normalization_stats[key]["stdv"] =  np.sqrt(traj_stats[key]["sqdiff"] / traj_stats[key]["n"])
+    return normalization_stats
+
+def normalize(data, normalization_stats):
+    """
+    Normalize numpy data according to @normalization_stats.
+
+    Args: 
+        data (np.ndarray): data to be normalized
+
+        normalization_stats (dict): dictionary that contains normalization stats
+
+    Returns: normalized @data
+    """
+    return (data - normalization_stats["mean"]) / normalization_stats["stdv"]
+
+def unnormalize(data, normalization_stats):
+    """
+    Unnormalize numpy data according to @normalization_stats.
+
+    Args: 
+        data (np.ndarray): data to be unnormalized
+
+        normalization_stats (dict): dictionary that contains normalization stats
+
+    Returns: unnormalized @data
+    """
+    return data*normalization_stats["stdv"] + normalization_stats["mean"]
