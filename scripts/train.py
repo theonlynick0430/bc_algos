@@ -5,6 +5,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
+from bc_algos.models.loss import DiscountedMSELoss, DiscountedL1Loss
 import bc_algos.utils.constants as Const
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -70,13 +71,21 @@ def train(config):
         policy = BC_Transformer(obs_group_enc, backbone, act_dec, act_chunk=config.dataset.seq_length)
 
     # create env for rollout
+    act_normalization_stats = None
+    if config.dataset.normalize:
+        # TODO: - find action key in dataset_keys
+        act_normalization_stats = trainset.normalization_stat(key=config.dataset.dataset_keys[0])
     if config.rollout.type == Const.RolloutType.ROBOMIMIC:
-        rollout_env = RobomimicRolloutEnv.factory(config=config, validset=validset)
+        rollout_env = RobomimicRolloutEnv.factory(
+            config=config, 
+            validset=validset,
+            act_normalization_stats=act_normalization_stats,
+        )
     else:
         print(f"rollout env {config.rollout.type} not supported")
         exit(1)
 
-    # create optimizer, lr scheduler, and loss function
+    # create optimizer
     # TODO: - Switch to PyTorch Lightning when they support testing every n epochs
     optimizer = optim.Adam(
         policy.parameters(), 
@@ -84,10 +93,20 @@ def train(config):
         weight_decay=config.train.weight_decay, 
         betas=config.train.betas,
     )
+
+    # create loss function
+    discount = config.train.discount
+    assert discount <= 1, "discount factor must be <= 1"
     if config.train.loss == "L2":
-        loss_fn = nn.MSELoss()
+        if discount == 1:
+            loss_fn = nn.MSELoss()
+        else:
+            loss_fn = DiscountedMSELoss(discount=discount)
     elif config.train.loss == "L1":
-        loss_fn = nn.L1Loss()
+        if discount == 1:
+            loss_fn = nn.L1Loss()
+        else:
+            loss_fn = DiscountedL1Loss(discount=discount)
     else:
         print(f"loss type {config.train.loss} not supported")
         exit(1)
