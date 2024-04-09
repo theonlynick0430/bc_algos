@@ -19,8 +19,7 @@ class RolloutEnv:
             validset,  
             obs_group_to_key,
             obs_key_to_modality,
-            frame_stack,
-            act_chunk,
+            frame_stack=0,
             closed_loop=True,
             gc=False,
             normalization_stats=None,
@@ -34,9 +33,7 @@ class RolloutEnv:
 
             obs_key_to_modality (dict): dictionary mapping observation key to modality
 
-            frame_stack (int): number of stacked frames to fetch
-
-            act_chunk (int): number of actions generated from single policy query
+            frame_stack (int): number of stacked frames to be provided as input to policy
 
             closed_loop (bool): if True, query policy at every timstep and execute first action.
                 Otherwise, execute full action chunk before querying the policy again.
@@ -55,7 +52,6 @@ class RolloutEnv:
         self.obs_group_to_key = obs_group_to_key
         self.obs_key_to_modality = obs_key_to_modality
         self.n_frame_stack = frame_stack
-        self.act_chunk = act_chunk
         self.closed_loop = closed_loop
         self.gc = gc
         self.normalize = normalization_stats is not None
@@ -85,7 +81,6 @@ class RolloutEnv:
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             frame_stack=config.dataset.frame_stack,
-            act_chunk=config.dataset.seq_length,
             closed_loop=config.rollout.closed_loop,
             gc=(config.dataset.goal_mode is not None),
             normalization_stats=normalization_stats,
@@ -109,8 +104,7 @@ class RolloutEnv:
         """
         obs = deepcopy(obs)
         for key in self.normalization_stats:
-            if key in obs:
-                obs[key] = ObsUtils.normalize(data=obs[key], normalization_stats=self.normalization_stats[key])
+            if key in obs: obs[key] = ObsUtils.normalize(data=obs[key], normalization_stats=self.normalization_stats[key])
         return obs
     
     def inputs_from_initial_obs(self, obs, demo_id):
@@ -223,14 +217,14 @@ class RolloutEnv:
 
             demo_id: demo id, ie. "demo_0", to rollout
 
-            video_writer (imageio Writer instance): if not None, use video writer object to append frames at 
+            video_writer (imageio.Writer instance): if not None, use video writer object to append frames at 
                 rate given by @video_skip
 
             video_skip (int): how often to write video frame
 
-            horizon (int): horizon of rollout episode. If None, use demo length instead.
+            horizon (int): horizon of rollout episode. If None, use demo length.
 
-            terminate_on_success (bool): if True, terminate episode early as soon as a success is encountered
+            terminate_on_success (bool): if True, terminate episode early when success is encountered
 
             device: (optional) device to send tensors to
 
@@ -318,22 +312,21 @@ class RolloutEnv:
 
             video_dir (str): (optional) directory to save rollout videos
 
-            video_writer (imageio Writer instance): if not None, use video writer object to append frames at 
+            video_writer (imageio.Writer instance): if not None, use video writer object to append frames at 
                 rate given by @video_skip
 
             video_skip (int): how often to write video frame
 
-            horizon (int): horizon of rollout episode. If None, use demo length instead.
+            horizon (int): horizon of rollout episode. If None, use demo length.
 
-            terminate_on_success (bool): if True, terminate episode early as soon as a success is encountered
+            terminate_on_success (bool): if True, terminate episode early when a success is encountered
 
             verbose (bool): if True, print results of each rollout
 
             device: (optional) device to send tensors to
 
         Returns:
-            results (dict): dictionary of results with the keys 
-            "time", "horizon", and "success"
+            results (dict): dictionary of results with the keys "time", "horizon", and "success"
         """
         assert isinstance(policy, BC)
 

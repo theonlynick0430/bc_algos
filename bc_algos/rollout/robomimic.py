@@ -15,8 +15,7 @@ class RobomimicRolloutEnv(RolloutEnv):
             validset,  
             obs_group_to_key,
             obs_key_to_modality,
-            frame_stack,
-            act_chunk,
+            frame_stack=0,
             closed_loop=True,
             gc=False,
             normalization_stats=None,
@@ -30,9 +29,7 @@ class RobomimicRolloutEnv(RolloutEnv):
 
             obs_key_to_modality (dict): dictionary mapping observation key to modality
 
-            frame_stack (int): number of stacked frames to fetch
-
-            act_chunk (int): number of actions generated from single policy query
+            frame_stack (int): number of stacked frames to be provided as input to policy
 
             closed_loop (bool): if True, query policy at every timstep and execute first action.
                 Otherwise, execute full action chunk before querying the policy again.
@@ -51,7 +48,6 @@ class RobomimicRolloutEnv(RolloutEnv):
             obs_group_to_key=obs_group_to_key,
             obs_key_to_modality=obs_key_to_modality,
             frame_stack=frame_stack,
-            act_chunk=act_chunk,
             closed_loop=closed_loop,
             gc=gc,
             normalization_stats=normalization_stats,

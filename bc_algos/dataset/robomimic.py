@@ -40,7 +40,7 @@ class RobomimicDataset(SequenceDataset):
         Args:
             path (str): path to dataset
 
-            obs_key_to_modality (dict): dictionary mapping observation key to modality
+            obs_key_to_modality (dict): dictionary from observation key to modality
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
@@ -62,7 +62,7 @@ class RobomimicDataset(SequenceDataset):
             get_pad_mask (bool): if True, also provide padding masks as part of the batch. This can be
                 useful for masking loss functions on padded parts of the data.
 
-            goal_mode (str): either "last", "subgoal", or None. Defaults to None, which is to not fetch goals
+            goal_mode (str): either "last", "subgoal", or None. Defaults to None, or no goals
 
             num_subgoal (int): Required if goal_mode is "subgoal". Number of subgoals provided for each trajectory.
                 Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
@@ -70,9 +70,9 @@ class RobomimicDataset(SequenceDataset):
             filter_by_attribute (str): if provided, use the provided filter key to look up a subset of
                 demonstrations to load
 
-            demos (list): if provided, use only load these selected demos
+            demos (list): if provided, only load these selected demos
 
-            preprocess (bool): if True, preprocess data while loading it into memory
+            preprocess (bool): if True, preprocess data while loading into memory
 
             normalize (bool): if True, normalize data using mean and stdv from dataset
         """
@@ -153,7 +153,7 @@ class RobomimicDataset(SequenceDataset):
         Load the dataset into memory.
 
         Args: 
-            preprocess (bool): if True, preprocess data while loading it into memory
+            preprocess (bool): if True, preprocess data while loading into memory
         """
         dataset = dict()
 
@@ -179,7 +179,7 @@ class RobomimicDataset(SequenceDataset):
     def compute_normalization_stats(self):
         """
         Compute the mean and stdv for dataset items and store stats at @self.normalization_stats.
-        The format for @self.normalization_stats should be a dictionary that maps from dataset/observation
+        The format for @self.normalization_stats should be a dictionary from dataset/observation
         key to a dictionary that contains mean and stdv. 
 
         Example:
