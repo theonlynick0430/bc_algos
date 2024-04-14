@@ -114,9 +114,10 @@ class BC_Transformer(BC):
         src = TensorUtils.time_distributed(inputs=inputs, op=self.obs_group_enc)
         device = src.device
         B, T, _ = src.shape
-        src = src.view(B, T, -1, self.embed_dim)
-        _, _, N, _ = src.shape
-        src += pos_enc_1d(d_model=self.embed_dim, T=T, device=device).unsqueeze(1).repeat(1, N, 1)
+        if T > 1:
+            src = src.view(B, T, -1, self.embed_dim)
+            _, _, N, _ = src.shape
+            src += pos_enc_1d(d_model=self.embed_dim, T=T, device=device).unsqueeze(1).repeat(1, N, 1)
         src = src.view(B, -1, self.embed_dim)
         tgt = pos_enc_1d(d_model=self.embed_dim, T=self.act_chunk, device=device).unsqueeze(0).repeat(B, 1, 1)
         embed = self.backbone(src, tgt)

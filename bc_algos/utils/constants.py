@@ -7,6 +7,13 @@ IMAGE_NET_STD = [0.229, 0.224, 0.225]
 class DatasetType(StrEnum):
     ROBOMIMIC="robomimic"
 
+
+class GoalMode(StrEnum):
+    LAST="last"
+    SUBGOAL="subgoal"
+    FULL="full"
+
+
 class Modality(StrEnum):
     LOW_DIM="low_dim"
     RGB="rgb"

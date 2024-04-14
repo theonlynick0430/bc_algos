@@ -26,13 +26,13 @@ class RobomimicDataset(SequenceDataset):
         seq_length=1,
         pad_frame_stack=True,
         pad_seq_length=True,
-        get_pad_mask=False,
+        get_pad_mask=True,
         goal_mode=None,
         num_subgoal=None,
         filter_by_attribute=None,
         demos=None,
         preprocess=False,
-        normalize=False,
+        normalize=True,
     ):
         """
         SequenceDataset subclass for fetching sequences of experience from HDF5 dataset.
@@ -44,9 +44,9 @@ class RobomimicDataset(SequenceDataset):
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
-            dataset_keys (tuple, list): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
+            dataset_keys (array-like): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
 
-            frame_stack (int): numbers of stacked frames to fetch. Defaults to 0 (single frame).
+            frame_stack (int): number of stacked frames to fetch. Defaults to 0 (no stacking).
 
             seq_length (int): length of sequences to sample. Defaults to 1 (single frame).
 
@@ -62,15 +62,20 @@ class RobomimicDataset(SequenceDataset):
             get_pad_mask (bool): if True, also provide padding masks as part of the batch. This can be
                 useful for masking loss functions on padded parts of the data.
 
-            goal_mode (str): either "last", "subgoal", or None. Defaults to None, or no goals
+            goal_mode (str): either GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL, or None. 
+                If GoalMode.LAST, provide last observation as goal for each frame in sequence.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sequence.
+                If GoalMode.FULL, provide all subgoals for a single batch.
+                Defaults to None, or no goals. 
 
-            num_subgoal (int): Required if goal_mode is "subgoal". Number of subgoals provided for each trajectory.
-                Defaults to None, which indicates that every state is also a subgoal. Assume num_subgoal <= min length of traj.
+            num_subgoal (int): (optional) number of subgoals for each trajectory.
+                Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
+                Assumes that @num_subgoal <= min trajectory length.
 
             filter_by_attribute (str): if provided, use the provided filter key to look up a subset of
                 demonstrations to load
 
-            demos (list): if provided, only load these selected demos
+            demos (array-like): if provided, only load these selected demos
 
             preprocess (bool): if True, preprocess data while loading into memory
 
@@ -230,7 +235,7 @@ class RobomimicDataset(SequenceDataset):
 
             keys (tuple): keys to extract
 
-            seq_index (list): sequence indices
+            seq_index (array-like): sequence indices
 
         Returns: ordered dictionary of extracted items.
         """
