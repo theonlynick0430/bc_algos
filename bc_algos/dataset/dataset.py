@@ -43,7 +43,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
-            dataset_keys (array-like): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
+            dataset_keys (array): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
 
             frame_stack (int): number of stacked frames to fetch. Defaults to 0 (no stacking).
 
@@ -71,7 +71,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
     
-            demos (array-like): if provided, only load these selected demos
+            demos (array): if provided, only load these selected demos
 
             preprocess (bool): if True, preprocess data while loading into memory
 
@@ -94,25 +94,9 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.get_pad_mask = get_pad_mask
 
         if goal_mode is not None:
-            assert goal_mode in [GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL,], f"goal_mode {goal_mode} not supported"
+            assert goal_mode in [GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL], f"goal_mode {goal_mode} not supported"
         self.goal_mode = goal_mode
         self.num_subgoal = num_subgoal
-
-        # INTERNAL DATA STRUCTURES
-            
-        self.total_num_sequences = 0
-        # maps index in total_num_sequences to demo_id
-        self.index_to_demo_id = []
-        # maps demo_id to start index in total_num_sequences
-        self.demo_id_to_start_index = dict()
-        # maps demo_id to length of demo in data
-        self.demo_id_to_demo_length = dict()
-        # index cache for get_item calls
-        self.index_cache = []
-        # data loaded from dataset
-        self.dataset = None
-        # maps dataset/observation key to normalization stats
-        self.normalization_stats = None
 
         self.load_demo_info()
         self.cache_index()
@@ -233,6 +217,14 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         Populate internal data structures.
         """
+        self.total_num_sequences = 0
+        # maps index in total_num_sequences to demo_id
+        self.index_to_demo_id = []
+        # maps demo_id to start index in total_num_sequences
+        self.demo_id_to_start_index = dict()
+        # maps demo_id to length of demo in data
+        self.demo_id_to_demo_length = dict()
+        
         for demo_id in self.demos:
             demo_length = self.demo_len(demo_id=demo_id)
             self.demo_id_to_start_index[demo_id] = self.total_num_sequences
@@ -290,9 +282,9 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Args:
             demo_id: demo id, ie. "demo_0"
 
-            keys (tuple): keys to extract
+            keys (array): keys to extract
 
-            seq_index (array-like): sequence indices
+            seq_index (array): sequence indices
 
         Returns: ordered dictionary of extracted items.
         """
@@ -319,6 +311,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         Cache all index required for get_item calls to speed up training and reduce memory.
         """
+        # index cache for get_item calls
         self.index_cache = []
 
         with tqdm(total=len(self), desc="caching index", unit='demo') as progress:
@@ -331,7 +324,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                 item = [
                     data_seq_index, 
                     pad_mask if self.get_pad_mask else None,
-                    self.get_goal_seq_index(demo_id=demo_id, data_seq_index=data_seq_index) if self.gc else None,
+                    self.get_goal_seq_index(demo_id=demo_id, data_seq_index=data_seq_index) if self.gc else None
                 ]
                 self.index_cache.append(item)
 
@@ -378,7 +371,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Args:
             demo_id: demo id, ie. "demo_0"
 
-            data_seq_index (array-like): sequence indices
+            data_seq_index (array): sequence indices
 
         Returns: goal sequence indices.
         """
@@ -391,15 +384,14 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             if self.num_subgoal is None:
                 goal = np.arange(1, demo_length+1)
             else:
-                subgoal = np.linspace(0, demo_length, self.num_subgoal+1)
-                repeat = np.diff(subgoal)
-                goal = np.array([index for i, index in enumerate(subgoal[1:]) for _ in range(repeat[i])])
+                subgoal = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)
+                goal = np.repeat(subgoal[1:], np.diff(subgoal))
             goal_index = goal[data_seq_index]
             
         elif self.goal_mode == GoalMode.FULL:
             if self.num_subgoal is None:
                 goal_index = np.arange(1, demo_length+1)
             else:
-                goal_index = np.linspace(0, demo_length, self.num_subgoal+1)[1:]
+                goal_index = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)[1:]
 
         return goal_index

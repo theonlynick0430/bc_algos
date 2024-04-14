@@ -44,7 +44,7 @@ class RobomimicDataset(SequenceDataset):
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
-            dataset_keys (array-like): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
+            dataset_keys (array): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
 
             frame_stack (int): number of stacked frames to fetch. Defaults to 0 (no stacking).
 
@@ -75,7 +75,7 @@ class RobomimicDataset(SequenceDataset):
             filter_by_attribute (str): if provided, use the provided filter key to look up a subset of
                 demonstrations to load
 
-            demos (array-like): if provided, only load these selected demos
+            demos (array): if provided, only load these selected demos
 
             preprocess (bool): if True, preprocess data while loading into memory
 
@@ -233,9 +233,9 @@ class RobomimicDataset(SequenceDataset):
         Args:
             demo_id: demo id, ie. "demo_0"
 
-            keys (tuple): keys to extract
+            keys (array): keys to extract
 
-            seq_index (array-like): sequence indices
+            seq_index (array): sequence indices
 
         Returns: ordered dictionary of extracted items.
         """
