@@ -27,8 +27,7 @@ class Backbone(ABC, nn.Module):
 
             embed_dim (int): input embedding dim
 
-        Returns:
-            Backbone instance
+        Returns: Backbone instance.
         """
         return cls(
             embed_dim=embed_dim,
@@ -118,8 +117,7 @@ class Transformer(Backbone):
         Args:
             config (addict): config object
 
-        Returns:
-            Transformer instance
+        Returns: Transformer instance.
         """
         return cls(
             embed_dim=config.policy.embed_dim,
@@ -142,7 +140,7 @@ class Transformer(Backbone):
 
             tgt (tensor): the data sequence to the decoder of shape [B, T_tgt, @self.embed_dim]
 
-        Returns: Returns: output data (tensor) with shape [B, T_tgt, @self.output_dim].
+        Returns: output data (tensor) with shape [B, T_tgt, @self.output_dim].
         """
         return self.transformer(src, tgt)
         

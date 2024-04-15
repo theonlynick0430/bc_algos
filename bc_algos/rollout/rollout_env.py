@@ -73,8 +73,7 @@ class RolloutEnv:
             normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
                 normalization stats from training dataset
 
-        Returns:
-            RolloutEnv instance
+        Returns: RolloutEnv instance.
         """
         return cls(
             validset=validset,
@@ -98,9 +97,9 @@ class RolloutEnv:
         Normalize observation from environment according to @self.normalization_stats.
 
         Args: 
-            obs (dict): maps obs_key to data
+            obs (dict): dictionary from observation key to data (np.array)
 
-        Returns: normalized @obs
+        Returns: normalized @obs.
         """
         obs = deepcopy(obs)
         for key in self.normalization_stats:
@@ -109,17 +108,16 @@ class RolloutEnv:
     
     def inputs_from_initial_obs(self, obs, demo_id):
         """
-        Create inputs for model from initial observation.
+        Create inputs for model from initial environment observation.
         For models with history, this requires padding.
 
         Args: 
-            obs (dict): maps obs_key to data
+            obs (dict): dictionary from observation key to data (np.array)
 
             demo_id: demo id, ie. "demo_0"
 
-        Returns:
-            x (dict): maps obs_group to obs_key to 
-                np.array of shape [B=1, T=n_frame_stack+1, ...]
+        Returns: dictionary from observation group to observation key to 
+            data (np.array) of shape [B=1, T=n_frame_stack+1, ...].
         """
         if self.normalize:
             obs = self.normalize_obs(obs)
@@ -142,11 +140,12 @@ class RolloutEnv:
     
     def inputs_from_new_obs(self, inputs, obs, demo_id, t):
         """
-        Update inputs for model by shifting history and inserting new observation.
+        Update inputs for model by shifting history and inserting new observation
+        from environment.
 
         Args: 
-            inputs (dict): maps obs_group to obs_key to
-              np.array of shape [B=1, T=pad_frame_stack+1, ...]
+            inputs (dict): dictionary from observation group to observation key
+                to data (np.array) of shape [B=1, T=pad_frame_stack+1, ...]
 
             obs (dict): maps obs_key to data
 
@@ -154,8 +153,7 @@ class RolloutEnv:
 
             t (int): timestep in trajectory
 
-        Returns:
-            updated input @inputs
+        Returns: updated input @inputs.
         """
         if self.normalize:
             obs = self.normalize_obs(obs)
@@ -181,8 +179,7 @@ class RolloutEnv:
 
             t (int): timestep in trajectory
 
-        Returns:
-            goal seq np.array of shape [B=1, T=validset.n_frame_stack+1, ...]
+        Returns: goal sequence (np.array) of shape [B=1, T=validset.n_frame_stack+1, ...].
         """
         return NotImplementedError
     
@@ -195,7 +192,8 @@ class RolloutEnv:
             demo_id: demo id, ie. "demo_0"
 
         Returns: 
-            observation (dict): observation dictionary after initializing demo
+            obs (dict): dictionary from observation key to data (np.array) obtained
+                from environment after initializing demo
         """
         return NotImplementedError
 
@@ -213,11 +211,11 @@ class RolloutEnv:
         Run rollout on a single demo and save stats (and video if necessary).
 
         Args:
-            policy (BC instance): policy to use for rollouts
+            policy (BC): policy to use for rollouts
 
             demo_id: demo id, ie. "demo_0", to rollout
 
-            video_writer (imageio.Writer instance): if not None, use video writer object to append frames at 
+            video_writer (imageio.Writer): if not None, use video writer object to append frames at 
                 rate given by @video_skip
 
             video_skip (int): how often to write video frame
@@ -306,13 +304,13 @@ class RolloutEnv:
         Configure video writer, run rollout, and log progress. 
 
         Args:
-            policy (RolloutPolicy instance): policy to use for rollouts
+            policy (RolloutPolicy): policy to use for rollouts
 
             demo_id: demo id, ie. "demo_0", to rollout
 
             video_dir (str): (optional) directory to save rollout videos
 
-            video_writer (imageio.Writer instance): if not None, use video writer object to append frames at 
+            video_writer (imageio.Writer): if not None, use video writer object to append frames at 
                 rate given by @video_skip
 
             video_skip (int): how often to write video frame

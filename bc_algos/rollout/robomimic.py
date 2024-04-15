@@ -63,8 +63,7 @@ class RobomimicRolloutEnv(RolloutEnv):
 
             t (int): timestep in trajectory
 
-        Returns:
-            goal seq np.array of shape [B=1, T=validset.n_frame_stack+1, ...]
+        Returns: goal sequence (np.array) of shape [B=1, T=validset.n_frame_stack+1, ...].
         """
         demo_length = self.validset.demo_len(demo_id=demo_id)
         if t >= demo_length:
@@ -100,7 +99,8 @@ class RobomimicRolloutEnv(RolloutEnv):
             demo_id: demo id, ie. "demo_0"
 
         Returns: 
-            observation (dict): observation dictionary after initializing demo
+            obs (dict): dictionary from observation key to data (np.array) obtained
+                from environment after initializing demo
         """
         xml = self.validset.hdf5_file[f"data/{demo_id}"].attrs["model_file"]
         init_state = self.validset.hdf5_file[f"data/{demo_id}/states"][0]

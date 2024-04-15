@@ -2,6 +2,7 @@ import bc_algos.utils.obs_utils as ObsUtils
 import torch
 import torch.nn as nn
 import numpy as np 
+from collections import OrderedDict
 
 
 class ObservationEncoder(nn.Module):
@@ -16,8 +17,7 @@ class ObservationEncoder(nn.Module):
         """
         super(ObservationEncoder, self).__init__()
 
-        # maps observation key to encoder core
-        # ex: {"robot0_eef_pos": LowDimCore(), "robot0_eef_quat": LowDimCore(), "agentview_image": ResNet18Core()}
+        # module dictionary from observation key to encoder core.
         self.obs_key_to_enc_core = nn.ModuleDict()
 
         for obs_key in obs_keys:
@@ -39,24 +39,23 @@ class ObservationEncoder(nn.Module):
 
         Args:
             inputs (dict): nested dictionary that maps observation key
-                to data of shape [B, ...]
+                to data (tensor) of shape [B, ...]
 
         Returns: output data (tensor) with shape [B, @self.output_dim].
         """
-        feats = []
+        latents = []
         for obs_key in inputs:
             if obs_key in self.obs_key_to_enc_core:
-                embed = self.obs_key_to_enc_core[obs_key](inputs[obs_key])
-                B = embed.shape[0]
-                feats.append(embed.view(B, -1))
-        return torch.cat(feats, dim=-1)
+                latent = self.obs_key_to_enc_core[obs_key](inputs[obs_key])
+                B = latent.shape[0]
+                latents.append(latent.view(B, -1))
+        return torch.cat(latents, dim=-1)
 
 
 class ObservationGroupEncoder(nn.Module):
     """
-    This class allows networks to encode multiple observation dictionaries into a single
-    flat, concatenated vector representation. It does this by assigning each observation
-    dictionary (observation group) an @ObservationEncoder object.
+    This class allows networks to encode multiple observation dictionaries by 
+    assigning each observation group an @ObservationEncoder object.
     """
     def __init__(self, obs_group_to_key):
         """
@@ -65,8 +64,7 @@ class ObservationGroupEncoder(nn.Module):
         """
         super(ObservationGroupEncoder, self).__init__()
 
-        # maps observation group to observation core
-        # ex: {"obs": ObservationEncoder(), "goal": ObservationEncoder()}
+        # module dictionary from observation group to observation core
         self.obs_group_to_obs_enc = nn.ModuleDict()
 
         for obs_group in obs_group_to_key:
@@ -75,12 +73,10 @@ class ObservationGroupEncoder(nn.Module):
     @property
     def output_dim(self):
         """
-        Returns: output dim of observation group encoder.
+        Returns: dictionary from observation group to output dim of 
+            corresponding observation encoder
         """
-        dim = 0
-        for obs_enc in self.obs_group_to_obs_enc.values():
-            dim += obs_enc.output_dim
-        return dim
+        return {k: self.obs_group_to_obs_enc[k].output_dim for k in self.obs_group_to_obs_enc}
 
     def forward(self, inputs):
         """
@@ -88,16 +84,16 @@ class ObservationGroupEncoder(nn.Module):
 
         Args:
             inputs (dict): nested dictionary that maps observation group to observation key
-                to data of shape [B, ...]
+                to data (tensor) of shape [B, ...]
 
-        Returns: output data (tensor) with shape [B, @self.output_dim].
+        Returns: dictionary from observation group, obs_group, to data (tensor) 
+            with shape [B, @self.output_dim[obs_group]].
         """
-        feats = []
+        latent_dict = OrderedDict()
         for obs_group in inputs:
             if obs_group in self.obs_group_to_obs_enc:
-                embed = self.obs_group_to_obs_enc[obs_group](inputs[obs_group])
-                feats.append(embed)
-        return torch.cat(feats, dim=-1)
+                latent_dict[obs_group] = self.obs_group_to_obs_enc[obs_group](inputs[obs_group])
+        return latent_dict
     
 
 class ActionDecoder(nn.Module):
@@ -142,8 +138,7 @@ class ActionDecoder(nn.Module):
 
             input_dim (int): dim of input embeddings
 
-        Returns:
-            ActionDecoder instance
+        Returns: ActionDecoder instance.
         """
         return cls(
             action_shape=config.policy.action_shape,

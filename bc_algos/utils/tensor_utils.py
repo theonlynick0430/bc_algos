@@ -113,43 +113,41 @@ def pad(seq, dim, padding, pad_same=True, pad_values=None):
         }
     )
 
-def get_batch_temporal_dim(x):
+def get_batch_dim(x):
     """
-    Find batch and temporal dim of data in nested dictionary or list or tuple.
+    Find batch dim of data in nested dictionary or list or tuple.
 
     Args:
         x (dict or list or tuple): a possibly nested dictionary or list or tuple
-            of data with shape [B, T, ...]
+            of data with shape [B, ...]
 
     Returns:
         B (int): batch dim
-
-        T (int): temporal dim
     """
     if isinstance(x, (tuple, list)):
-        return get_batch_temporal_dim(x[0])
+        return get_batch_dim(x[0])
     elif isinstance(x, dict):
-        return get_batch_temporal_dim(list(x.values())[0])
+        return get_batch_dim(list(x.values())[0])
     else:
-        return x.shape[0], x.shape[1]
+        return x.shape[0]
 
 def time_distributed(inputs, op):
     """
     Apply function @op to all tensors in nested dictionary or list or tuple @inputs in both the
-    batch (B) and time (T) dimension, where the tensors are expected to have shape [B, T, ...].
-    Will do this by reshaping tensors to [B * T, ...], passing through the op, and then reshaping
-    outputs to [B, T, ...].
+    batch (B) and time (T) dim. Tensors are expected to have shape [B, T, ...], where T can vary
+    between different tensors. Accomplishes this by reshaping tensors to [B * T, ...], 
+    passing through the op, and then reshaping outputs to [B, T, ...].
 
     Args:
         inputs (dict or list or tuple): a possibly nested dictionary or list or tuple
-            of data with shape [B, T, ...]
+            of data with shape [B, T, ...], where T can vary between different tensors
 
         op (nn.Module): layer that accepts x as input
 
     Returns:
         y (dict or list or tuple): new nested dict-list-tuple
     """
-    B, T = get_batch_temporal_dim(inputs)
+    B = get_batch_dim(inputs)
 
     merged = recursive_dict_list_tuple_apply(
         inputs,
@@ -165,8 +163,8 @@ def time_distributed(inputs, op):
     return recursive_dict_list_tuple_apply(
         outputs,
         {
-            torch.Tensor: lambda x: x.view(B, T, *x.shape[1:]),
-            np.ndarray: lambda x: x.reshape(B, T, *x.shape[1:]),
+            torch.Tensor: lambda x: x.view(B, -1, *x.shape[1:]),
+            np.ndarray: lambda x: x.reshape(B, -1, *x.shape[1:]),
             type(None): lambda x: x,
         }
     )

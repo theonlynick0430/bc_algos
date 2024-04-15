@@ -3,6 +3,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Backbone, MLP, Transformer
 import bc_algos.utils.tensor_utils as TensorUtils
 import torch.nn as nn
+import torch
 
 
 class BC(nn.Module):
@@ -10,34 +11,34 @@ class BC(nn.Module):
     Abstract class for behavorial cloning policy that predicts actions from observations.
     Subclass to implement different behavorial cloning policies.
     """
-    def __init__(self, obs_group_enc, backbone, act_dec):
+    def __init__(self, obs_group_enc, backbone, action_dec):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder
 
             backbone (Backbone): policy backbone
 
-            act_dec (ActionDecoder): output decoder
+            action_dec (ActionDecoder): output decoder
         """
         super(BC, self).__init__()
 
         assert isinstance(obs_group_enc, ObservationGroupEncoder)
         assert isinstance(backbone, Backbone)
-        assert isinstance(act_dec, ActionDecoder)
+        assert isinstance(action_dec, ActionDecoder)
 
         self.obs_group_enc = obs_group_enc
         self.backbone = backbone
-        self.act_dec = act_dec
+        self.action_dec = action_dec
 
     @classmethod
     def prepare_inputs(cls, inputs, device=None):
         """
-        Prepares inputs to be processed by model by converting to float tensor, and moving 
-        to specified device.
+        Prepare inputs to be processed by model by converting to float tensor
+        and moving to specified device.
 
         Args:
             inputs (dict): nested dictionary that maps observation group to observation key
-                to data of shape [B, T, ...]
+                to data (tensor) of shape [B, ...]
 
             device: (optional) device to send tensors to
 
@@ -51,20 +52,18 @@ class BC_MLP(BC):
     """
     Module for behavorial cloning policy that predicts actions from observations using MLP.
     """
-    def __init__(self, obs_group_enc, backbone, act_dec):
+    def __init__(self, obs_group_enc, backbone, action_dec):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder
 
             backbone (Backbone): policy backbone
 
-            act_dec (ActionDecoder): output decoder
+            action_dec (ActionDecoder): output decoder
         """
-        super(BC_MLP, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec)
+        super(BC_MLP, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, action_dec=action_dec)
 
         assert isinstance(backbone, MLP)
-
-        self.nets = nn.Sequential(obs_group_enc, backbone, act_dec)
 
     def forward(self, inputs):
         """
@@ -72,34 +71,80 @@ class BC_MLP(BC):
 
         Args: 
             inputs (dict): nested dictionary that maps observation group to observation key
-                to data of shape [B, T=1, ...]
+                to data (tensor) of shape [B, T=1, ...]
 
-        Returns: action (tensor) in shape [B, T=1, action_dim,].
+        Returns: actions (tensor) of shape [B, T=1, action_dim].
         """
-        return TensorUtils.time_distributed(inputs=inputs, op=self.nets)
+        latent_dict = TensorUtils.time_distributed(inputs=inputs, op=self.obs_group_enc)
+        latents = torch.cat(list(latent_dict.values()), dim=-1)
+        outputs = TensorUtils.time_distributed(inputs=latents, op=self.backbone)
+        actions = TensorUtils.time_distributed(inputs=outputs, op=self.action_dec)
+        return actions
     
 
 class BC_Transformer(BC):
     """
-    Module for behavorial cloning policy that predicts actions from observations using transformer.
+    Module for behavorial cloning policy that predicts actions from observations 
+    using transformer encoder-decoder architecture.
     """
-    def __init__(self, obs_group_enc, backbone, act_dec, act_chunk):
+    def __init__(self, obs_group_enc, backbone, action_dec, action_chunk):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder
 
             backbone (Backbone): policy backbone
 
-            act_dec (ActionDecoder): output decoder
+            action_dec (ActionDecoder): output decoder
 
-            act_chunk (int): number of actions to predict in a single model pass
+            action_chunk (int): number of actions to predict in a single model pass
         """
-        super(BC_Transformer, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, act_dec=act_dec)
+        super(BC_Transformer, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, action_dec=action_dec)
 
         assert isinstance(backbone, Transformer)
 
-        self.act_chunk = act_chunk
+        self.action_chunk = action_chunk
         self.embed_dim = backbone.embed_dim
+
+    @classmethod
+    def factory(cls, config, obs_group_enc, backbone, action_dec):
+        """
+        Create a BC_Transformer instance from config.
+
+        Args:
+            config (addict): config object
+
+            obs_group_enc (ObservationGroupEncoder): input encoder
+
+            backbone (Backbone): policy backbone
+
+            action_dec (ActionDecoder): output decoder
+
+        Returns: BC_Transformer instance.
+        """
+        return cls(
+            obs_group_enc=obs_group_enc,
+            backbone=backbone,
+            action_dec=action_dec,
+            action_chunk=config.dataset.seq_length,
+        )
+
+    def prepare_latent(self, latent):
+        """
+        Prepare latent for transformer by reshaping from [B, T, N * @self.embed_dim] 
+        to [B, T*N, @self.embed_dim] and adding positional embeddings.
+
+        Args: 
+            latent (tensor): data of shape [B, T, N * @self.embed_dim]
+
+        Returns: prepared latent (tensor) of shape [B, T*N, @self.embed_dim].
+        """
+        device = latent.device
+        B, T, _ = latent.shape
+        if T > 1:
+            latent = latent.view(B, T, -1, self.embed_dim)
+            _, _, N, _ = latent.shape
+            latent += pos_enc_1d(d_model=self.embed_dim, T=T, device=device).unsqueeze(1).repeat(1, N, 1)
+        return latent.view(B, -1, self.embed_dim)
 
     def forward(self, inputs):
         """
@@ -107,19 +152,15 @@ class BC_Transformer(BC):
 
         Args: 
             inputs (dict): nested dictionary that maps observation group to observation key
-                to data of shape [B, T, ...]
+                to data (tensor) of shape [B, T_obs/T_goal, ...]
 
-        Returns: actions (tensor) in shape [B, T, action_dim,].
+        Returns: actions (tensor) of shape [B, T=@self.action_chunk, action_dim].
         """
-        src = TensorUtils.time_distributed(inputs=inputs, op=self.obs_group_enc)
+        latent_dict = TensorUtils.time_distributed(inputs=inputs, op=self.obs_group_enc)
+        src = torch.cat([self.prepare_latent(latent) for latent in latent_dict.values()], dim=-2)
         device = src.device
-        B, T, _ = src.shape
-        if T > 1:
-            src = src.view(B, T, -1, self.embed_dim)
-            _, _, N, _ = src.shape
-            src += pos_enc_1d(d_model=self.embed_dim, T=T, device=device).unsqueeze(1).repeat(1, N, 1)
-        src = src.view(B, -1, self.embed_dim)
-        tgt = pos_enc_1d(d_model=self.embed_dim, T=self.act_chunk, device=device).unsqueeze(0).repeat(B, 1, 1)
-        embed = self.backbone(src, tgt)
-        actions = TensorUtils.time_distributed(inputs=embed, op=self.act_dec)
+        B = src.shape[0]
+        tgt = pos_enc_1d(d_model=self.embed_dim, T=self.action_chunk, device=device).unsqueeze(0).repeat(B, 1, 1)
+        outputs = self.backbone(src, tgt)
+        actions = TensorUtils.time_distributed(inputs=outputs, op=self.action_dec)
         return actions

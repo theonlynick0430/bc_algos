@@ -64,7 +64,7 @@ class LowDimCore(EncoderCore):
         if self.project:
             return self._output_shape
         else:
-            return [np.prod(self.input_shape),]
+            return [np.prod(self.input_shape)]
         
     def create_layers(self):
         if self.project:
@@ -83,7 +83,7 @@ class LowDimCore(EncoderCore):
         Forward pass through low-dim encoder core.
 
         Args:
-            inputs (tensor): input data with shape [B, @self.input_shape]
+            inputs (tensor): data with shape [B, @self.input_shape]
 
         Returns: output data (tensor) with shape [B, @self.output_shape].
         """
@@ -106,7 +106,7 @@ class ViTMAECore(EncoderCore):
         """
         Args: 
             input_shape (array): input shape excluding batch dim. 
-                Expected to follow [B, C, H, W,].
+                Expected to follow [B, C, H, W].
 
             freeze (bool): if True, freeze VitMAE backbone
         """
@@ -122,7 +122,7 @@ class ViTMAECore(EncoderCore):
         """
         Returns: output shape of ViTMAE encoder core.
         """
-        return [self.vitmae.config.hidden_size,]
+        return [self.vitmae.config.hidden_size]
     
     def freeze(self):
         """
@@ -152,11 +152,11 @@ class ResNet18Core(EncoderCore):
     """
     EncoderCore subclass used to encode visual data with ResNet-18 backbone.
     """
-    def __init__(self, input_shape, embed_shape=[512, 8, 8,], freeze=True):
+    def __init__(self, input_shape, embed_shape=[512, 8, 8], freeze=True):
         """
         Args: 
-            input_shape (array): input shape excluding batch dim .
-                Expected to follow [B, C, H, W,].
+            input_shape (array): input shape excluding batch dim.
+                Expected to follow [B, C, H, W].
 
             embed_shape (array): output shape of ResNet-18 backbone excluding batch dim. 
                 Defaults to output shape for inputs images of resolution 256x256.
@@ -177,7 +177,7 @@ class ResNet18Core(EncoderCore):
         Returns: output shape of ResNet-18 encoder core.
         """
         C, H, W = self.embed_shape
-        return [H*W, C,]
+        return [H*W, C]
     
     def freeze(self):
         """
@@ -204,6 +204,6 @@ class ResNet18Core(EncoderCore):
         """
         device = inputs.device
         C, H, W = self.embed_shape
-        embed = self.network(inputs)
-        embed += pos_enc_2d(d_model=C, H=H, W=W, device=device)
-        return torch.transpose(embed.view(-1, C, H*W), -1, -2).contiguous()
+        latent = self.network(inputs)
+        latent += pos_enc_2d(d_model=C, H=H, W=W, device=device)
+        return torch.transpose(latent.view(-1, C, H*W), -1, -2).contiguous()

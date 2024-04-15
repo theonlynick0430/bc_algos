@@ -16,7 +16,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     """
     Abstract class for fetching sequences of experience. Inherit from this class for 
     different dataset formats. 
-    Length of the fetched sequence is equal to (@frame_stack + @seq_length)
+    Length of the fetched sequence is equal to (@self.frame_stack + @self.seq_length)
     """
     def __init__(
         self,
@@ -62,8 +62,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                 useful for masking loss functions on padded parts of the data.
 
             goal_mode (str): either GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL, or None. 
-                If GoalMode.LAST, provide last observation as goal for each frame in sequence.
-                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sequence.
+                If GoalMode.LAST, provide last observation as goal.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sampled sequence.
                 If GoalMode.FULL, provide all subgoals for a single batch.
                 Defaults to None, or no goals. 
 
@@ -119,8 +119,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             train (bool): if True, use kwargs for training dataset. 
                 Otherwise, use kwargs for validation dataset.
 
-        Returns:
-            SequenceDataset instance
+        Returns: SequenceDataset instance.
         """
         kwargs = config.dataset.kwargs.train if train else config.dataset.kwargs.valid
         return cls(
@@ -135,6 +134,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             get_pad_mask=config.dataset.get_pad_mask,
             goal_mode=config.dataset.goal_mode,
             num_subgoal=config.dataset.num_subgoal,
+            preprocess=config.dataset.preprocess,
             normalize=config.dataset.normalize,
             **kwargs
         )
@@ -218,12 +218,12 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Populate internal data structures.
         """
         self.total_num_sequences = 0
-        # maps index in total_num_sequences to demo_id
+        # array from index in total_num_sequences to demo_id
         self.index_to_demo_id = []
-        # maps demo_id to start index in total_num_sequences
-        self.demo_id_to_start_index = dict()
-        # maps demo_id to length of demo in data
-        self.demo_id_to_demo_length = dict()
+        # dictionary from demo_id to start index in total_num_sequences
+        self.demo_id_to_start_index = {}
+        # dictionary from demo_id to length of demo in data
+        self.demo_id_to_demo_length = {}
         
         for demo_id in self.demos:
             demo_length = self.demo_len(demo_id=demo_id)
@@ -293,19 +293,32 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     def get_item(self, index):
         """
         Main implementation of getitem.
+
+        Args: 
+            index (int): index of dataset item to fetch
+
+        Returns: nested dictionary with three possible items:
+        
+            1) obs: dictionary from observation key to data (np.array)
+                of shape [T = @self.frame_stack + @self.seq_length, ...]
+            
+            2) goal: dictionary from observation key to data (np.array) of shape [T_goal, ...]
+
+            3) pad_mask (np.array): mask of shape [T = @self.frame_stack + @self.seq_length] 
+                indicating which frames are padding
         """
         demo_id = self.index_to_demo_id[index]
         cache = self.index_cache[index]
 
         data_seq_index, pad_mask, goal_index = cache
-        meta = self.get_data_seq(demo_id=demo_id, keys=self.dataset_keys, seq_index=data_seq_index)
-        meta["obs"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
+        item = self.get_data_seq(demo_id=demo_id, keys=self.dataset_keys, seq_index=data_seq_index)
+        item["obs"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
-            meta["goal"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
+            item["goal"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
         if self.get_pad_mask:
-            meta["pad_mask"] = pad_mask
+            item["pad_mask"] = pad_mask
 
-        return meta
+        return item
 
     def cache_index(self):
         """
@@ -378,7 +391,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         demo_length = self.demo_id_to_demo_length[demo_id]
 
         if self.goal_mode == GoalMode.LAST:
-            goal_index = np.full((len(data_seq_index)), -1)
+            goal_index = np.array([-1])
 
         elif self.goal_mode == GoalMode.SUBGOAL:
             if self.num_subgoal is None:
@@ -386,7 +399,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             else:
                 subgoal = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)
                 goal = np.repeat(subgoal[1:], np.diff(subgoal))
-            goal_index = goal[data_seq_index]
+            goal_index = goal[data_seq_index[self.frame_stack:]]
             
         elif self.goal_mode == GoalMode.FULL:
             if self.num_subgoal is None:

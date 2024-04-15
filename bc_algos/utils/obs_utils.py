@@ -21,7 +21,7 @@ OBS_KEY_TO_ENC_CORE = OrderedDict()
 """
 Map from observation key to shape.
 
-Ex: {"robot0_eef_pos": [3,], "robot0_eef_quat": [4,], "agentview_image": [3, 224, 224,]}
+Ex: {"robot0_eef_pos": [3], "robot0_eef_quat": [4], "agentview_image": [3, 224, 224]}
 """
 OBS_KEY_TO_SHAPE = OrderedDict()
 
@@ -35,7 +35,7 @@ OBS_KEY_TO_MODALITY = OrderedDict()
 """
 Map from observation group to observation key.
 
-Ex: {"obs": ["robot0_eef_pos", "robot0_eef_quat",], "goal": ["agentview_image",]}
+Ex: {"obs": ["robot0_eef_pos", "robot0_eef_quat"], "goal": ["agentview_image"]}
 """
 OBS_GROUP_TO_KEY = OrderedDict()
 
@@ -109,7 +109,7 @@ def init_obs_utils(config):
                 if obs_group in OBS_GROUP_TO_KEY:
                     OBS_GROUP_TO_KEY[obs_group].append(obs_key)
                 else:
-                    OBS_GROUP_TO_KEY[obs_group] = [obs_key,]
+                    OBS_GROUP_TO_KEY[obs_group] = [obs_key]
                 if obs_key not in OBS_KEY_TO_MODALITY:
                     OBS_KEY_TO_MODALITY[obs_key] = modality
                 if obs_key not in OBS_KEY_TO_ENC_CORE:

@@ -14,7 +14,7 @@ from collections import OrderedDict
 class RobomimicDataset(SequenceDataset):
     """
     Class for fetching sequences of experience from Robomimic dataset.
-    Length of the fetched sequence is equal to (@frame_stack + @seq_length)
+    Length of the fetched sequence is equal to (@self.frame_stack + @self.seq_length)
     """
     def __init__(
         self,
@@ -63,8 +63,8 @@ class RobomimicDataset(SequenceDataset):
                 useful for masking loss functions on padded parts of the data.
 
             goal_mode (str): either GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL, or None. 
-                If GoalMode.LAST, provide last observation as goal for each frame in sequence.
-                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sequence.
+                If GoalMode.LAST, provide last observation as goal.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sampled sequence.
                 If GoalMode.FULL, provide all subgoals for a single batch.
                 Defaults to None, or no goals. 
 
@@ -160,18 +160,18 @@ class RobomimicDataset(SequenceDataset):
         Args: 
             preprocess (bool): if True, preprocess data while loading into memory
         """
-        dataset = dict()
+        dataset = {}
 
         with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
             for demo in self.demos:
-                dataset[demo] = dict()
+                dataset[demo] = {}
 
                 # get observations
                 dataset[demo] = {obs_key: self.hdf5_file[f"data/{demo}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo][obs_key] = ObsUtils.preprocess_img(img=dataset[demo]["obs"][obs_key])
+                            dataset[demo][obs_key] = ObsUtils.preprocess_img(img=dataset[demo][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
@@ -195,8 +195,8 @@ class RobomimicDataset(SequenceDataset):
             }
         }
         """
-        traj_dict = dict()
-        merged_stats = dict()
+        traj_dict = {}
+        merged_stats = {}
 
         # don't compute normalization stats for RGB data since we use backbone encoders
         # with their own normalization stats
@@ -239,7 +239,6 @@ class RobomimicDataset(SequenceDataset):
 
         Returns: ordered dictionary of extracted items.
         """
-        # fetch observation from the dataset file
         seq = OrderedDict()
         for k in keys:
             data = self.dataset[demo_id][k]
