@@ -94,6 +94,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.get_pad_mask = get_pad_mask
 
         if goal_mode is not None:
+            assert "goal" in obs_group_to_key, "observation group, goal, must exist to provide goals"
             assert goal_mode in [GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL], f"goal_mode {goal_mode} not supported"
         self.goal_mode = goal_mode
         self.num_subgoal = num_subgoal
@@ -159,7 +160,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         Returns: whether this dataset contains goals.
         """
-        return "goal" in self.obs_group_to_key and self.goal_mode is not None
+        return self.goal_mode is not None
 
     @abstractmethod
     def demo_len(self, demo_id):

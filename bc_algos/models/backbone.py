@@ -39,6 +39,7 @@ class Backbone(ABC, nn.Module):
     def output_dim(self):
         return NotImplementedError
 
+
 class MLP(Backbone):
     """
     MLP policy backbone.

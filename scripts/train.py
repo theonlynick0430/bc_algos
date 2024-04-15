@@ -62,13 +62,18 @@ def train(config):
         backbone = Transformer.factory(config=config)
 
     # load action decoder
-    act_dec = ActionDecoder.factory(config=config, input_dim=backbone.output_dim)
+    action_dec = ActionDecoder.factory(config=config, input_dim=backbone.output_dim)
 
     # load policy
     if config.policy.type == Const.PolicyType.MLP:
-        policy = BC_MLP(obs_group_enc, backbone, act_dec)
+        policy = BC_MLP(obs_group_enc=obs_group_enc, backbone=backbone, action_dec=action_dec)
     elif config.policy.type == Const.PolicyType.TRANSFORMER:
-        policy = BC_Transformer(obs_group_enc, backbone, act_dec, act_chunk=config.dataset.seq_length)
+        policy = BC_Transformer.factory(
+            config=config, 
+            obs_group_enc=obs_group_enc, 
+            backbone=backbone, 
+            action_dec=action_dec
+        )
 
     # create env for rollout
     if config.rollout.type == Const.RolloutType.ROBOMIMIC:

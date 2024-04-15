@@ -55,9 +55,10 @@
         "seq_length": 10,
         "pad_frame_stack": true,
         "pad_seq_length": true,
-        "get_pad_mask": false,
+        "get_pad_mask": true,
         "goal_mode": null,
         "num_subgoal": null,
+        "preprocess": false,
         "normalize": true,
         "kwargs": {
             "train": {
@@ -66,7 +67,7 @@
             },
             "valid": {
                 "filter_by_attribute": "valid",
-                "demos": ["demo_1", "demo_2", "demo_3", "demo_4", "demo_6", "demo_0", "demo_5", "demo_14", "demo_21", "demo_27"]
+                "demos": null
             }
         }
     },
