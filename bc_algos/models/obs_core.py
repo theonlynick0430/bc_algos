@@ -83,9 +83,9 @@ class LowDimCore(EncoderCore):
         Forward pass through low-dim encoder core.
 
         Args:
-            inputs (tensor): data with shape [B, @self.input_shape]
+            inputs (tensor): data of shape [B, @self.input_shape]
 
-        Returns: output data (tensor) with shape [B, @self.output_shape].
+        Returns: output data (tensor) of shape [B, @self.output_shape].
         """
         B = inputs.shape[0]
         inputs = inputs.view(B, -1)
@@ -141,9 +141,9 @@ class ViTMAECore(EncoderCore):
         Forward pass through ViTMAE encoder core.
 
         Args:
-            inputs (tensor): data with shape [B, @self.input_shape]
+            inputs (tensor): data of shape [B, @self.input_shape]
 
-        Returns: output data (tensor) with shape [B, @self.output_shape].
+        Returns: output data (tensor) of shape [B, @self.output_shape].
         """
         return self.network(inputs).last_hidden_state[:, 0]
     
@@ -198,9 +198,9 @@ class ResNet18Core(EncoderCore):
         Forward pass through ResNet-18 encoder core.
 
         Args:
-            inputs (tensor): data with shape [B, @self.input_shape]
+            inputs (tensor): data of shape [B, @self.input_shape]
 
-        Returns: output data (tensor) with shape [B, @self.output_shape].
+        Returns: output data (tensor) of shape [B, @self.output_shape].
         """
         device = inputs.device
         C, H, W = self.embed_shape

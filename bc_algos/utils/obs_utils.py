@@ -136,7 +136,7 @@ def preprocess_img(img):
     2) Changes scale of @img from [0, 255] to [0, 1]
 
     Args: 
-        img (np.array): image data with shape [..., H, W, 3]
+        img (np.array): image data of shape [..., H, W, 3]
     """
     img = np.moveaxis(img.astype(float), -1, -3)
     img /= 255.

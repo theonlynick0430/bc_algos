@@ -44,15 +44,12 @@ def run_epoch(model, data_loader, loss_fn, frame_stack, optimizer=None, validate
             # prepare inputs and target
             batch = BC.prepare_inputs(inputs=batch, device=device)
             target = batch["actions"][:, frame_stack:, :]
+            pad_mask = batch["pad_mask"][frame_stack:] if "pad_mask" in batch else None
             batch["obs"] = TensorUtils.slice(x=batch["obs"], dim=1, start=0, end=frame_stack+1)
             # generate outputs
             outputs = model(batch)
             # compute loss
-            loss = loss_fn(outputs, target)
-            # mask loss according to padding
-            if "pad_mask" in batch:
-                pad_mask = batch["pad_mask"][:, frame_stack:, None]
-                loss *= pad_mask
+            loss = loss_fn(outputs, target, pad_mask)
             if not validate:
                 wandb.log({"train_loss": loss.item()})
                 # if training, update weights

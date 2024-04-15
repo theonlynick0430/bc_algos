@@ -85,9 +85,9 @@ class MLP(Backbone):
         Forward pass through MLP policy.
 
         Args: 
-            inputs (tensor): data with shape [B, @self.embed_dim]
+            inputs (tensor): data of shape [B, @self.embed_dim]
 
-        Returns: output data (tensor) with shape [B, @self.output_dim].
+        Returns: output data (tensor) of shape [B, @self.output_dim].
         """
         inputs = self.dropout(inputs)
         return self.mlp(inputs)
@@ -141,7 +141,7 @@ class Transformer(Backbone):
 
             tgt (tensor): the data sequence to the decoder of shape [B, T_tgt, @self.embed_dim]
 
-        Returns: output data (tensor) with shape [B, T_tgt, @self.output_dim].
+        Returns: output data (tensor) of shape [B, T_tgt, @self.output_dim].
         """
         return self.transformer(src, tgt)
         

@@ -41,7 +41,7 @@ class ObservationEncoder(nn.Module):
             inputs (dict): nested dictionary that maps observation key
                 to data (tensor) of shape [B, ...]
 
-        Returns: output data (tensor) with shape [B, @self.output_dim].
+        Returns: output data (tensor) of shape [B, @self.output_dim].
         """
         latents = []
         for obs_key in inputs:
@@ -87,7 +87,7 @@ class ObservationGroupEncoder(nn.Module):
                 to data (tensor) of shape [B, ...]
 
         Returns: dictionary from observation group, obs_group, to data (tensor) 
-            with shape [B, @self.output_dim[obs_group]].
+            of shape [B, @self.output_dim[obs_group]].
         """
         latent_dict = OrderedDict()
         for obs_group in inputs:
@@ -160,8 +160,8 @@ class ActionDecoder(nn.Module):
         Forward pass through action decoder.
 
         Args:
-            inputs (tensor): data with shape [B, @self.input_shape]
+            inputs (tensor): data of shape [B, @self.input_shape]
 
-        Returns: output data (tensor) with shape [B, @self.output_shape].
+        Returns: output data (tensor) of shape [B, @self.output_shape].
         """
         return self.mlp(inputs).view(-1, *self.action_shape)

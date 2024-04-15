@@ -119,7 +119,7 @@ def get_batch_dim(x):
 
     Args:
         x (dict or list or tuple): a possibly nested dictionary or list or tuple
-            of data with shape [B, ...]
+            of data of shape [B, ...]
 
     Returns:
         B (int): batch dim
@@ -140,7 +140,7 @@ def time_distributed(inputs, op):
 
     Args:
         inputs (dict or list or tuple): a possibly nested dictionary or list or tuple
-            of data with shape [B, T, ...], where T can vary between different tensors
+            of data of shape [B, T, ...], where T can vary between different tensors
 
         op (nn.Module): layer that accepts x as input
 

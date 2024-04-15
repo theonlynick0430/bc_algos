@@ -99,15 +99,9 @@ def train(config):
     discount = config.train.discount
     assert discount <= 1, "discount factor must be <= 1"
     if config.train.loss == "L2":
-        if discount == 1:
-            loss_fn = nn.MSELoss()
-        else:
-            loss_fn = DiscountedMSELoss(discount=discount)
+        loss_fn = DiscountedMSELoss(discount=discount)
     elif config.train.loss == "L1":
-        if discount == 1:
-            loss_fn = nn.L1Loss()
-        else:
-            loss_fn = DiscountedL1Loss(discount=discount)
+        loss_fn = DiscountedL1Loss(discount=discount)
     else:
         print(f"loss type {config.train.loss} not supported")
         exit(1)
