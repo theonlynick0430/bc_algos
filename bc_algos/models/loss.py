@@ -32,17 +32,17 @@ class DiscountedMSELoss(nn.Module):
 
             tgt (tensor): target data of shape [B, T, ...]
 
-            mask (tensor): (optional) binary mask of shape [T]
+            mask (tensor): (optional) binary mask of shape [B, T]
 
         Returns: scalar loss.
         """
         B, T = src.shape[0], src.shape[1]
         loss = torch.square(tgt-src).view(B, T, -1)
-        loss = torch.mean(loss, [0, 2,])
+        loss = torch.mean(loss, -1)
         coef = torch.pow(torch.full([T], self.discount, device=src.device), torch.arange(T, device=src.device))
         if mask is not None:
-            coef *= mask
-        return torch.sum(coef*loss)/torch.sum(coef)
+            coef = mask * coef
+        return torch.mean(torch.sum(coef*loss, dim=-1)/torch.sum(coef, dim=-1))
 
 
 class DiscountedL1Loss(nn.Module):
@@ -75,14 +75,14 @@ class DiscountedL1Loss(nn.Module):
 
             tgt (tensor): target data of shape [B, T, ...]
 
-            mask (tensor): (optional) binary mask of shape [T]
+            mask (tensor): (optional) binary mask of shape [B, T]
 
         Returns: scalar loss.
         """
         B, T = src.shape[0], src.shape[1]
         loss = torch.abs(tgt-src).view(B, T, -1)
-        loss = torch.mean(loss, [0, 2,])
+        loss = torch.mean(loss, -1)
         coef = torch.pow(torch.full([T], self.discount, device=src.device), torch.arange(T, device=src.device))
         if mask is not None:
-            coef *= mask
-        return torch.sum(coef*loss)/torch.sum(coef)
+            coef = mask * coef
+        return torch.mean(torch.sum(coef*loss, dim=-1)/torch.sum(coef, dim=-1))
