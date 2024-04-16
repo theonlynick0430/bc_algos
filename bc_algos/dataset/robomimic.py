@@ -81,11 +81,12 @@ class RobomimicDataset(SequenceDataset):
 
             normalize (bool): if True, normalize data using mean and stdv from dataset
         """
+        self.path = path
         self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
+        self._demos = demos
 
         super(RobomimicDataset, self).__init__(
-            path=path,
             obs_key_to_modality=obs_key_to_modality,
             obs_group_to_key=obs_group_to_key,
             dataset_keys=dataset_keys,
@@ -96,7 +97,6 @@ class RobomimicDataset(SequenceDataset):
             get_pad_mask=get_pad_mask, 
             goal_mode=goal_mode, 
             num_subgoal=num_subgoal,
-            demos=demos,
             preprocess=preprocess,
             normalize=normalize,
         )
@@ -106,18 +106,12 @@ class RobomimicDataset(SequenceDataset):
         """
         Returns: all demo ids.
         """
-        if self._demos is not None:
-            return self._demos
-        demos = []
-        # filter demo trajectory by mask
-        if self.filter_by_attribute is not None:
-            demos = [elem.decode("utf-8") for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
-        else:
-            demos = list(self.hdf5_file["data"].keys())
-        # sort demo keys
-        inds = np.argsort([int(elem[5:]) for elem in demos])
-        demos = [demos[i] for i in inds]
-        return demos
+        if self._demos is None:
+            if self.filter_by_attribute is not None:
+                self._demos = [elem.decode("utf-8") for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
+            else:
+                self._demos = list(self.hdf5_file["data"].keys())
+        return self._demos
 
     @property
     def hdf5_file(self):
@@ -135,7 +129,7 @@ class RobomimicDataset(SequenceDataset):
         
         Returns: length of demo with @demo_id.
         """
-        return self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
+        return self.dataset[demo_id]["num_samples"]
     
     def __del__(self):
         if self._hdf5_file is not None:
@@ -176,6 +170,8 @@ class RobomimicDataset(SequenceDataset):
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
                     dataset[demo][dataset_key] = self.hdf5_file[f"data/{demo}/{dataset_key}"][()].astype('float32')
+
+                dataset[demo]["num_samples"] = self.hdf5_file[f"data/{demo}"].attrs["num_samples"] 
 
                 progress_bar.update(1)
 

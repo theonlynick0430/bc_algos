@@ -20,7 +20,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     """
     def __init__(
         self,
-        path,
         obs_key_to_modality,
         obs_group_to_key,
         dataset_keys,
@@ -31,14 +30,11 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         get_pad_mask=True,
         goal_mode=None,
         num_subgoal=None,
-        demos=None,
         preprocess=False,
         normalize=True,
     ):
         """
         Args:
-            path (str): path to dataset 
-
             obs_key_to_modality (dict): dictionary from observation key to modality
 
             obs_group_to_key (dict): dictionary from observation group to observation key
@@ -71,18 +67,14 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
     
-            demos (array): if provided, only load these selected demos
-
             preprocess (bool): if True, preprocess data while loading into memory
 
             normalize (bool): if True, normalize data using mean and stdv from dataset
         """
-        self.path = os.path.expanduser(path)
         self.obs_key_to_modality = obs_key_to_modality
         self.obs_group_to_key = obs_group_to_key
         self.obs_keys = list(set([obs_key for obs_group in obs_group_to_key.values() for obs_key in obs_group]))
         self.dataset_keys = list(dataset_keys)
-        self._demos = demos
 
         assert frame_stack >= 0
         self.frame_stack = frame_stack
@@ -99,15 +91,15 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.goal_mode = goal_mode
         self.num_subgoal = num_subgoal
 
-        self.load_demo_info()
-        self.cache_index()
-
         self.load_dataset_in_memory(preprocess=preprocess)
 
         self.normalize = normalize
         if normalize:
             self.compute_normalization_stats()
             self.normalize_data()
+
+        self.load_demo_info()
+        self.cache_index()
 
     @classmethod
     def factory(cls, config, train=True):
@@ -200,14 +192,12 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         Pretty print the class and important attributes on a call to `print`.
         """
-        msg = "\tpath={}\n"
-        msg += "\tframe_stack={}\n\tseq_length={}\n\tpad_frame_stack={}\n\tpad_seq_length={}\n"
+        msg = "\tframe_stack={}\n\tseq_length={}\n\tpad_frame_stack={}\n\tpad_seq_length={}\n"
         msg += "\tgoal_mode={}\n\tnum_subgoal={}\n"
         msg += "\tnum_demos={}\n\tnum_sequences={}\n"
         goal_mode_str = self.goal_mode if self.goal_mode is not None else "none"
         num_subgoal_str = self.num_subgoal if self.num_subgoal is not None else "none"
         msg = msg.format(
-            self.path,
             self.frame_stack, self.seq_length, self.pad_frame_stack, self.pad_seq_length, 
             goal_mode_str, num_subgoal_str,
             self.num_demos, self.total_num_sequences
