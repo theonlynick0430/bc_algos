@@ -14,9 +14,10 @@ class RolloutEnv:
     Abstract class used to rollout policies. Inherit from this class for 
     different environments. 
     """
+
     def __init__(
             self,
-            validset,  
+            validset,
             obs_group_to_key,
             obs_key_to_modality,
             frame_stack=0,
@@ -24,7 +25,7 @@ class RolloutEnv:
             gc=False,
             normalization_stats=None,
             render_video=False,
-        ):
+    ):
         """
         Args:
             validset (SequenceDataset): validation dataset for rollout
@@ -91,7 +92,7 @@ class RolloutEnv:
         Create and return environment associated with dataset.
         """
         return NotImplementedError
-    
+
     def normalize_obs(self, obs):
         """
         Normalize observation from environment according to @self.normalization_stats.
@@ -103,9 +104,10 @@ class RolloutEnv:
         """
         obs = deepcopy(obs)
         for key in self.normalization_stats:
-            if key in obs: obs[key] = ObsUtils.normalize(data=obs[key], normalization_stats=self.normalization_stats[key])
+            if key in obs: obs[key] = ObsUtils.normalize(data=obs[key],
+                                                         normalization_stats=self.normalization_stats[key])
         return obs
-    
+
     def inputs_from_initial_obs(self, obs, demo_id):
         """
         Create inputs for model from initial environment observation.
@@ -121,7 +123,7 @@ class RolloutEnv:
         """
         if self.normalize:
             obs = self.normalize_obs(obs)
-        
+
         inputs = OrderedDict()
 
         inputs["obs"] = OrderedDict()
@@ -131,13 +133,13 @@ class RolloutEnv:
 
         inputs = TensorUtils.to_batch(inputs)
         inputs = TensorUtils.to_sequence(inputs)
-        inputs = TensorUtils.repeat_seq(x=inputs, k=self.n_frame_stack+1) # prepare history
+        inputs = TensorUtils.repeat_seq(x=inputs, k=self.n_frame_stack + 1)  # prepare history
 
         if self.gc:
             inputs["goal"] = self.fetch_goal(demo_id=demo_id, t=0)
-            
+
         return inputs
-    
+
     def inputs_from_new_obs(self, inputs, obs, demo_id, t):
         """
         Update inputs for model by shifting history and inserting new observation
@@ -157,19 +159,19 @@ class RolloutEnv:
         """
         if self.normalize:
             obs = self.normalize_obs(obs)
-        
+
         inputs = TensorUtils.shift_seq(x=inputs, k=-1)
 
         for obs_key in self.obs_group_to_key["obs"]:
             assert obs_key in obs, f"could not find obs_key {obs_key} in obs from environment"
             # only update last seq index to preserve history
             inputs["obs"][obs_key][:, -1, :] = obs[obs_key]
-        
+
         if self.gc:
             inputs["goal"] = self.fetch_goal(demo_id=demo_id, t=t)
 
         return inputs
-    
+
     def fetch_goal(self, demo_id, t):
         """
         Get goal for specified demo and time if goal-conditioned.
@@ -182,7 +184,7 @@ class RolloutEnv:
         Returns: goal sequence (np.array) of shape [B=1, T=validset.n_frame_stack+1, ...].
         """
         return NotImplementedError
-    
+
     def init_demo(self, demo_id):
         """
         Initialize environment for demo by loading models
@@ -198,15 +200,15 @@ class RolloutEnv:
         return NotImplementedError
 
     def run_rollout(
-            self, 
-            policy, 
+            self,
+            policy,
             demo_id,
             video_writer=None,
             video_skip=5,
             horizon=None,
             terminate_on_success=False,
             device=None,
-        ):
+    ):
         """
         Run rollout on a single demo and save stats (and video if necessary).
 
@@ -257,9 +259,9 @@ class RolloutEnv:
             actions = policy(x)
             actions = actions.squeeze(0).detach().cpu().numpy()
             if self.closed_loop:
-                actions = actions[:1, :] # execute only first action
+                actions = actions[:1, :]  # execute only first action
             else:
-                actions = actions[:horizon-step_i, :] # execute full action chunk (unless horizon reached)
+                actions = actions[:horizon - step_i, :]  # execute full action chunk (unless horizon reached)
 
             # unnormalize actions if necessary
             if self.normalize:
@@ -282,24 +284,24 @@ class RolloutEnv:
                 # break if success
                 if terminate_on_success and success:
                     break
-                
+
         results["horizon"] = step_i
         results["success"] = success
-        
+
         return results
 
     def rollout_with_stats(
-            self, 
-            policy, 
+            self,
+            policy,
             demo_id,
             video_dir=None,
             video_writer=None,
             video_skip=5,
             horizon=None,
-            terminate_on_success=False, 
+            terminate_on_success=False,
             verbose=False,
             device=None,
-        ):        
+    ):
         """
         Configure video writer, run rollout, and log progress. 
 
@@ -338,14 +340,14 @@ class RolloutEnv:
             video_path = os.path.join(video_dir, f"{video_str}")
             video_writer = imageio.get_writer(video_path, fps=20)
             print("video writes to " + video_path)
-        
+
         rollout_info = self.run_rollout(
-            policy=policy, 
-            demo_id=demo_id, 
-            video_writer=video_writer, 
-            video_skip=video_skip, 
+            policy=policy,
+            demo_id=demo_id,
+            video_writer=video_writer,
+            video_skip=video_skip,
             horizon=horizon,
-            terminate_on_success=terminate_on_success, 
+            terminate_on_success=terminate_on_success,
             device=device,
         )
 

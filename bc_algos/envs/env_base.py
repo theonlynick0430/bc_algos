@@ -8,19 +8,21 @@ from strenum import StrEnum
 
 
 class EnvType(StrEnum):
-    ROBOSUITE="robosuite"
+    ROBOSUITE = "robosuite"
+
 
 class EnvBase(abc.ABC):
     """A base class method for environments used by this repo."""
+
     @abc.abstractmethod
     def __init__(
-        self,
-        env_name, 
-        obs_key_to_modality,
-        render=False, 
-        use_image_obs=False, 
-        use_depth_obs=False, 
-        **kwargs,
+            self,
+            env_name,
+            obs_key_to_modality,
+            render=False,
+            use_image_obs=False,
+            use_depth_obs=False,
+            **kwargs,
     ):
         """
         Args:
@@ -46,7 +48,7 @@ class EnvBase(abc.ABC):
         self._render = render
         self.use_image_obs = use_image_obs
         self.use_depth_obs = use_depth_obs
-    
+
     @abc.abstractmethod
     def load_env(self, xml):
         """
@@ -114,7 +116,7 @@ class EnvBase(abc.ABC):
     def get_observation(self):
         """Get environment observation"""
         return
-    
+
     @abc.abstractmethod
     def is_success(self):
         """
