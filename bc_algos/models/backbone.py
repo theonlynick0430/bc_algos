@@ -80,17 +80,17 @@ class MLP(Backbone):
         layers.append(nn.Linear(prev_dim, np.prod(self._output_dim)))
         self.mlp = nn.Sequential(*layers)
 
-    def forward(self, inputs):
+    def forward(self, input):
         """
         Forward pass through MLP policy.
 
         Args: 
-            inputs (tensor): data of shape [B, @self.embed_dim]
+            input (tensor): data of shape [B, @self.embed_dim]
 
         Returns: output data (tensor) of shape [B, @self.output_dim].
         """
-        inputs = self.dropout(inputs)
-        return self.mlp(inputs)
+        input = self.dropout(input)
+        return self.mlp(input)
     
 
 class Transformer(Backbone):

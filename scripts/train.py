@@ -53,7 +53,7 @@ def train(config):
     valid_loader = DataLoader(validset, batch_size=config.train.batch_size, shuffle=True)
 
     # load obs encoder
-    obs_group_enc = ObservationGroupEncoder(obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY)
+    obs_group_enc = ObservationGroupEncoder.factory(config=config)
 
     # load backbone network
     if config.policy.type == Const.PolicyType.MLP:

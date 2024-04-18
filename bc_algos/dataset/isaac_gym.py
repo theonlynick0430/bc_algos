@@ -1,19 +1,20 @@
 """
 This file contains Dataset classes that are used by torch dataloaders
-to fetch batches from hdf5 files.
+to fetch batches from pickled files.
 """
 from bc_algos.dataset.dataset import SequenceDataset
-import h5py
-import numpy as np
-from tqdm import tqdm
 import bc_algos.utils.constants as Const
 import bc_algos.utils.obs_utils as ObsUtils
-from collections import OrderedDict
+from tqdm import tqdm
+import os
+from bc_algos.utils.misc import load_gzip_pickle
+import numpy as np
+from PIL import Image
 
 
-class RobomimicDataset(SequenceDataset):
+class IsaacGymDataset(SequenceDataset):
     """
-    Class for fetching sequences of experience from Robomimic dataset.
+    Class for fetching sequences of experience from Isaac Gym dataset.
     Length of the fetched sequence is equal to (@self.frame_stack + @self.seq_length)
     """
     def __init__(
@@ -38,7 +39,7 @@ class RobomimicDataset(SequenceDataset):
         SequenceDataset subclass for fetching sequences of experience from HDF5 dataset.
 
         Args:
-            path (str): path to dataset
+            path (str): path to dataset directory
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 
@@ -62,7 +63,7 @@ class RobomimicDataset(SequenceDataset):
             get_pad_mask (bool): if True, also provide padding masks as part of the batch. This can be
                 useful for masking loss functions on padded parts of the data.
 
-            goal_mode (GoalMode): (optional) type of goals to be fetched. 
+            goal_mode (GoalMode): either GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL, or None. 
                 If GoalMode.LAST, provide last observation as goal.
                 If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sampled sequence.
                 If GoalMode.FULL, provide all subgoals for a single batch.
@@ -82,11 +83,10 @@ class RobomimicDataset(SequenceDataset):
             normalize (bool): if True, normalize data using mean and stdv from dataset
         """
         self.path = path
-        self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
         self._demos = demos
 
-        super(RobomimicDataset, self).__init__(
+        super(IsaacGymDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
             obs_group_to_key=obs_group_to_key,
             dataset_keys=dataset_keys,
@@ -104,47 +104,40 @@ class RobomimicDataset(SequenceDataset):
     @property
     def demos(self):
         """
+        Get all demo ids
+        """
+        if self._demos is not None:
+            return self._demos
+        return [i for i in range(len(os.listdir(self.path)))]
+
+    @property
+    def demos(self):
+        """
         Returns: all demo ids.
         """
         if self._demos is None:
             if self.filter_by_attribute is not None:
+                if self.filter_by_attribute == "train":
+
                 self._demos = [elem.decode("utf-8") for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
             else:
                 self._demos = list(self.hdf5_file["data"].keys())
         return self._demos
 
-    @property
-    def hdf5_file(self):
+    def get_demo_len(self, demo_id):
         """
-        This property allows for a lazy hdf5 file open.
+        Get length of demo with demo_id
         """
-        if self._hdf5_file is None:
-            self._hdf5_file = h5py.File(self.path, 'r', swmr=True, libver='latest')
-        return self._hdf5_file   
-
-    def demo_len(self, demo_id):
-        """
-        Args: 
-            demo_id: demo id, ie. "demo_0"
-        
-        Returns: length of demo with @demo_id.
-        """
-        return self.dataset[demo_id]["num_samples"]
-    
-    def __del__(self):
-        if self._hdf5_file is not None:
-            self._hdf5_file.close()
-        self._hdf5_file = None
+        run_path = os.path.join(self.path, f"run_{demo_id}.pkl.gzip")
+        run = load_gzip_pickle(filename=run_path)
+        return run["metadata"]["num_steps"]
 
     def __repr__(self):
         """
         Pretty print the class and important attributes on a call to `print`.
         """
         msg = str(self.__class__.__name__) + "(\n"
-        msg += super(RobomimicDataset, self).__repr__()
-        msg += "\tfilter_key={}\n"+ ")"
-        filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
-        msg = msg.format(filter_key_str)
+        msg += super(IsaacGymDataset, self).__repr__() + ")"
         return msg
 
     def load_dataset_in_memory(self, preprocess):
@@ -160,83 +153,81 @@ class RobomimicDataset(SequenceDataset):
             for demo in self.demos:
                 dataset[demo] = {}
 
+                run_path = os.path.join(self.path, f"run_{demo}.pkl.gzip")
+                run = load_gzip_pickle(run_path)
+
                 # get observations
-                dataset[demo] = {obs_key: self.hdf5_file[f"data/{demo}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
+                dataset[demo] = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
                             dataset[demo][obs_key] = ObsUtils.preprocess_img(img=dataset[demo][obs_key])
 
-                # get other dataset keys
-                for dataset_key in self.dataset_keys:
-                    dataset[demo][dataset_key] = self.hdf5_file[f"data/{demo}/{dataset_key}"][()].astype('float32')
+                demo_len = self.get_demo_len(demo)
 
-                dataset[demo]["num_samples"] = self.hdf5_file[f"data/{demo}"].attrs["num_samples"] 
+                dataset[demo] = {dataset_key: [] for dataset_key in self.dataset_keys}
+                dataset[demo]["obs"] = {obs_key: [] for obs_key in self.obs_keys}
 
-                progress_bar.update(1)
+                for step in range(1, demo_len+1):
+                    state_path = os.path.join(self.path, f"run_{demo}/state_{step}.pkl.gzip")
+                    state = load_gzip_pickle(filename=state_path)
 
-        self.dataset = dataset
+                    # get observations
+                    for obs_key in self.obs_keys:
+                        assert obs_key in state, f"obs_key {obs_key} not found in dataset"
+                        dataset[demo]["obs"][obs_key].append(state[obs_key].astype('float32'))
 
-    def compute_normalization_stats(self):
-        """
-        Compute the mean and stdv for dataset items and store stats at @self.normalization_stats.
-        The format for @self.normalization_stats should be a dictionary from dataset/observation
-        key to a dictionary that contains mean and stdv. 
+                    # TODO: include img obs in pickled files
+                    # assume for now image obs stored in field "agentview_image"
+                    img_path = os.path.join(self.path, f"run_{demo}/im_{step}.png")
+                    img = (np.array(Image.open(img_path))/255.).transpose(2, 0, 1)
+                    dataset[demo]["obs"]["agentview_image"].append(img)
 
-        Example:
-        {
-            "actions": {
-                "mean": ...,
-                "stdv": ...
-            }
-        }
-        """
-        traj_dict = {}
-        merged_stats = {}
+                    # get observations
+                    for dataset_key in self.dataset_keys:
+                        assert dataset_key in state, f"dataset_key {dataset_key} not found in dataset"
+                        dataset[demo][dataset_key].append(state[dataset_key].astype('float32'))
 
-        # don't compute normalization stats for RGB data since we use backbone encoders
-        # with their own normalization stats
-        keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + self.dataset_keys
-
-        with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
-            for i, demo in enumerate(self.demos):
-                traj_dict = {key: self.dataset[demo][key] for key in keys}
-                if i == 0:
-                    merged_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
-                else:
-                    traj_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
-                    merged_stats = ObsUtils.aggregate_traj_stats(traj_stats_a=merged_stats, traj_stats_b=traj_stats)
+                # convert to np arrays
+                dataset[demo] = {dataset_key: np.array([dataset[demo][dataset_key]]) for dataset_key in self.dataset_keys}
+                dataset[demo]["obs"] = {obs_key: np.array([dataset[demo]["obs"][obs_key]]) for obs_key in self.obs_keys}
 
                 progress_bar.update(1)
-        
-        self.normalization_stats = ObsUtils.compute_normalization_stats(traj_stats=merged_stats)
 
-    def normalize_data(self):
-        """
-        Normalize dataset items according to @self.normalization_stats.
-        """
-        with tqdm(total=self.num_demos, desc="normalizing data", unit="demo") as progress_bar:
-            for demo in self.demos:
-                for key in self.normalization_stats:
-                    self.dataset[demo][key] = ObsUtils.normalize(data=self.dataset[demo][key], normalization_stats=self.normalization_stats[key])
-                    
-                progress_bar.update(1)
-    
+        return dataset
+
+
+
     def get_data_seq(self, demo_id, keys, seq_index):
         """
-        Extract a (sub)sequence of dataset items from a demo.
-
+        Extract a (sub)sequence of data items from a demo given the @keys of the items.
         Args:
-            demo_id: demo id, ie. "demo_0"
-
-            keys (array): keys to extract
-
-            seq_index (array): sequence indices
-
-        Returns: ordered dictionary from key to extracted data.
+            demo_id (str): id of the demo, e.g., demo_0
+            keys (tuple): list of keys to extract
+            seq_index (tuple): sequence indices
+        Returns:
+            a dictionary of extracted items.
         """
-        seq = OrderedDict()
+        # fetch observation from the dataset file
+        seq = dict()
         for k in keys:
             data = self.dataset[demo_id][k]
+            seq[k] = data[seq_index]
+
+        return seq
+
+    def get_obs_seq(self, demo_id, keys, seq_index):
+        """
+        Extract a (sub)sequence of observation items from a demo given the @keys of the items.
+        Args:
+            demo_id (str): id of the demo, e.g., demo_0
+            keys (tuple): list of keys to extract
+            seq_index (tuple): sequence indices
+        Returns:
+            a dictionary of extracted items.
+        """
+        seq = dict()
+        for k in keys:
+            data = self.dataset[demo_id]["obs"][k]
             seq[k] = data[seq_index]
         return seq

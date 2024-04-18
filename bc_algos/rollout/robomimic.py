@@ -25,9 +25,9 @@ class RobomimicRolloutEnv(RolloutEnv):
         Args:
             validset (SequenceDataset): validation dataset for rollout
 
-            obs_group_to_key (dict): dictionary mapping observation group to observation key
+            obs_group_to_key (dict): dictionary from observation group to observation key
 
-            obs_key_to_modality (dict): dictionary mapping observation key to modality
+            obs_key_to_modality (dict): dictionary from observation key to modality
 
             frame_stack (int): number of stacked frames to be provided as input to policy
 
@@ -56,14 +56,14 @@ class RobomimicRolloutEnv(RolloutEnv):
     
     def fetch_goal(self, demo_id, t):
         """
-        Get goal for specified demo and time if goal-conditioned.
+        Get goal for specified demo and time.
 
         Args: 
             demo_id: demo id, ie. "demo_0"
 
             t (int): timestep in trajectory
 
-        Returns: goal sequence (np.array) of shape [B=1, T=validset.n_frame_stack+1, ...].
+        Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
         """
         demo_length = self.validset.demo_len(demo_id=demo_id)
         if t >= demo_length:
@@ -71,7 +71,6 @@ class RobomimicRolloutEnv(RolloutEnv):
             t = demo_length-1
         index = self.validset.index_from_timestep(demo_id=demo_id, t=t)
         goal = self.validset[index]["goal"]
-        goal = TensorUtils.slice(x=goal, dim=0, start=0, end=self.n_frame_stack+1)
         goal = TensorUtils.to_batch(x=goal)
         return goal
         
@@ -98,9 +97,8 @@ class RobomimicRolloutEnv(RolloutEnv):
         Args:
             demo_id: demo id, ie. "demo_0"
 
-        Returns: 
-            obs (dict): dictionary from observation key to data (np.array) obtained
-                from environment after initializing demo
+        Returns: dictionary from observation key to data (np.array) obtained
+            from environment after initializing demo
         """
         xml = self.validset.hdf5_file[f"data/{demo_id}"].attrs["model_file"]
         init_state = self.validset.hdf5_file[f"data/{demo_id}/states"][0]

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 
 
-def pos_enc_1d(d_model, T, device=None):
+def pos_enc_1d(d_model, T):
     """
     Return 1D positional encodings for transformer model.
 
@@ -12,24 +12,22 @@ def pos_enc_1d(d_model, T, device=None):
         d_model (int): embedding dim
 
         T (int): temporal dim
-
-        device: (optional) device to send tensors to
     """
     if d_model % 2 != 0:
         raise ValueError("cannot use sin/cos positional encoding with "
                          "odd dim (got dim={:d})".format(d_model))
     
-    pe = torch.zeros(T, d_model, device=device)
+    pe = torch.zeros(T, d_model)
 
-    position = torch.arange(0, T, device=device).unsqueeze(1)
-    div_term = torch.exp((torch.arange(0, d_model, 2, device=device, dtype=torch.float) *
+    position = torch.arange(0, T).unsqueeze(1)
+    div_term = torch.exp((torch.arange(0, d_model, 2, dtype=torch.float) *
                          -(math.log(10000.0) / d_model)))
     pe[:, 0::2] = torch.sin(position.float() * div_term)
     pe[:, 1::2] = torch.cos(position.float() * div_term)
 
     return pe
 
-def pos_enc_2d(d_model, H, W, device=None):
+def pos_enc_2d(d_model, H, W):
     """
     Return 2D positional encodings for transformer model.
 
@@ -39,20 +37,18 @@ def pos_enc_2d(d_model, H, W, device=None):
         H (int): height
 
         W (int): width
-
-        device: (optional) device to send tensors to
     """
     if d_model % 4 != 0:
         raise ValueError("cannot use sin/cos positional encoding with "
                          "odd dimension (got dim={:d})".format(d_model))
     
-    pe = torch.zeros(d_model, H, W, device=device)
+    pe = torch.zeros(d_model, H, W)
 
     d_model = int(d_model / 2)
-    div_term = torch.exp(torch.arange(0., d_model, 2, device=device) *
+    div_term = torch.exp(torch.arange(0., d_model, 2) *
                          -(math.log(10000.0) / d_model))
-    pos_w = torch.arange(0., W, device=device).unsqueeze(1)
-    pos_h = torch.arange(0., H, device=device).unsqueeze(1)
+    pos_w = torch.arange(0., W).unsqueeze(1)
+    pos_h = torch.arange(0., H).unsqueeze(1)
     pe[0:d_model:2, :, :] = torch.sin(pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, H, 1)
     pe[1:d_model:2, :, :] = torch.cos(pos_w * div_term).transpose(0, 1).unsqueeze(1).repeat(1, H, 1)
     pe[d_model::2, :, :] = torch.sin(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, W)

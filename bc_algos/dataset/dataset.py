@@ -57,7 +57,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             get_pad_mask (bool): if True, also provide padding masks as part of the batch. This can be
                 useful for masking loss functions on padded parts of the data.
 
-            goal_mode (str): either GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL, or None. 
+            goal_mode (GoalMode): (optional) type of goals to be fetched. 
                 If GoalMode.LAST, provide last observation as goal.
                 If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sampled sequence.
                 If GoalMode.FULL, provide all subgoals for a single batch.
@@ -86,8 +86,10 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.get_pad_mask = get_pad_mask
 
         if goal_mode is not None:
-            assert "goal" in obs_group_to_key, "observation group, goal, must exist to provide goals"
-            assert goal_mode in [GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL], f"goal_mode {goal_mode} not supported"
+            assert "goal" in obs_group_to_key, "observation group: goal must exist to provide goals"
+            assert goal_mode in [GoalMode.LAST, GoalMode.SUBGOAL, GoalMode.FULL], f"goal_mode: {goal_mode} not supported"
+            if goal_mode == GoalMode.FULL:
+                assert num_subgoal is not None, "goal_mode: full requires the number of subgoals to be specified"
         self.goal_mode = goal_mode
         self.num_subgoal = num_subgoal
 
@@ -277,7 +279,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             seq_index (array): sequence indices
 
-        Returns: ordered dictionary of extracted items.
+        Returns: ordered dictionary from key to extracted data.
         """
         return NotImplementedError
     
@@ -290,10 +292,10 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
         Returns: nested dictionary with three possible items:
         
-            1) obs: dictionary from observation key to data (np.array)
+            1) obs (dict): dictionary from observation key to data (np.array)
                 of shape [T = @self.frame_stack + @self.seq_length, ...]
             
-            2) goal: dictionary from observation key to data (np.array) of shape [T_goal, ...]
+            2) goal (dict): dictionary from observation key to data (np.array) of shape [T_goal, ...]
 
             3) pad_mask (np.array): mask of shape [T = @self.frame_stack + @self.seq_length] 
                 indicating which frames are padding
@@ -393,9 +395,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             goal_index = goal[data_seq_index[self.frame_stack:]]
             
         elif self.goal_mode == GoalMode.FULL:
-            if self.num_subgoal is None:
-                goal_index = np.arange(1, demo_length+1)
-            else:
-                goal_index = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)[1:]
+            goal_index = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)[1:]
 
         return goal_index

@@ -29,9 +29,9 @@ class RolloutEnv:
         Args:
             validset (SequenceDataset): validation dataset for rollout
 
-            obs_group_to_key (dict): dictionary mapping observation group to observation key
+            obs_group_to_key (dict): dictionary from observation group to observation key
 
-            obs_key_to_modality (dict): dictionary mapping observation key to modality
+            obs_key_to_modality (dict): dictionary from observation key to modality
 
             frame_stack (int): number of stacked frames to be provided as input to policy
 
@@ -106,9 +106,9 @@ class RolloutEnv:
             if key in obs: obs[key] = ObsUtils.normalize(data=obs[key], normalization_stats=self.normalization_stats[key])
         return obs
     
-    def inputs_from_initial_obs(self, obs, demo_id):
+    def input_from_initial_obs(self, obs, demo_id):
         """
-        Create inputs for model from initial environment observation.
+        Create model input from initial environment observation.
         For models with history, this requires padding.
 
         Args: 
@@ -116,70 +116,70 @@ class RolloutEnv:
 
             demo_id: demo id, ie. "demo_0"
 
-        Returns: dictionary from observation group to observation key to 
-            data (np.array) of shape [B=1, T=n_frame_stack+1, ...].
+        Returns: nested dictionary from observation group to observation key
+            to data (np.array) of shape [B, T_obs/T_goal, ...]
         """
         if self.normalize:
             obs = self.normalize_obs(obs)
         
-        inputs = OrderedDict()
+        input = OrderedDict()
 
-        inputs["obs"] = OrderedDict()
+        input["obs"] = OrderedDict()
         for obs_key in self.obs_group_to_key["obs"]:
-            assert obs_key in obs, f"could not find observation key {obs_key} in observation from environment"
-            inputs["obs"][obs_key] = obs[obs_key]
+            assert obs_key in obs, f"could not find observation key: {obs_key} in observation from environment"
+            input["obs"][obs_key] = obs[obs_key]
 
-        inputs = TensorUtils.to_batch(inputs)
-        inputs = TensorUtils.to_sequence(inputs)
-        inputs = TensorUtils.repeat_seq(x=inputs, k=self.n_frame_stack+1) # prepare history
+        input = TensorUtils.to_batch(input)
+        input = TensorUtils.to_sequence(input)
+        input = TensorUtils.repeat_seq(x=input, k=self.n_frame_stack+1) # prepare history
 
         if self.gc:
-            inputs["goal"] = self.fetch_goal(demo_id=demo_id, t=0)
+            input["goal"] = self.fetch_goal(demo_id=demo_id, t=0)
             
-        return inputs
+        return input
     
-    def inputs_from_new_obs(self, inputs, obs, demo_id, t):
+    def input_from_new_obs(self, input, obs, demo_id, t):
         """
-        Update inputs for model by shifting history and inserting new observation
+        Update model input by shifting history and inserting new observation
         from environment.
 
         Args: 
-            inputs (dict): dictionary from observation group to observation key
-                to data (np.array) of shape [B=1, T=pad_frame_stack+1, ...]
+            input (dict): nested dictionary from observation group to observation key
+                to data (np.array) of shape [B, T_obs/T_goal, ...]
 
-            obs (dict): maps obs_key to data
+            obs (dict): dictionary from observation key to data (np.array)
 
             demo_id: demo id, ie. "demo_0"
 
             t (int): timestep in trajectory
 
-        Returns: updated input @inputs.
+        Returns: updated input @input.
         """
         if self.normalize:
             obs = self.normalize_obs(obs)
         
-        inputs = TensorUtils.shift_seq(x=inputs, k=-1)
+        input = TensorUtils.shift_seq(x=input, k=-1)
 
         for obs_key in self.obs_group_to_key["obs"]:
-            assert obs_key in obs, f"could not find obs_key {obs_key} in obs from environment"
+            assert obs_key in obs, f"could not find obs_key: {obs_key} in obs from environment"
             # only update last seq index to preserve history
-            inputs["obs"][obs_key][:, -1, :] = obs[obs_key]
+            input["obs"][obs_key][:, -1, :] = obs[obs_key]
         
         if self.gc:
-            inputs["goal"] = self.fetch_goal(demo_id=demo_id, t=t)
+            input["goal"] = self.fetch_goal(demo_id=demo_id, t=t)
 
-        return inputs
+        return input
     
     def fetch_goal(self, demo_id, t):
         """
-        Get goal for specified demo and time if goal-conditioned.
+        Get goal for specified demo and time.
 
         Args: 
             demo_id: demo id, ie. "demo_0"
 
             t (int): timestep in trajectory
 
-        Returns: goal sequence (np.array) of shape [B=1, T=validset.n_frame_stack+1, ...].
+        Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
         """
         return NotImplementedError
     
@@ -191,9 +191,8 @@ class RolloutEnv:
         Args:
             demo_id: demo id, ie. "demo_0"
 
-        Returns: 
-            obs (dict): dictionary from observation key to data (np.array) obtained
-                from environment after initializing demo
+        Returns: dictionary from observation key to data (np.array) obtained
+            from environment after initializing demo.
         """
         return NotImplementedError
 
@@ -226,8 +225,7 @@ class RolloutEnv:
 
             device: (optional) device to send tensors to
 
-        Returns:
-            results (dict): dictionary of results with the keys "horizon" and "success"
+        Returns: dictionary of results with the keys "horizon" and "success".
         """
         assert isinstance(policy, BC)
 
@@ -239,8 +237,8 @@ class RolloutEnv:
 
         obs = self.init_demo(demo_id=demo_id)
 
-        # policy inputs from initial observation
-        inputs = self.inputs_from_initial_obs(obs=obs, demo_id=demo_id)
+        # policy input from initial observation
+        input = self.input_from_initial_obs(obs=obs, demo_id=demo_id)
 
         results = {}
         video_count = 0  # video frame counter
@@ -249,9 +247,9 @@ class RolloutEnv:
         step_i = 0
         # iterate until horizon reached or termination on success
         while step_i < horizon and not (terminate_on_success and success):
-            # compute new inputs
-            inputs = self.inputs_from_new_obs(inputs=inputs, obs=obs, demo_id=demo_id, t=step_i)
-            x = BC.prepare_inputs(inputs=inputs, device=device)
+            # compute new input
+            input = self.input_from_new_obs(input=input, obs=obs, demo_id=demo_id, t=step_i)
+            x = BC.prepare_input(input=input, device=device)
 
             # query policy for actions
             actions = policy(x)
@@ -323,8 +321,7 @@ class RolloutEnv:
 
             device: (optional) device to send tensors to
 
-        Returns:
-            results (dict): dictionary of results with the keys "time", "horizon", and "success"
+        Returns: dictionary of results with the keys "time", "horizon", and "success".
         """
         assert isinstance(policy, BC)
 
