@@ -159,17 +159,18 @@ class BC_Transformer(BC):
         """
         self.embeddings = nn.Embedding(len(self.obs_group_enc.output_dim), self.embed_dim)
 
-        self.obs_group_to_pos_enc = {}
+        self.obs_group_to_pos_enc = nn.ParameterDict()
         for obs_group in self.obs_group_enc.output_dim:
             T = self.num_goal if obs_group == "goal" else self.history+1
             N = self.obs_group_enc.output_dim[obs_group] // self.embed_dim
             pos_enc = pos_enc_1d(d_model=self.embed_dim, T=T)
             pos_enc = pos_enc.unsqueeze(1).repeat(1, N, 1).view(-1, self.embed_dim)
-            self.register_buffer(f"_{obs_group}_pos_enc", pos_enc)
+            pos_enc = nn.Parameter(pos_enc)
+            pos_enc.requires_grad = False # buffer
             self.obs_group_to_pos_enc[obs_group] = pos_enc
 
-        self.tgt = pos_enc_1d(d_model=self.embed_dim, T=self.action_chunk)
-        self.register_buffer("_tgt", self.tgt)
+        self.tgt = nn.Parameter(pos_enc_1d(d_model=self.embed_dim, T=self.action_chunk))
+        self.tgt.requires_grad = False # buffer
 
     def forward(self, input):
         """
@@ -185,8 +186,9 @@ class BC_Transformer(BC):
         latent_dict = TensorUtils.time_distributed(input=input, op=self.obs_group_enc)
         src = []
         for i, (obs_group, latent) in enumerate(latent_dict.items()):
+            device = latent.device
             latent = latent.view(B, -1, self.embed_dim)
-            embedding = self.embeddings(LongTensor([i]))
+            embedding = self.embeddings(LongTensor([i]).to(device))
             pos_enc = self.obs_group_to_pos_enc[obs_group]
             src.append(latent + embedding + pos_enc)
         src = torch.cat(src, dim=-2)

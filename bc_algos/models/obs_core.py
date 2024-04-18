@@ -188,8 +188,8 @@ class ResNet18Core(EncoderCore):
     
     def create_layers(self):
         C, H, W = self.embed_shape
-        self.pos_enc = pos_enc_2d(d_model=C, H=H, W=W)
-        self.register_buffer("_pos_enc", self.pos_enc)
+        self.pos_enc = nn.Parameter(pos_enc_2d(d_model=C, H=H, W=W))
+        self.pos_enc.requires_grad = False # buffer
         self.preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
         resnet18_classifier = models.resnet18(pretrained=True)
         # remove pooling and fc layers
