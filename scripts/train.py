@@ -112,7 +112,7 @@ def train(config):
     )
 
     # wandb login
-    wandb.init(project=config.experiment.name)
+    wandb.init(project="mental-models", name=config.experiment.name, config=dict(config))
 
     # iterate epochs
     valid_ct = 0

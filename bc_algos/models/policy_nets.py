@@ -112,7 +112,7 @@ class BC_Transformer(BC):
         self.num_goal = num_goal
         self.embed_dim = backbone.embed_dim
 
-        self.create_pos_enc()
+        # self.create_pos_enc()
 
     @classmethod
     def factory(cls, config, obs_group_enc, backbone, action_dec):
@@ -184,14 +184,15 @@ class BC_Transformer(BC):
         """
         B = TensorUtils.get_batch_dim(input)
         latent_dict = TensorUtils.time_distributed(input=input, op=self.obs_group_enc)
-        src = []
-        for i, (obs_group, latent) in enumerate(latent_dict.items()):
-            device = latent.device
-            latent = latent.view(B, -1, self.embed_dim)
-            embedding = self.embeddings(LongTensor([i]).to(device))
-            pos_enc = self.obs_group_to_pos_enc[obs_group]
-            src.append(latent + embedding + pos_enc)
-        src = torch.cat(src, dim=-2)
+        # src = []
+        # for i, (obs_group, latent) in enumerate(latent_dict.items()):
+        #     device = latent.device
+        #     latent = latent.view(B, -1, self.embed_dim)
+        #     embedding = self.embeddings(LongTensor([i]).to(device))
+        #     pos_enc = self.obs_group_to_pos_enc[obs_group]
+        #     src.append(latent + embedding + pos_enc)
+        # src = torch.cat(src, dim=-2)
+        src = torch.cat([latent.view(B, -1, self.embed_dim) for latent in latent_dict.values()], dim=-2)
         tgt = self.tgt.unsqueeze(0).repeat(B, 1, 1)
         output = self.backbone(src, tgt)
         action = TensorUtils.time_distributed(input=output, op=self.action_dec)
