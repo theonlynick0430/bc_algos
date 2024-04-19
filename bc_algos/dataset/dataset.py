@@ -96,6 +96,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.load_dataset_in_memory(preprocess=preprocess)
 
         self.normalize = normalize
+        self.normalization_stats = None
         if normalize:
             self.compute_normalization_stats()
             self.normalize_data()

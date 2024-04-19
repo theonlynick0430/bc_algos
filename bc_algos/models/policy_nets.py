@@ -112,7 +112,7 @@ class BC_Transformer(BC):
         self.num_goal = num_goal
         self.embed_dim = backbone.embed_dim
 
-        # self.create_pos_enc()
+        self.create_pos_enc()
 
     @classmethod
     def factory(cls, config, obs_group_enc, backbone, action_dec):
@@ -157,17 +157,17 @@ class BC_Transformer(BC):
         """
         Create positional encodings for model input.
         """
-        self.embeddings = nn.Embedding(len(self.obs_group_enc.output_dim), self.embed_dim)
+        # self.embeddings = nn.Embedding(len(self.obs_group_enc.output_dim), self.embed_dim)
 
-        self.obs_group_to_pos_enc = nn.ParameterDict()
-        for obs_group in self.obs_group_enc.output_dim:
-            T = self.num_goal if obs_group == "goal" else self.history+1
-            N = self.obs_group_enc.output_dim[obs_group] // self.embed_dim
-            pos_enc = pos_enc_1d(d_model=self.embed_dim, T=T)
-            pos_enc = pos_enc.unsqueeze(1).repeat(1, N, 1).view(-1, self.embed_dim)
-            pos_enc = nn.Parameter(pos_enc)
-            pos_enc.requires_grad = False # buffer
-            self.obs_group_to_pos_enc[obs_group] = pos_enc
+        # self.obs_group_to_pos_enc = nn.ParameterDict()
+        # for obs_group in self.obs_group_enc.output_dim:
+        #     T = self.num_goal if obs_group == "goal" else self.history+1
+        #     N = self.obs_group_enc.output_dim[obs_group] // self.embed_dim
+        #     pos_enc = pos_enc_1d(d_model=self.embed_dim, T=T)
+        #     pos_enc = pos_enc.unsqueeze(1).repeat(1, N, 1).view(-1, self.embed_dim)
+        #     pos_enc = nn.Parameter(pos_enc)
+        #     pos_enc.requires_grad = False # buffer
+        #     self.obs_group_to_pos_enc[obs_group] = pos_enc
 
         self.tgt = nn.Parameter(pos_enc_1d(d_model=self.embed_dim, T=self.action_chunk))
         self.tgt.requires_grad = False # buffer

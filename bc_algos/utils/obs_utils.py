@@ -205,7 +205,8 @@ def compute_normalization_stats(traj_stats):
     normalization_stats = {key: {} for key in traj_stats}
     for key in traj_stats:
         normalization_stats[key]["mean"] = traj_stats[key]["mean"]
-        normalization_stats[key]["stdv"] =  (traj_stats[key]["sqdiff"] / traj_stats[key]["n"]) ** 0.5
+        # add small tolerance for stdv
+        normalization_stats[key]["stdv"] =  (traj_stats[key]["sqdiff"] / traj_stats[key]["n"] + 1e-3) ** 0.5
     return normalization_stats
 
 def normalize(data, normalization_stats):
