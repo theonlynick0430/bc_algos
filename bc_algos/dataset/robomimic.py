@@ -1,13 +1,10 @@
-"""
-This file contains Dataset classes that are used by torch dataloaders
-to fetch batches from hdf5 files.
-"""
 from bc_algos.dataset.dataset import SequenceDataset
 import h5py
 import numpy as np
 from tqdm import tqdm
 import bc_algos.utils.constants as Const
 import bc_algos.utils.obs_utils as ObsUtils
+from bc_algos.envs.robosuite import EnvRobosuite
 from collections import OrderedDict
 
 
@@ -35,8 +32,6 @@ class RobomimicDataset(SequenceDataset):
         normalize=True,
     ):
         """
-        SequenceDataset subclass for fetching sequences of experience from HDF5 dataset.
-
         Args:
             path (str): path to dataset
 
@@ -72,10 +67,10 @@ class RobomimicDataset(SequenceDataset):
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
 
-            filter_by_attribute (str): if provided, use the provided filter key to look up a subset of
-                demonstrations to load
+            filter_by_attribute (str): (optional) if provided, use the provided filter key 
+                to look up a subset of demos to load
 
-            demos (array): if provided, only load these selected demos
+            demos (array): (optional) if provided, only load demos with these selected ids
 
             preprocess (bool): if True, preprocess data while loading into memory
 
@@ -125,7 +120,7 @@ class RobomimicDataset(SequenceDataset):
     def demo_len(self, demo_id):
         """
         Args: 
-            demo_id: demo id, ie. "demo_0"
+            demo_id (str): demo id, ie. "demo_0"
         
         Returns: length of demo with @demo_id.
         """
@@ -157,21 +152,21 @@ class RobomimicDataset(SequenceDataset):
         dataset = {}
 
         with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
-            for demo in self.demos:
-                dataset[demo] = {}
+            for demo_id in self.demos:
+                dataset[demo_id] = {}
 
                 # get observations
-                dataset[demo] = {obs_key: self.hdf5_file[f"data/{demo}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
+                dataset[demo_id] = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo][obs_key] = ObsUtils.preprocess_img(img=dataset[demo][obs_key])
+                            dataset[demo_id][obs_key] = EnvRobosuite.preprocess_img(img=dataset[demo_id][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
-                    dataset[demo][dataset_key] = self.hdf5_file[f"data/{demo}/{dataset_key}"][()].astype('float32')
+                    dataset[demo_id][dataset_key] = self.hdf5_file[f"data/{demo_id}/{dataset_key}"][()]
 
-                dataset[demo]["num_samples"] = self.hdf5_file[f"data/{demo}"].attrs["num_samples"] 
+                dataset[demo_id]["num_samples"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
 
                 progress_bar.update(1)
 
@@ -199,8 +194,8 @@ class RobomimicDataset(SequenceDataset):
         keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + self.dataset_keys
 
         with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
-            for i, demo in enumerate(self.demos):
-                traj_dict = {key: self.dataset[demo][key] for key in keys}
+            for i, demo_id in enumerate(self.demos):
+                traj_dict = {key: self.dataset[demo_id][key] for key in keys}
                 if i == 0:
                     merged_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
                 else:
@@ -209,16 +204,16 @@ class RobomimicDataset(SequenceDataset):
 
                 progress_bar.update(1)
         
-        self.normalization_stats = ObsUtils.compute_normalization_stats(traj_stats=merged_stats)
+        self.normalization_stats = ObsUtils.compute_normalization_stats(traj_stats=merged_stats, tol=1e-3)
 
     def normalize_data(self):
         """
         Normalize dataset items according to @self.normalization_stats.
         """
         with tqdm(total=self.num_demos, desc="normalizing data", unit="demo") as progress_bar:
-            for demo in self.demos:
+            for demo_id in self.demos:
                 for key in self.normalization_stats:
-                    self.dataset[demo][key] = ObsUtils.normalize(data=self.dataset[demo][key], normalization_stats=self.normalization_stats[key])
+                    self.dataset[demo_id][key] = ObsUtils.normalize(data=self.dataset[demo_id][key], normalization_stats=self.normalization_stats[key])
                     
                 progress_bar.update(1)
     
@@ -227,7 +222,7 @@ class RobomimicDataset(SequenceDataset):
         Extract a (sub)sequence of dataset items from a demo.
 
         Args:
-            demo_id: demo id, ie. "demo_0"
+            demo_id (str): demo id, ie. "demo_0"
 
             keys (array): keys to extract
 

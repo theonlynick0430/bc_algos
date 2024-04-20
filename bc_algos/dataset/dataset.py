@@ -1,7 +1,3 @@
-"""
-This file contains abstract Dataset classes that are used by torch dataloaders
-to fetch batches from datasets.
-"""
 import numpy as np
 import torch.utils.data
 import bc_algos.utils.tensor_utils as TensorUtils
@@ -161,7 +157,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     def demo_len(self, demo_id):
         """
         Args: 
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
         
         Returns: length of demo with @demo_id.
         """
@@ -170,7 +166,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     def index_from_timestep(self, demo_id, t):
         """
         Args: 
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
             t (int): timestep in demo
 
@@ -196,14 +192,16 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Pretty print the class and important attributes on a call to `print`.
         """
         msg = "\tframe_stack={}\n\tseq_length={}\n\tpad_frame_stack={}\n\tpad_seq_length={}\n"
-        msg += "\tgoal_mode={}\n\tnum_subgoal={}\n"
         msg += "\tnum_demos={}\n\tnum_sequences={}\n"
+        msg += "\tgoal_mode={}\n\tnum_subgoal={}\n"
+        msg += "\tnormalize={}\n"
         goal_mode_str = self.goal_mode if self.goal_mode is not None else "none"
         num_subgoal_str = self.num_subgoal if self.num_subgoal is not None else "none"
         msg = msg.format(
-            self.frame_stack, self.seq_length, self.pad_frame_stack, self.pad_seq_length, 
+            self.frame_stack, self.seq_length, self.pad_frame_stack, self.pad_seq_length,
+            self.num_demos, self.total_num_sequences,
             goal_mode_str, num_subgoal_str,
-            self.num_demos, self.total_num_sequences
+            self.normalize,
         )
         return msg
     
@@ -274,7 +272,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Extract a (sub)sequence of dataset items from a demo.
 
         Args:
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
             keys (array): keys to extract
 
@@ -342,7 +340,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Get sequence indices and pad mask to extract data from a demo. 
 
         Args:
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
             index_in_demo (int): beginning index of the sequence wrt the demo
 
@@ -376,7 +374,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Get sequence indices to extract goals from a demo. 
 
         Args:
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
             data_seq_index (array): sequence indices
 

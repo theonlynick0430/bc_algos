@@ -114,7 +114,7 @@ class RolloutEnv:
         Args: 
             obs (dict): dictionary from observation key to data (np.array)
 
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
         Returns: nested dictionary from observation group to observation key
             to data (np.array) of shape [B, T_obs/T_goal, ...]
@@ -149,7 +149,7 @@ class RolloutEnv:
 
             obs (dict): dictionary from observation key to data (np.array)
 
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
             t (int): timestep in trajectory
 
@@ -175,7 +175,7 @@ class RolloutEnv:
         Get goal for specified demo and time.
 
         Args: 
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
             t (int): timestep in trajectory
 
@@ -189,7 +189,7 @@ class RolloutEnv:
         and setting simulator state. 
 
         Args:
-            demo_id: demo id, ie. "demo_0"
+            demo_id: demo id
 
         Returns: dictionary from observation key to data (np.array) obtained
             from environment after initializing demo.
@@ -212,7 +212,7 @@ class RolloutEnv:
         Args:
             policy (BC): policy to use for rollouts
 
-            demo_id: demo id, ie. "demo_0", to rollout
+            demo_id: id of demo to rollout
 
             video_writer (imageio.Writer): if not None, use video writer object to append frames at 
                 rate given by @video_skip
@@ -304,7 +304,7 @@ class RolloutEnv:
         Args:
             policy (RolloutPolicy): policy to use for rollouts
 
-            demo_id: demo id, ie. "demo_0", to rollout
+            demo_id: id of demo to rollout
 
             video_dir (str): (optional) directory to save rollout videos
 

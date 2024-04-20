@@ -12,7 +12,6 @@ import robosuite.utils.transform_utils as T
 
 import bc_algos.envs.env_base as EB
 import bc_algos.utils.constants as Const
-import bc_algos.utils.obs_utils as ObsUtils
 
 # protect against missing mujoco-py module, since robosuite might be using mujoco-py or DM backend
 try:
@@ -80,6 +79,23 @@ class EnvRobosuite(EB.EnvBase):
         self.init_kwargs = deepcopy(kwargs)
 
         self.env = robosuite.make(self.env_name, **kwargs)
+
+    @classmethod
+    def preprocess_img(cls, img):
+        """
+        Helper function to preprocess images from Robosuite environment. 
+        Specifically does the following:
+        1) Changes shape of @img from [H, W, 3] to [3, H, W]
+        2) Changes scale of @img from [0, 255] to [0, 1]
+
+        Args: 
+            img (np.array): image data of shape [..., H, W, 3]
+
+        Returns: preprocessed @img of shape [..., 3, H, W].
+        """
+        img = np.moveaxis(img.astype(float), -1, -3)
+        img /= 255.
+        return img.clip(0., 1.)
 
     def step(self, action):
         """
@@ -178,7 +194,7 @@ class EnvRobosuite(EB.EnvBase):
         for k in di:
             if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
                 # by default images from mujoco are flipped in height
-                obs[k] = ObsUtils.preprocess_img(di[k][::-1])
+                obs[k] = EnvRobosuite.preprocess_img(di[k][::-1])
             elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.DEPTH:
                 # by default depth images from mujoco are flipped in height
                 obs[k] = di[k][::-1]

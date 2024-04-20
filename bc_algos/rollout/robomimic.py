@@ -59,7 +59,7 @@ class RobomimicRolloutEnv(RolloutEnv):
         Get goal for specified demo and time.
 
         Args: 
-            demo_id: demo id, ie. "demo_0"
+            demo_id (str): demo id, ie. "demo_0"
 
             t (int): timestep in trajectory
 
@@ -95,7 +95,7 @@ class RobomimicRolloutEnv(RolloutEnv):
         and setting simulator state. 
 
         Args:
-            demo_id: demo id, ie. "demo_0"
+            demo_id (str): demo id, ie. "demo_0"
 
         Returns: dictionary from observation key to data (np.array) obtained
             from environment after initializing demo

@@ -129,19 +129,6 @@ def deinit_obs_utils():
     for modality in list(MODALITY_TO_ENC_CORE_CLASS.keys()):
         unregister_encoder_core_class(modality=modality)
 
-def preprocess_img(img):
-    """
-    Helper function to preprocess images. Specifically does the following:
-    1) Changes shape of @img from [H, W, 3] to [3, H, W]
-    2) Changes scale of @img from [0, 255] to [0, 1]
-
-    Args: 
-        img (np.array): image data of shape [..., H, W, 3]
-    """
-    img = np.moveaxis(img.astype(float), -1, -3)
-    img /= 255.
-    return img.clip(0., 1.)
-
 def compute_traj_stats(traj_dict):
     """
     Compute stats over a trajectory of data. Specifically, compute for each key
@@ -188,7 +175,7 @@ def aggregate_traj_stats(traj_stats_a, traj_stats_b):
         merged_stats[k] = dict(n=n, mean=mean, sqdiff=M2)
     return merged_stats
 
-def compute_normalization_stats(traj_stats):
+def compute_normalization_stats(traj_stats, tol=0.):
     """
     Compute normalization stats over a trajectory of data. Specifically, compute for each key
     1) mean 
@@ -198,6 +185,8 @@ def compute_normalization_stats(traj_stats):
         traj_stats (dict): nested dictionary that maps dataset/observation key
             to a dictionary that contains trajectory stats
 
+        tol (float): tolerance for stdv
+
     Returns:
         normalization_stats (dict): nested dictionary that maps dataset/observation key
             to a dictionary that contains normalization stats
@@ -205,8 +194,7 @@ def compute_normalization_stats(traj_stats):
     normalization_stats = {key: {} for key in traj_stats}
     for key in traj_stats:
         normalization_stats[key]["mean"] = traj_stats[key]["mean"]
-        # add small tolerance for stdv
-        normalization_stats[key]["stdv"] =  (traj_stats[key]["sqdiff"] / traj_stats[key]["n"] + 1e-3) ** 0.5
+        normalization_stats[key]["stdv"] =  (traj_stats[key]["sqdiff"] / traj_stats[key]["n"] + tol) ** 0.5
     return normalization_stats
 
 def normalize(data, normalization_stats):
