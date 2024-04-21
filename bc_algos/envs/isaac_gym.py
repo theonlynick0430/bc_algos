@@ -2,7 +2,7 @@ import bc_algos.envs.env_base as EB
 import numpy as np
 
 
-class EnvIsaacGym(EB.EnvBase):
+class IsaacGymEnv(EB.BaseEnv):
 
     @classmethod
     def preprocess_img(cls, img):

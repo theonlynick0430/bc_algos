@@ -1,6 +1,6 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.constants as Const
-from bc_algos.envs.isaac_gym import EnvIsaacGym
+from bc_algos.envs.isaac_gym import IsaacGymEnv
 from bc_algos.utils.misc import load_gzip_pickle
 from tqdm import tqdm
 import os
@@ -148,13 +148,13 @@ class IsaacGymDataset(SequenceDataset):
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo_id][obs_key] = EnvIsaacGym.preprocess_img(img=dataset[demo_id][obs_key])
+                            dataset[demo_id][obs_key] = IsaacGymEnv.preprocess_img(img=dataset[demo_id][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
                     dataset[demo_id][dataset_key] = run["policy"][dataset_key]
 
-                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]-1
+                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]
 
                 progress_bar.update(1)
 

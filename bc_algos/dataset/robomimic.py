@@ -2,7 +2,7 @@ from bc_algos.dataset.dataset import SequenceDataset
 import h5py
 from tqdm import tqdm
 import bc_algos.utils.constants as Const
-from bc_algos.envs.robosuite import EnvRobosuite
+from bc_algos.envs.robosuite import RobosuiteEnv
 
 
 class RobomimicDataset(SequenceDataset):
@@ -144,7 +144,7 @@ class RobomimicDataset(SequenceDataset):
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo_id][obs_key] = EnvRobosuite.preprocess_img(img=dataset[demo_id][obs_key])
+                            dataset[demo_id][obs_key] = RobosuiteEnv.preprocess_img(img=dataset[demo_id][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:

@@ -13,7 +13,7 @@ import robosuite.utils.transform_utils as T
 import bc_algos.envs.env_base as EB
 import bc_algos.utils.constants as Const
 
-# protect against missing mujoco-py module, since robosuite might be using mujoco-py or DM backend
+# protect against missing mujoco-py module, since Robosuite might be using mujoco-py or DM backend
 try:
     import mujoco_py
     MUJOCO_EXCEPTIONS = [mujoco_py.builder.MujocoException]
@@ -21,8 +21,10 @@ except ImportError:
     MUJOCO_EXCEPTIONS = []
 
 
-class EnvRobosuite(EB.EnvBase):
-    """Wrapper class for robosuite environments (https://github.com/ARISE-Initiative/robosuite)"""
+class RobosuiteEnv(EB.BaseEnv):
+    """
+    Class for interacting with Robosuite environments (https://github.com/ARISE-Initiative/robosuite).
+    """
     def __init__(
         self, 
         env_name,
@@ -37,7 +39,7 @@ class EnvRobosuite(EB.EnvBase):
             env_name (str): name of environment. Only needs to be provided if making a different
                 environment from the one in @env_meta.
 
-            obs_key_to_modality (dict): dictionary mapping observation key to modality
+            obs_key_to_modality (dict): dictionary from observation key to modality
 
             render (bool): if True, environment supports on-screen rendering
 
@@ -51,7 +53,7 @@ class EnvRobosuite(EB.EnvBase):
 
             kwargs (dict): environment specific parameters
         """
-        super(EnvRobosuite, self).__init__(
+        super(RobosuiteEnv, self).__init__(
             env_name=env_name, 
             obs_key_to_modality=obs_key_to_modality,
             render=render,
@@ -96,29 +98,6 @@ class EnvRobosuite(EB.EnvBase):
         img = np.moveaxis(img.astype(float), -1, -3)
         img /= 255.
         return img.clip(0., 1.)
-
-    def step(self, action):
-        """
-        Step in the environment with an action.
-
-        Args:
-            action (np.array): action to take
-
-        Returns:
-            observation (dict): new observation dictionary
-        """
-        obs, _, _, _ = self.env.step(action)
-        return self.get_observation(obs)
-
-    def reset(self):
-        """
-        Reset environment.
-
-        Returns:
-            observation (dict): initial observation dictionary.
-        """
-        obs = self.env.reset()
-        return self.get_observation(obs)
     
     def load_env(self, xml):
         """
@@ -131,23 +110,70 @@ class EnvRobosuite(EB.EnvBase):
         self.env.reset_from_xml_string(xml)
         self.env.sim.reset()
 
+    def step(self, action):
+        """
+        Step in the environment with an action.
+
+        Args:
+            action (np.array): action to take
+
+        Returns: observation dictionary after executing action.
+        """
+        obs, _, _, _ = self.env.step(action)
+        return self.get_observation(obs)
+
+    def reset(self):
+        """
+        Reset environment.
+
+        Returns: observation dictionary after resetting environment.
+        """
+        obs = self.env.reset()
+        return self.get_observation(obs)
+
     def reset_to(self, state):
         """
         Reset to a specific simulator state.
 
         Args:
-            state (np.ndarray): initial state of the mujoco environment
+            state (array): current simulator state
         
-        Returns:
-            observation (dict): observation dictionary after setting the simulator state
+        Returns: observation dictionary after setting the simulator state.
         """
         self.env.sim.set_state_from_flattened(state)
         self.env.sim.forward()
         return self.get_observation()
     
+    def get_observation(self, di=None):
+        """
+        Args:
+            di (dict): current raw observation dictionary from Robosuite to wrap and provide 
+                as a dictionary. If not provided, will be queried from Robosuite.
+
+        Returns: observation dictionary from environment. 
+        """
+        if di is None:
+            di = self.env._get_observations(force_update=True)
+        obs = {}
+        for k in di:
+            if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
+                # by default images from mujoco are flipped in height
+                obs[k] = RobosuiteEnv.preprocess_img(di[k][::-1])
+            elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.DEPTH:
+                # by default depth images from mujoco are flipped in height
+                obs[k] = di[k][::-1]
+                if len(obs[k].shape) == 2:
+                    obs[k] = obs[k][None, ...] # (1, H, W)
+                assert len(obs[k].shape) == 3 
+                # scale entries in depth map to correspond to real distance.
+                obs[k] = self.get_real_depth_map(obs[k])
+            elif k in self.obs_key_to_modality:
+                obs[k] = di[k]
+        return obs
+    
     def is_success(self):
         """
-        Check if the task conditions are reached.
+        Returns: whether the task conditions are reached.
         """
         succ = self.env._check_success()
         if isinstance(succ, dict):
@@ -180,37 +206,10 @@ class EnvRobosuite(EB.EnvBase):
                 return im[0][::-1]
             return im[::-1]
 
-    def get_observation(self, di=None):
-        """
-        Get environment observation
-        
-        Args:
-            di (dict): current raw observation dictionary from robosuite to wrap and provide 
-                as a dictionary. If not provided, will be queried from robosuite.
-        """
-        if di is None:
-            di = self.env._get_observations(force_update=True)
-        obs = {}
-        for k in di:
-            if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
-                # by default images from mujoco are flipped in height
-                obs[k] = EnvRobosuite.preprocess_img(di[k][::-1])
-            elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.DEPTH:
-                # by default depth images from mujoco are flipped in height
-                obs[k] = di[k][::-1]
-                if len(obs[k].shape) == 2:
-                    obs[k] = obs[k][None, ...] # (1, H, W)
-                assert len(obs[k].shape) == 3 
-                # scale entries in depth map to correspond to real distance.
-                obs[k] = self.get_real_depth_map(obs[k])
-            elif k in self.obs_key_to_modality:
-                obs[k] = di[k]
-        return obs
-
     def get_real_depth_map(self, depth_map):
         """
         Reproduced from https://github.com/ARISE-Initiative/robosuite/blob/c57e282553a4f42378f2635b9a3cbc4afba270fd/robosuite/utils/camera_utils.py#L106
-        since older versions of robosuite do not have this conversion from normalized depth values returned by MuJoCo
+        since older versions of Robosuite do not have this conversion from normalized depth values returned by MuJoCo
         to real depth values.
         """
         # Make sure that depth values are normalized
@@ -223,10 +222,14 @@ class EnvRobosuite(EB.EnvBase):
     def get_camera_intrinsic_matrix(self, camera_name, camera_height, camera_width):
         """
         Obtains camera intrinsic matrix.
+
         Args:
             camera_name (str): name of camera
+            
             camera_height (int): height of camera images in pixels
+
             camera_width (int): width of camera images in pixels
+
         Return:
             K (np.array): 3x3 camera matrix
         """
@@ -243,9 +246,11 @@ class EnvRobosuite(EB.EnvBase):
         camera body axis, so we also apply a correction so that the x and y
         axis are along the camera view and the z axis points along the
         viewpoint.
-        Normal camera convention: https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+        Normal camera convention: https://docs.opencv.org/2.4/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html.
+
         Args:
             camera_name (str): name of camera
+
         Return:
             R (np.array): 4x4 camera extrinsic matrix
         """
@@ -264,10 +269,12 @@ class EnvRobosuite(EB.EnvBase):
     def get_camera_transform_matrix(self, camera_name, camera_height, camera_width):
         """
         Camera transform matrix to project from world coordinates to pixel coordinates.
+
         Args:
             camera_name (str): name of camera
             camera_height (int): height of camera images in pixels
             camera_width (int): width of camera images in pixels
+            
         Return:
             K (np.array): 4x4 camera matrix to project from world coordinates to pixel coordinates
         """
