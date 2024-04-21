@@ -6,6 +6,7 @@ IMAGE_NET_STD = [0.229, 0.224, 0.225]
 
 class DatasetType(StrEnum):
     ROBOMIMIC="robomimic"
+    ISAAC_GYM="isaac_gym"
 
 
 class GoalMode(StrEnum):

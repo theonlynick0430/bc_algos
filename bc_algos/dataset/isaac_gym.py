@@ -1,12 +1,10 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.constants as Const
-import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.envs.isaac_gym import EnvIsaacGym
 from bc_algos.utils.misc import load_gzip_pickle
 from tqdm import tqdm
 import os
-import numpy as np
-from collections import OrderedDict
+
 
 class IsaacGymDataset(SequenceDataset):
     """
@@ -58,8 +56,8 @@ class IsaacGymDataset(SequenceDataset):
                 useful for masking loss functions on padded parts of the data.
 
             goal_mode (GoalMode): (optional) type of goals to be fetched. 
-                If GoalMode.LAST, provide last observation as goal.
-                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sampled sequence.
+                If GoalMode.LAST, provide last observation as goal for each frame.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame.
                 If GoalMode.FULL, provide all subgoals for a single batch.
                 Defaults to None, or no goals. 
 
@@ -95,21 +93,6 @@ class IsaacGymDataset(SequenceDataset):
             normalize=normalize,
         )
 
-    @classmethod
-    def preprocess_img(cls, img):
-        """
-        Helper function to preprocess images. Specifically does the following:
-        1) Removes alpha (last) channel from @img.
-        2) Changes shape of @img from [H, W, 3] to [3, H, W]
-        3) Changes scale of @img from [0, 255] to [0, 1]
-
-        Args: 
-            img (np.array): image data of shape [..., H, W, 3]
-        """
-        img = np.moveaxis(img.astype(float), -1, -3)
-        img /= 255.
-        return img.clip(0., 1.)
-
     def demo_id_to_run_path(self, demo_id):
         """
         Args: 
@@ -133,32 +116,24 @@ class IsaacGymDataset(SequenceDataset):
                 self._demos = [i for i in range(len(os.listdir(self.path))) if os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
         return self._demos
     
-    def demo_len(self, demo_id):
+    def load_dataset(self, preprocess):
         """
-        Args: 
-            demo_id (int): demo id, ie. 0
-        
-        Returns: length of demo with @demo_id.
-        """
-        return self.dataset[demo_id]["num_steps"]
-
-    def __repr__(self):
-        """
-        Pretty print the class and important attributes on a call to `print`.
-        """
-        msg = str(self.__class__.__name__) + "(\n"
-        msg += super(IsaacGymDataset, self).__repr__()
-        msg += "\tfilter_key={}\n"+ ")"
-        filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
-        msg = msg.format(filter_key_str)
-        return msg
-
-    def load_dataset_in_memory(self, preprocess):
-        """
-        Load the dataset into memory.
+        Load dataset into memory.
 
         Args: 
             preprocess (bool): if True, preprocess data while loading into memory
+
+        Returns: nested dictionary with the following format:
+        {
+            demo_id: {
+                dataset_key: data (np.array) of shape [T, ...]
+                ...
+                obs_key: data (np.array) of shape [T, ...]
+                ...
+                "steps": length of trajectory
+            }
+            ...
+        }
         """
         dataset = {}
 
@@ -179,27 +154,19 @@ class IsaacGymDataset(SequenceDataset):
                 for dataset_key in self.dataset_keys:
                     dataset[demo_id][dataset_key] = run["policy"][dataset_key]
 
-                dataset[demo_id]["num_steps"] = run["metadata"]["num_steps"]
+                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]-1
 
                 progress_bar.update(1)
 
-        self.dataset = dataset
+        return dataset
 
-    def get_data_seq(self, demo_id, keys, seq_index):
+    def __repr__(self):
         """
-        Extract a (sub)sequence of dataset items from a demo.
-
-        Args:
-             demo_id (int): demo id, ie. 0
-
-            keys (array): keys to extract
-
-            seq_index (array): sequence indices
-
-        Returns: ordered dictionary from key to extracted data.
+        Pretty print the class and important attributes on a call to `print`.
         """
-        seq = OrderedDict()
-        for k in keys:
-            data = self.dataset[demo_id][k]
-            seq[k] = data[seq_index]
-        return seq
+        msg = str(self.__class__.__name__) + "(\n"
+        msg += super(IsaacGymDataset, self).__repr__()
+        msg += "\tfilter_key={}\n"+ ")"
+        filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
+        msg = msg.format(filter_key_str)
+        return msg

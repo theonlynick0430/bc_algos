@@ -1,11 +1,8 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import h5py
-import numpy as np
 from tqdm import tqdm
 import bc_algos.utils.constants as Const
-import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.envs.robosuite import EnvRobosuite
-from collections import OrderedDict
 
 
 class RobomimicDataset(SequenceDataset):
@@ -58,8 +55,8 @@ class RobomimicDataset(SequenceDataset):
                 useful for masking loss functions on padded parts of the data.
 
             goal_mode (GoalMode): (optional) type of goals to be fetched. 
-                If GoalMode.LAST, provide last observation as goal.
-                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame in sampled sequence.
+                If GoalMode.LAST, provide last observation as goal for each frame.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame.
                 If GoalMode.FULL, provide all subgoals for a single batch.
                 Defaults to None, or no goals. 
 
@@ -97,6 +94,15 @@ class RobomimicDataset(SequenceDataset):
         )
 
     @property
+    def hdf5_file(self):
+        """
+        This property allows for a lazy hdf5 file open.
+        """
+        if self._hdf5_file is None:
+            self._hdf5_file = h5py.File(self.path, 'r', swmr=True, libver='latest')
+        return self._hdf5_file  
+
+    @property
     def demos(self):
         """
         Returns: all demo ids.
@@ -107,47 +113,25 @@ class RobomimicDataset(SequenceDataset):
             else:
                 self._demos = list(self.hdf5_file["data"].keys())
         return self._demos
-
-    @property
-    def hdf5_file(self):
-        """
-        This property allows for a lazy hdf5 file open.
-        """
-        if self._hdf5_file is None:
-            self._hdf5_file = h5py.File(self.path, 'r', swmr=True, libver='latest')
-        return self._hdf5_file   
-
-    def demo_len(self, demo_id):
-        """
-        Args: 
-            demo_id (str): demo id, ie. "demo_0"
-        
-        Returns: length of demo with @demo_id.
-        """
-        return self.dataset[demo_id]["num_samples"]
     
-    def __del__(self):
-        if self._hdf5_file is not None:
-            self._hdf5_file.close()
-        self._hdf5_file = None
-
-    def __repr__(self):
+    def load_dataset(self, preprocess):
         """
-        Pretty print the class and important attributes on a call to `print`.
-        """
-        msg = str(self.__class__.__name__) + "(\n"
-        msg += super(RobomimicDataset, self).__repr__()
-        msg += "\tfilter_key={}\n"+ ")"
-        filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
-        msg = msg.format(filter_key_str)
-        return msg
-
-    def load_dataset_in_memory(self, preprocess):
-        """
-        Load the dataset into memory.
+        Load dataset into memory.
 
         Args: 
             preprocess (bool): if True, preprocess data while loading into memory
+
+        Returns: nested dictionary with the following format:
+        {
+            demo_id: {
+                dataset_key: data (np.array) of shape [T, ...]
+                ...
+                obs_key: data (np.array) of shape [T, ...]
+                ...
+                "steps": length of trajectory
+            }
+            ...
+        }
         """
         dataset = {}
 
@@ -166,72 +150,24 @@ class RobomimicDataset(SequenceDataset):
                 for dataset_key in self.dataset_keys:
                     dataset[demo_id][dataset_key] = self.hdf5_file[f"data/{demo_id}/{dataset_key}"][()]
 
-                dataset[demo_id]["num_samples"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
+                dataset[demo_id]["steps"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
 
                 progress_bar.update(1)
 
-        self.dataset = dataset
-
-    def compute_normalization_stats(self):
-        """
-        Compute the mean and stdv for dataset items and store stats at @self.normalization_stats.
-        The format for @self.normalization_stats should be a dictionary from dataset/observation
-        key to a dictionary that contains mean and stdv. 
-
-        Example:
-        {
-            "actions": {
-                "mean": ...,
-                "stdv": ...
-            }
-        }
-        """
-        traj_dict = {}
-        merged_stats = {}
-
-        # don't compute normalization stats for RGB data since we use backbone encoders
-        # with their own normalization stats
-        keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + self.dataset_keys
-
-        with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
-            for i, demo_id in enumerate(self.demos):
-                traj_dict = {key: self.dataset[demo_id][key] for key in keys}
-                if i == 0:
-                    merged_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
-                else:
-                    traj_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
-                    merged_stats = ObsUtils.aggregate_traj_stats(traj_stats_a=merged_stats, traj_stats_b=traj_stats)
-
-                progress_bar.update(1)
-        
-        self.normalization_stats = ObsUtils.compute_normalization_stats(traj_stats=merged_stats, tol=1e-3)
-
-    def normalize_data(self):
-        """
-        Normalize dataset items according to @self.normalization_stats.
-        """
-        with tqdm(total=self.num_demos, desc="normalizing data", unit="demo") as progress_bar:
-            for demo_id in self.demos:
-                for key in self.normalization_stats:
-                    self.dataset[demo_id][key] = ObsUtils.normalize(data=self.dataset[demo_id][key], normalization_stats=self.normalization_stats[key])
-                    
-                progress_bar.update(1)
+        return dataset 
     
-    def get_data_seq(self, demo_id, keys, seq_index):
+    def __del__(self):
+        if self._hdf5_file is not None:
+            self._hdf5_file.close()
+        self._hdf5_file = None
+
+    def __repr__(self):
         """
-        Extract a (sub)sequence of dataset items from a demo.
-
-        Args:
-            demo_id (str): demo id, ie. "demo_0"
-
-            keys (array): keys to extract
-
-            seq_index (array): sequence indices
-
-        Returns: ordered dictionary from key to extracted data.
+        Pretty print the class and important attributes on a call to `print`.
         """
-        seq = OrderedDict()
-        for k in keys:
-            data = self.dataset[demo_id][k]
-            seq[k] = data[seq_index]
-        return seq
+        msg = str(self.__class__.__name__) + "(\n"
+        msg += super(RobomimicDataset, self).__repr__()
+        msg += "\tfilter_key={}\n"+ ")"
+        filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
+        msg = msg.format(filter_key_str)
+        return msg
