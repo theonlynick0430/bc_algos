@@ -33,20 +33,22 @@ class BC(ABC, nn.Module):
         self.backbone = backbone
         self.action_dec = action_dec
 
-    @abstractmethod
-    def prepare(self, batch, device=None):
+    @classmethod
+    def prepare_input(cls, input, device=None):
         """
-        Prepare model input, target output, and loss mask by processing @batch.
+        Prepare input to be processed by model by converting to float tensor
+        and moving to specified device.
 
         Args:
-            batch (dict): nested dictionary returned from dataloader
+            input (dict): nested dictionary that maps observation group to observation key
+                to data (tensor) of shape [B, ...]
 
             device: (optional) device to send tensors to
 
-        Returns: model input (dict), target output (tensor), 
-            and (optional) pad_mask (tensor).
+        Returns: prepared input.
         """
-        return NotImplementedError
+        input = TensorUtils.to_tensor(x=input, device=device)
+        return TensorUtils.to_float(x=input)
 
 
 class BC_MLP(BC):
@@ -65,24 +67,6 @@ class BC_MLP(BC):
         super(BC_MLP, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, action_dec=action_dec)
 
         assert isinstance(backbone, MLP)
-
-    def prepare(self, batch, device=None):
-        """
-        Prepare model input, target output, and loss mask by processing @batch.
-
-        Args:
-            batch (dict): nested dictionary returned from dataloader
-
-            device: (optional) device to send tensors to
-
-        Returns: model input (dict), target output (tensor), 
-            and (optional) pad_mask (tensor).
-        """
-        batch = TensorUtils.to_tensor(x=batch, device=device)
-        batch = TensorUtils.to_float(x=batch)
-        action = batch["actions"]
-        pad_mask = batch["pad_mask"] if "pad_mask" in batch else None
-        return batch, action, pad_mask
 
     def forward(self, input):
         """
@@ -169,25 +153,6 @@ class BC_Transformer(BC):
             action_chunk=action_chunk,
             num_goal=num_goal,
         )
-    
-    def prepare(self, batch, device=None):
-        """
-        Prepare model input, target output, and loss mask by processing @batch.
-
-        Args:
-            batch (dict): nested dictionary returned from dataloader
-
-            device: (optional) device to send tensors to
-
-        Returns: model input (dict), target output (tensor), 
-            and (optional) pad_mask (tensor).
-        """
-        batch = TensorUtils.to_tensor(x=batch, device=device)
-        batch = TensorUtils.to_float(x=batch)
-        batch["obs"] = TensorUtils.slice(x=batch["obs"], dim=1, start=0, end=self.history+1)
-        action = batch["actions"]
-        pad_mask = batch["pad_mask"] if "pad_mask" in batch else None
-        return batch, action, pad_mask
     
     def create_pos_enc(self):
         """

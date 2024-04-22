@@ -33,3 +33,4 @@ class EnvType(StrEnum):
 
 class RolloutType(StrEnum):
     ROBOMIMIC="robomimic"
+    ISAAC_GYM="isaac_gym"

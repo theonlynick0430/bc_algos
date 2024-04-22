@@ -1,6 +1,7 @@
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.train_utils as TrainUtils
 from bc_algos.dataset.robomimic import RobomimicDataset
+from bc_algos.dataset.isaac_gym import IsaacGymDataset
 from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
@@ -46,6 +47,9 @@ def train(config):
     if config.dataset.type == Const.DatasetType.ROBOMIMIC:
         trainset = RobomimicDataset.factory(config=config, train=True)
         validset = RobomimicDataset.factory(config=config, train=False)
+    elif config.dataset.type == Const.DatasetType.ISAAC_GYM:
+        trainset = IsaacGymDataset.factory(config=config, train=True)
+        validset = IsaacGymDataset.factory(config=config, train=False)    
     else:
         print(f"unsupported dataset type {config.dataset.type}")
         exit(1)

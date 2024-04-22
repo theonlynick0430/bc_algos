@@ -51,7 +51,7 @@ class RolloutEnv:
         self.validset = validset
         self.obs_group_to_key = obs_group_to_key
         self.obs_key_to_modality = obs_key_to_modality
-        self.n_frame_stack = frame_stack
+        self.frame_stack = frame_stack
         self.closed_loop = closed_loop
         self.gc = gc
         self.normalize = normalization_stats is not None
@@ -131,7 +131,7 @@ class RolloutEnv:
 
         input = TensorUtils.to_batch(input)
         input = TensorUtils.to_sequence(input)
-        input = TensorUtils.repeat_seq(x=input, k=self.n_frame_stack+1) # prepare history
+        input = TensorUtils.repeat_seq(x=input, k=self.frame_stack+1) # prepare frame_stack
 
         if self.gc:
             input["goal"] = self.fetch_goal(demo_id=demo_id, t=0)

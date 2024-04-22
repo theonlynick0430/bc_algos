@@ -2,7 +2,7 @@ from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.robomimic import RobomimicDataset
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.constants as Const
-from bc_algos.envs.robosuite import EnvRobosuite
+from bc_algos.envs.robosuite import RobosuiteEnv
 import json
 
 
@@ -80,7 +80,7 @@ class RobomimicRolloutEnv(RolloutEnv):
         """
         # load env metadata from training file
         env_meta = json.loads(self.validset.hdf5_file["data"].attrs["env_args"])
-        return EnvRobosuite(
+        return RobosuiteEnv(
             env_name=env_meta["env_name"],
             obs_key_to_modality=self.obs_key_to_modality,
             render=self.render_video,
