@@ -3,16 +3,15 @@ This file contains the base class for environment wrappers that are used
 to provide a standardized environment API for training policies and interacting
 with metadata present in datasets.
 """
-import abc
+from abc import ABC, abstractmethod
 
 
 
-class BaseEnv(abc.ABC):
+class BaseEnv(ABC):
     """
     Abstract class for interacting with simulation environments. Inherit from 
     this class for different simulators.
     """
-    @abc.abstractmethod
     def __init__(
         self,
         env_name, 
@@ -47,7 +46,7 @@ class BaseEnv(abc.ABC):
         self.use_image_obs = use_image_obs
         self.use_depth_obs = use_depth_obs
     
-    @abc.abstractmethod
+    @abstractmethod
     def load_env(self, xml):
         """
         Load environment from XML string.
@@ -57,7 +56,7 @@ class BaseEnv(abc.ABC):
         """
         return NotImplementedError
 
-    @abc.abstractmethod
+    @abstractmethod
     def step(self, action):
         """
         Step in the environment with an action.
@@ -69,7 +68,7 @@ class BaseEnv(abc.ABC):
         """
         return NotImplementedError
 
-    @abc.abstractmethod
+    @abstractmethod
     def reset(self):
         """
         Reset environment.
@@ -78,7 +77,7 @@ class BaseEnv(abc.ABC):
         """
         return NotImplementedError
 
-    @abc.abstractmethod
+    @abstractmethod
     def reset_to(self, state):
         """
         Reset to a specific simulator state.
@@ -90,7 +89,7 @@ class BaseEnv(abc.ABC):
         """
         return NotImplementedError
 
-    @abc.abstractmethod
+    @abstractmethod
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
         """
         Render from simulation to either an on-screen window or off-screen to RGB array.
@@ -107,14 +106,14 @@ class BaseEnv(abc.ABC):
         """
         return NotImplementedError
 
-    @abc.abstractmethod
+    @abstractmethod
     def get_observation(self):
         """
         Returns: observation dictionary from environment. 
         """
         return NotImplementedError
     
-    @abc.abstractmethod
+    @abstractmethod
     def is_success(self):
         """
         Returns: whether the task conditions are reached.

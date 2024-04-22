@@ -6,7 +6,7 @@ import math
 
 def pos_enc_1d(d_model, T):
     """
-    Return 1D positional encodings for transformer model.
+    Returns 1D positional encodings for transformer model.
 
     Args: 
         d_model (int): embedding dim
@@ -29,7 +29,7 @@ def pos_enc_1d(d_model, T):
 
 def pos_enc_2d(d_model, H, W):
     """
-    Return 2D positional encodings for transformer model.
+    Returns 2D positional encodings for transformer model.
 
     Args: 
         d_model (int): embedding dim

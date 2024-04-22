@@ -327,7 +327,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         demo_length = self.demo_id_to_demo_length[demo_id]
 
         if self.goal_mode == GoalMode.LAST:
-            goal_index = np.full((len(data_seq_index)), -1)
+            goal_index = np.array([-1])
 
         elif self.goal_mode == GoalMode.SUBGOAL:
             if self.num_subgoal is None:
@@ -335,7 +335,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             else:
                 subgoal = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)
                 goal = np.repeat(subgoal[1:], np.diff(subgoal))
-            goal_index = goal[data_seq_index]
+            goal_index = goal[data_seq_index[self.frame_stack:]]
             
         elif self.goal_mode == GoalMode.FULL:
             goal_index = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)[1:]

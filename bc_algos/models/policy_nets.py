@@ -4,11 +4,12 @@ from bc_algos.models.backbone import Backbone, MLP, Transformer
 from bc_algos.utils.constants import GoalMode
 import bc_algos.utils.tensor_utils as TensorUtils
 from torch import LongTensor
+from abc import ABC, abstractmethod
 import torch.nn as nn
 import torch
 
 
-class BC(nn.Module):
+class BC(ABC, nn.Module):
     """
     Abstract class for behavorial cloning policy that predicts actions from observations.
     Subclass to implement different behavorial cloning policies.
@@ -32,22 +33,20 @@ class BC(nn.Module):
         self.backbone = backbone
         self.action_dec = action_dec
 
-    @classmethod
-    def prepare_input(cls, input, device=None):
+    @abstractmethod
+    def prepare(self, batch, device=None):
         """
-        Prepare input to be processed by model by converting to float tensor
-        and moving to specified device.
+        Prepare model input, target output, and loss mask by processing @batch.
 
         Args:
-            input (dict): nested dictionary that maps observation group to observation key
-                to data (tensor) of shape [B, ...]
+            batch (dict): nested dictionary returned from dataloader
 
             device: (optional) device to send tensors to
 
-        Returns: prepared input.
+        Returns: model input (dict), target output (tensor), 
+            and (optional) pad_mask (tensor).
         """
-        input = TensorUtils.to_tensor(x=input, device=device)
-        return TensorUtils.to_float(x=input)
+        return NotImplementedError
 
 
 class BC_MLP(BC):
@@ -66,6 +65,24 @@ class BC_MLP(BC):
         super(BC_MLP, self).__init__(obs_group_enc=obs_group_enc, backbone=backbone, action_dec=action_dec)
 
         assert isinstance(backbone, MLP)
+
+    def prepare(self, batch, device=None):
+        """
+        Prepare model input, target output, and loss mask by processing @batch.
+
+        Args:
+            batch (dict): nested dictionary returned from dataloader
+
+            device: (optional) device to send tensors to
+
+        Returns: model input (dict), target output (tensor), 
+            and (optional) pad_mask (tensor).
+        """
+        batch = TensorUtils.to_tensor(x=batch, device=device)
+        batch = TensorUtils.to_float(x=batch)
+        action = batch["actions"]
+        pad_mask = batch["pad_mask"] if "pad_mask" in batch else None
+        return batch, action, pad_mask
 
     def forward(self, input):
         """
@@ -152,6 +169,25 @@ class BC_Transformer(BC):
             action_chunk=action_chunk,
             num_goal=num_goal,
         )
+    
+    def prepare(self, batch, device=None):
+        """
+        Prepare model input, target output, and loss mask by processing @batch.
+
+        Args:
+            batch (dict): nested dictionary returned from dataloader
+
+            device: (optional) device to send tensors to
+
+        Returns: model input (dict), target output (tensor), 
+            and (optional) pad_mask (tensor).
+        """
+        batch = TensorUtils.to_tensor(x=batch, device=device)
+        batch = TensorUtils.to_float(x=batch)
+        batch["obs"] = TensorUtils.slice(x=batch["obs"], dim=1, start=0, end=self.history+1)
+        action = batch["actions"]
+        pad_mask = batch["pad_mask"] if "pad_mask" in batch else None
+        return batch, action, pad_mask
     
     def create_pos_enc(self):
         """
