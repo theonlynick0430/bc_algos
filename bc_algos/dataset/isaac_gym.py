@@ -154,7 +154,7 @@ class IsaacGymDataset(SequenceDataset):
                 for dataset_key in self.dataset_keys:
                     dataset[demo_id][dataset_key] = run["policy"][dataset_key]
 
-                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]
+                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]-1
 
                 progress_bar.update(1)
 
