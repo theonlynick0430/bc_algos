@@ -1,3 +1,5 @@
+import numpy as np
+
 from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.constants as Const
 from bc_algos.envs.isaacgym_simple import IsaacGymEnvSimple
@@ -157,6 +159,15 @@ class IsaacGymDataset(SequenceDataset):
                     dataset[demo_id][dataset_key] = run["policy"][dataset_key]
 
                 dataset[demo_id]["steps"] = run["metadata"]["num_steps"] - 1
+
+                # Load demo metadata (used to reset).
+                cubes_pos = run["obs"]["cubes_pos"][0]
+                cubes_quat = run["obs"]["cubes_quat"][0]
+                cubes_pose = np.concatenate([cubes_pos, cubes_quat], axis=-1)
+                dataset[demo_id]["metadata"] = {
+                    "block_colors": run["metadata"]["block_colors"],
+                    "block_init_pose": cubes_pose,
+                }
 
                 progress_bar.update(1)
 

@@ -59,8 +59,9 @@ class IsaacGymEnvSimple(EnvBase):
         self.device = self.env.device
         self.env_id = torch.tensor([0], dtype=torch.long, device=self.device)
 
-    def load_env(self, colors=None, init_cube_state=None):
-        self.env.reset_idx(self.env_id, colors, init_cube_state)
+    def load_env(self, xml):
+        # Not used in this environment.
+        pass
 
     def step(self, action):
         action = torch.tensor(action, device=self.device).float().unsqueeze(0)
@@ -75,8 +76,20 @@ class IsaacGymEnvSimple(EnvBase):
             self.step(np.zeros(7))
 
     def reset_to(self, state):
-        # Not used in this environment.
-        pass
+        """
+        Reset to a specific simulator state.
+
+        For Isaac Gym, state is metadata dictionary.
+        """
+        assert type(state) == dict, "State must be a dictionary."
+        block_colors = state["block_colors"]
+        block_init_pose = state["block_init_pose"]
+        block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)
+        self.env.reset_idx(self.env_id, block_colors, block_init_pose)
+
+        # "Warm up" the environment.
+        for _ in range(self.init_cycles):
+            self.step(np.zeros(7))
 
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
         obs_dict = self.env.get_observations()
