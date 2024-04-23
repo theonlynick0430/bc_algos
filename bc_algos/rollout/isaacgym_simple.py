@@ -1,13 +1,15 @@
+import json
+
 from bc_algos.envs.isaacgym_simple import IsaacGymEnvSimple
 from bc_algos.rollout.rollout_env import RolloutEnv
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
+from isaacgymenvs.tasks.amp.poselib.poselib import TensorUtils
 
 
 class IsaacGymSimpleRolloutEnv(RolloutEnv):
 
     def __init__(self,
-                 cfg,
                  validset,
                  obs_group_to_key,
                  obs_key_to_modality,
@@ -17,7 +19,6 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
                  normalization_stats=None,
                  render_video=False
                  ):
-        self.cfg = cfg
         super().__init__(
             validset=validset,
             obs_group_to_key=obs_group_to_key,
@@ -29,34 +30,8 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             render_video=render_video,
         )
 
-    @classmethod
-    def factory(cls, config, validset, normalization_stats=None):
-        """
-        Create a RolloutEnv instance from config.
-
-        Args:
-            config (addict): config object
-
-            validset (SequenceDataset): validation dataset for rollout
-
-            normalization_stats (dict): (optional) dictionary from dataset/observation keys to
-                normalization stats from training dataset
-
-        Returns: RolloutEnv instance.
-        """
-        return cls(
-            config,
-            validset=validset,
-            obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
-            obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
-            frame_stack=config.dataset.frame_stack,
-            closed_loop=config.rollout.closed_loop,
-            gc=(config.dataset.goal_mode is not None),
-            normalization_stats=normalization_stats,
-            render_video=False,
-        )
-
     def create_env(self):
+        self.cfg = json.load(open("/home/markvdm/Documents/IsaacGym/bc_algos/config/isaac_gym_env.json", "r"))
         return IsaacGymEnvSimple(
             "MentalModelsTaskSimple",
             obs_key_to_modality=self.obs_key_to_modality,
@@ -67,7 +42,24 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         )
 
     def fetch_goal(self, demo_id, t):
-        raise NotImplementedError
+        """
+        Get goal for specified demo and time.
+
+        Args:
+            demo_id (str): demo id, ie. "demo_0"
+
+            t (int): timestep in trajectory
+
+        Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
+        """
+        demo_length = self.validset.demo_len(demo_id=demo_id)
+        if t >= demo_length:
+            # reuse last goal
+            t = demo_length - 1
+        index = self.validset.index_from_timestep(demo_id=demo_id, t=t)
+        goal = self.validset[index]["goal"]
+        goal = TensorUtils.to_batch(x=goal)
+        return goal
 
     def init_demo(self, demo_id):
         demo_metadata = self.validset.dataset[demo_id]["metadata"]
