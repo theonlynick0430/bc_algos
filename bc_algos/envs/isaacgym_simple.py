@@ -6,10 +6,10 @@ from isaacgymenvs.tasks import MentalModelsTaskSimple
 
 import torch
 
-from bc_algos.envs.env_base import EnvBase
+from bc_algos.envs.env_base import BaseEnv
 
 
-class IsaacGymEnvSimple(EnvBase):
+class IsaacGymEnvSimple(BaseEnv):
 
     @classmethod
     def preprocess_img(cls, img):
