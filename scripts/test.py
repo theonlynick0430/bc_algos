@@ -1,18 +1,14 @@
 import bc_algos.utils.obs_utils as ObsUtils
-import bc_algos.utils.train_utils as TrainUtils
 from bc_algos.dataset.robomimic import RobomimicDataset
 from bc_algos.dataset.isaac_gym import IsaacGymDataset
 from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
-from bc_algos.models.loss import DiscountedMSELoss, DiscountedL1Loss
 import bc_algos.utils.constants as Const
-import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch
 from accelerate import Accelerator
-import wandb
 import argparse
 import json
 from addict import Dict
@@ -20,7 +16,7 @@ import os
 from tqdm import tqdm
 
 
-def train(config):
+def test(config):
     # enforce policy constraints
     if config.policy.type == Const.PolicyType.MLP:
         assert config.dataset.frame_stack == 0, "mlp does not support history"
@@ -37,10 +33,6 @@ def train(config):
     # directory handling
     exp_dir = os.path.join(config.experiment.output_dir, config.experiment.name)
     os.makedirs(exp_dir)
-    weights_dir = os.path.join(exp_dir, "weights")
-    os.makedirs(weights_dir)
-    rollout_dir = os.path.join(exp_dir, "rollout")
-    os.makedirs(rollout_dir)
 
     # load datasets and dataloaders
     if config.dataset.type == Const.DatasetType.ROBOMIMIC:
@@ -79,9 +71,8 @@ def train(config):
         )
 
     # load weights
-    if config.train.weights is not None:
-        print(f"loading weights from {config.train.weights} ...")
-        policy.load_state_dict(torch.load(config.train.weights))
+    print(f"loading weights from {config.train.weights} ...")
+    policy.load_state_dict(torch.load(config.train.weights))
 
     # create env for rollout
     if config.rollout.type == Const.RolloutType.ROBOMIMIC:
@@ -94,95 +85,21 @@ def train(config):
         print(f"rollout env {config.rollout.type} not supported")
         exit(1)
 
-    # create optimizer
-    # TODO: - Switch to PyTorch Lightning when they support testing every n epochs
-    optimizer = optim.Adam(
-        policy.parameters(), 
-        lr=config.train.lr, 
-        weight_decay=config.train.weight_decay, 
-        betas=config.train.betas,
-    )
-
-    # create loss function
-    discount = config.train.discount
-    assert discount <= 1, "discount factor must be <= 1"
-    if config.train.loss == "L2":
-        loss_fn = DiscountedMSELoss(discount=discount)
-    elif config.train.loss == "L1":
-        loss_fn = DiscountedL1Loss(discount=discount)
-    else:
-        print(f"loss type {config.train.loss} not supported")
-        exit(1)
-
     accelerator = Accelerator()
     train_loader, valid_loader, policy, optimizer = accelerator.prepare(
         train_loader, valid_loader, policy, optimizer
     )
 
-    # wandb login
-    wandb.init(project="mental-models", name=config.experiment.name)
-    wandb.config.update(dict(config))
-
-    # iterate epochs
-    valid_ct = 0
-    rollout_ct = 0
-    save_ct = 0
-    for epoch in range(config.train.epochs):
-        print(f"epoch {epoch}")
-        valid_ct += 1
-        rollout_ct += 1
-        save_ct += 1
-
-        # TRAINING
-        print("training...")
-        TrainUtils.run_epoch(
-            model=policy,
-            data_loader=train_loader,
-            loss_fn=loss_fn,
-            frame_stack=config.dataset.frame_stack,
-            optimizer=optimizer,
-            validate=False,
-            device=accelerator.device,
-        )
-
-        # VALIDATION
-        if valid_ct == config.experiment.valid_rate:
-            print("validating...")
-            TrainUtils.run_epoch(
-                model=policy,
-                data_loader=valid_loader,
-                loss_fn=loss_fn,
-                frame_stack=config.dataset.frame_stack,
-                optimizer=optimizer,
-                validate=True,
+    print("rolling out...")
+    with tqdm(total=validset.num_demos, unit='demo') as progress:
+        for demo_id in validset.demos:
+            _ = rollout_env.rollout_with_stats(
+                policy=policy,
+                demo_id=demo_id,
+                video_dir=exp_dir,
                 device=accelerator.device,
             )
-            valid_ct = 0
-
-        # ROLLOUT
-        if rollout_ct == config.experiment.rollout_rate:
-            print("rolling out...")
-            rollout_epoch_dir = os.path.join(rollout_dir, f"{epoch}")
-            os.mkdir(rollout_epoch_dir)
-            with tqdm(total=validset.num_demos, unit='demo') as progress:
-                for demo_id in validset.demos:
-                    _ = rollout_env.rollout_with_stats(
-                        policy=policy,
-                        demo_id=demo_id,
-                        video_dir=rollout_epoch_dir,
-                        device=accelerator.device,
-                    )
-                    progress.update(1)
-            rollout_ct = 0
-
-        # SAVE WEIGHTS
-        if save_ct == config.experiment.save_rate:
-            print("saving weights...")
-            torch.save(policy.state_dict(), os.path.join(weights_dir, f"model_{epoch}.pth"))
-            save_ct = 0
-
-    # save final model
-    torch.save(policy.state_dict(), os.path.join(weights_dir, f"model.pth"))
+            progress.update(1)
 
     # deinit obs utils
     ObsUtils.deinit_obs_utils()
@@ -207,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--weights",
         type=str,
-        required=False,
+        required=True,
         help="path to saved weights"
     )
 
@@ -237,4 +154,4 @@ if __name__ == "__main__":
     config.train.weights = args.weights
     config.experiment.output_dir = args.output
 
-    train(config=config)
+    test(config=config)

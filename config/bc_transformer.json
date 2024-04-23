@@ -11,10 +11,11 @@
         "epochs": 100,
         "batch_size": 64, 
         "loss": "L2",
-        "discount": 0.9,
+        "discount": 1.0,
         "lr": 1e-5,
         "weight_decay": 1e-5,
-        "betas": [0.9, 0.999]
+        "betas": [0.9, 0.999], 
+        "weights": null
     },
 
     "observation": {
@@ -51,8 +52,8 @@
         "dataset_keys": [
             "actions"
         ],
-        "frame_stack": 3,
-        "seq_length": 10,
+        "frame_stack": 0,
+        "seq_length": 1,
         "pad_frame_stack": true,
         "pad_seq_length": true,
         "get_pad_mask": true,

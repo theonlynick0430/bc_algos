@@ -130,7 +130,7 @@ class Transformer(Backbone):
         return self.embed_dim
 
     def create_layers(self):
-        self.transformer = nn.Transformer(d_model=self.embed_dim, batch_first=True, **self.kwargs)
+        self.transformer = nn.Transformer(d_model=self.embed_dim, batch_first=True, norm_first=True, **self.kwargs)
 
     def forward(self, src, tgt):
         """
