@@ -84,12 +84,23 @@ class IsaacGymEnvSimple(EnvBase):
         assert type(state) == dict, "State must be a dictionary."
         block_colors = state["block_colors"]
         block_init_pose = state["block_init_pose"]
+        q_init = torch.from_numpy(state["start_q"]).to(self.device).float().unsqueeze(0)
         block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)
         self.env.reset_idx(self.env_id, block_colors, block_init_pose)
 
+        # self.env._refresh()
+        # obs_dict = self.get_observation()
+        # print("q: " + str(obs_dict["obs"]["q"]))
+
         # "Warm up" the environment.
         for _ in range(self.init_cycles):
-            self.step(np.zeros(7))
+            self.env.set_arm_dof(self.env_id, q_init)
+            obs_dict = self.step(np.zeros(7))
+            # print("q: " + str(obs_dict["obs"]["q"]))
+
+        obs_dict = self.get_observation()
+        # print("des q: " + str(q_init.cpu().numpy()[0]))
+        # print("q: " + str(obs_dict["obs"]["q"]))
 
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
         obs_dict = self.env.get_observations()

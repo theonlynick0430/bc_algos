@@ -167,6 +167,7 @@ class IsaacGymDataset(SequenceDataset):
                 dataset[demo_id]["metadata"] = {
                     "block_colors": run["metadata"]["block_colors"],
                     "block_init_pose": cubes_pose,
+                    "start_q": run["obs"]["q"][0],
                 }
 
                 progress_bar.update(1)
