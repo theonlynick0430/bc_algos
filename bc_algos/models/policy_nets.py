@@ -89,7 +89,15 @@ class BC_Transformer(BC):
     Module for behavorial cloning policy that predicts actions from observations 
     using transformer encoder-decoder architecture.
     """
-    def __init__(self, obs_group_enc, backbone, action_dec, history, action_chunk, num_goal=None):
+    def __init__(
+            self, 
+            obs_group_enc, 
+            backbone, 
+            action_dec, 
+            history, 
+            action_chunk, 
+            num_goal=None,
+        ):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder

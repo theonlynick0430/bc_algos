@@ -67,7 +67,7 @@ def test(config):
             config=config, 
             obs_group_enc=obs_group_enc, 
             backbone=backbone, 
-            action_dec=action_dec
+            action_dec=action_dec,
         )
 
     # load weights
@@ -86,8 +86,8 @@ def test(config):
         exit(1)
 
     accelerator = Accelerator()
-    train_loader, valid_loader, policy, optimizer = accelerator.prepare(
-        train_loader, valid_loader, policy, optimizer
+    train_loader, valid_loader, policy = accelerator.prepare(
+        train_loader, valid_loader, policy
     )
 
     print("rolling out...")

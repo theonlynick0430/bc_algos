@@ -75,7 +75,7 @@ def train(config):
             config=config, 
             obs_group_enc=obs_group_enc, 
             backbone=backbone, 
-            action_dec=action_dec
+            action_dec=action_dec,
         )
 
     # load weights
