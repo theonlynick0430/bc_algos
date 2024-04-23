@@ -1,6 +1,7 @@
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.train_utils as TrainUtils
 from bc_algos.dataset.robomimic import RobomimicDataset
+from bc_algos.dataset.isaac_gym import IsaacGymDataset
 from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
@@ -46,6 +47,9 @@ def train(config):
     if config.dataset.type == Const.DatasetType.ROBOMIMIC:
         trainset = RobomimicDataset.factory(config=config, train=True)
         validset = RobomimicDataset.factory(config=config, train=False)
+    elif config.dataset.type == Const.DatasetType.ISAAC_GYM:
+        trainset = IsaacGymDataset.factory(config=config, train=True)
+        validset = IsaacGymDataset.factory(config=config, train=False)    
     else:
         print(f"unsupported dataset type {config.dataset.type}")
         exit(1)
@@ -53,7 +57,7 @@ def train(config):
     valid_loader = DataLoader(validset, batch_size=config.train.batch_size, shuffle=True)
 
     # load obs encoder
-    obs_group_enc = ObservationGroupEncoder(obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY)
+    obs_group_enc = ObservationGroupEncoder.factory(config=config)
 
     # load backbone network
     if config.policy.type == Const.PolicyType.MLP:
@@ -112,7 +116,7 @@ def train(config):
     )
 
     # wandb login
-    wandb.init(project=config.experiment.name)
+    wandb.init(project="mental-models", name=config.experiment.name, config=dict(config))
 
     # iterate epochs
     valid_ct = 0

@@ -78,21 +78,21 @@ class LowDimCore(EncoderCore):
         else:
             self.weight = nn.Parameter(torch.Tensor([1.0]))
 
-    def forward(self, inputs):
+    def forward(self, input):
         """
         Forward pass through low-dim encoder core.
 
         Args:
-            inputs (tensor): data of shape [B, @self.input_shape]
+            input (tensor): data of shape [B, @self.input_shape]
 
         Returns: output data (tensor) of shape [B, @self.output_shape].
         """
-        B = inputs.shape[0]
-        inputs = inputs.view(B, -1)
+        B = input.shape[0]
+        input = input.view(B, -1)
         if self.project:
-            return self.mlp(inputs).view(-1, *self._output_shape)
+            return self.mlp(input).view(-1, *self._output_shape)
         else:
-            return self.weight * inputs
+            return self.weight * input
 
 
 class ViTMAECore(EncoderCore):
@@ -128,24 +128,24 @@ class ViTMAECore(EncoderCore):
         """
         Freeze encoder network parameters.
         """
-        for param in self.network.parameters():
+        for param in self.vitmae.parameters():
             param.requires_grad = False
     
     def create_layers(self):
-        preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
+        self.preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
         self.vitmae = ViTMAEModel.from_pretrained("facebook/vit-mae-base")
-        self.network = nn.Sequential(preprocessor, self.vitmae)
 
-    def forward(self, inputs):
+    def forward(self, input):
         """
         Forward pass through ViTMAE encoder core.
 
         Args:
-            inputs (tensor): data of shape [B, @self.input_shape]
+            input (tensor): data of shape [B, @self.input_shape]
 
         Returns: output data (tensor) of shape [B, @self.output_shape].
         """
-        return self.network(inputs).last_hidden_state[:, 0]
+        input = self.preprocessor(input)
+        return self.vitmae(input).last_hidden_state[:, 0]
     
 
 class ResNet18Core(EncoderCore):
@@ -159,7 +159,7 @@ class ResNet18Core(EncoderCore):
                 Expected to follow [B, C, H, W].
 
             embed_shape (array): output shape of ResNet-18 backbone excluding batch dim. 
-                Defaults to output shape for inputs images of resolution 256x256.
+                Defaults to output shape for input images of resolution 256x256.
 
             freeze (bool): if True, freeze ResNet-18 backbone
         """
@@ -183,27 +183,29 @@ class ResNet18Core(EncoderCore):
         """
         Freeze encoder network parameters.
         """
-        for param in self.network.parameters():
+        for param in self.resnet18.parameters():
             param.requires_grad = False
     
     def create_layers(self):
-        preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
+        C, H, W = self.embed_shape
+        self.pos_enc = nn.Parameter(pos_enc_2d(d_model=C, H=H, W=W))
+        self.pos_enc.requires_grad = False # buffer
+        self.preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
         resnet18_classifier = models.resnet18(pretrained=True)
         # remove pooling and fc layers
-        resnet18 = torch.nn.Sequential(*(list(resnet18_classifier.children())[:-2]))
-        self.network = nn.Sequential(preprocessor, resnet18)
+        self.resnet18 = nn.Sequential(*list(resnet18_classifier.children())[:-2])
 
-    def forward(self, inputs):
+    def forward(self, input):
         """
         Forward pass through ResNet-18 encoder core.
 
         Args:
-            inputs (tensor): data of shape [B, @self.input_shape]
+            input (tensor): data of shape [B, @self.input_shape]
 
         Returns: output data (tensor) of shape [B, @self.output_shape].
         """
-        device = inputs.device
         C, H, W = self.embed_shape
-        latent = self.network(inputs)
-        latent += pos_enc_2d(d_model=C, H=H, W=W, device=device)
+        input = self.preprocessor(input)
+        latent = self.resnet18(input)
+        latent += self.pos_enc
         return torch.transpose(latent.view(-1, C, H*W), -1, -2).contiguous()

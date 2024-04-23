@@ -4,7 +4,7 @@ to provide a standardized environment API for training policies and interacting
 with metadata present in datasets.
 """
 import abc
-from strenum import StrEnum
+from enum import StrEnum
 
 
 class EnvType(StrEnum):
@@ -29,7 +29,7 @@ class EnvBase(abc.ABC):
             env_name (str): name of environment. Only needs to be provided if making a different
                 environment from the one in @env_meta.
 
-            obs_key_to_modality (dict): dictionary mapping observation key to modality
+            obs_key_to_modality (dict): dictionary from observation key to modality
 
             render (bool): if True, environment supports on-screen rendering
 
@@ -57,7 +57,7 @@ class EnvBase(abc.ABC):
         Args:
             xml (str): scene xml
         """
-        return
+        return NotImplementedError
 
     @abc.abstractmethod
     def step(self, action):
@@ -67,20 +67,18 @@ class EnvBase(abc.ABC):
         Args:
             action (np.array): action to take
 
-        Returns:
-            observation (dict): new observation dictionary
+        Returns: observation dictionary after executing action.
         """
-        return
+        return NotImplementedError
 
     @abc.abstractmethod
     def reset(self):
         """
         Reset environment.
 
-        Returns:
-            observation (dict): initial observation dictionary.
+        Returns: observation dictionary after resetting environment.
         """
-        return
+        return NotImplementedError
 
     @abc.abstractmethod
     def reset_to(self, state):
@@ -90,10 +88,9 @@ class EnvBase(abc.ABC):
         Args:
             state (array): current simulator state
         
-        Returns:
-            observation (dict): observation dictionary after setting the simulator state
+        Returns: observation dictionary after setting the simulator state.
         """
-        return
+        return NotImplementedError
 
     @abc.abstractmethod
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
@@ -107,10 +104,10 @@ class EnvBase(abc.ABC):
 
             camera_name (str): camera name to use for rendering
 
-            on_screen (bool): if True, render to an on-screen window. otherwise, render
+            on_screen (bool): if True, render to an on-screen window. Otherwise, render
                 off-screen to RGB array.
         """
-        return
+        return NotImplementedError
 
     @abc.abstractmethod
     def get_observation(self):
@@ -120,6 +117,6 @@ class EnvBase(abc.ABC):
     @abc.abstractmethod
     def is_success(self):
         """
-        Check if the task conditions are reached.
+        Returns: whether the task conditions are reached.
         """
         return

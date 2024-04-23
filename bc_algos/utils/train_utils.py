@@ -41,15 +41,15 @@ def run_epoch(model, data_loader, loss_fn, frame_stack, optimizer=None, validate
     
     with tqdm(total=len(data_loader), unit='batch') as progress:
         for batch in data_loader:
-            # prepare inputs and target
-            batch = BC.prepare_inputs(inputs=batch, device=device)
+            # prepare input and target
+            batch = BC.prepare_input(input=batch, device=device)
             target = batch["actions"][:, frame_stack:, :]
-            pad_mask = batch["pad_mask"][frame_stack:] if "pad_mask" in batch else None
+            pad_mask = batch["pad_mask"][:, frame_stack:] if "pad_mask" in batch else None
             batch["obs"] = TensorUtils.slice(x=batch["obs"], dim=1, start=0, end=frame_stack+1)
-            # generate outputs
-            outputs = model(batch)
+            # generate output
+            output = model(batch)
             # compute loss
-            loss = loss_fn(outputs, target, pad_mask)
+            loss = loss_fn(output, target, pad_mask)
             if not validate:
                 wandb.log({"train_loss": loss.item()})
                 # if training, update weights

@@ -1,13 +1,14 @@
 from bc_algos.dataset.dataset import SequenceDataset
-import h5py
-from tqdm import tqdm
 import bc_algos.utils.constants as Const
-from bc_algos.envs.robosuite import RobosuiteEnv
+from bc_algos.envs.isaac_gym import IsaacGymEnv
+from bc_algos.utils.misc import load_gzip_pickle
+from tqdm import tqdm
+import os
 
 
-class RobomimicDataset(SequenceDataset):
+class IsaacGymDataset(SequenceDataset):
     """
-    Class for fetching sequences of experience from Robomimic dataset.
+    Class for fetching sequences of experience from Isaac Gym dataset.
     Length of the fetched sequence is equal to (@self.frame_stack + @self.seq_length)
     """
     def __init__(
@@ -30,7 +31,7 @@ class RobomimicDataset(SequenceDataset):
     ):
         """
         Args:
-            path (str): path to dataset
+            path (str): path to dataset directory
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 
@@ -74,11 +75,10 @@ class RobomimicDataset(SequenceDataset):
             normalize (bool): if True, normalize data using mean and stdv from dataset
         """
         self.path = path
-        self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
         self._demos = demos
 
-        super(RobomimicDataset, self).__init__(
+        super(IsaacGymDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
             obs_group_to_key=obs_group_to_key,
             dataset_keys=dataset_keys,
@@ -93,14 +93,14 @@ class RobomimicDataset(SequenceDataset):
             normalize=normalize,
         )
 
-    @property
-    def hdf5_file(self):
+    def demo_id_to_run_path(self, demo_id):
         """
-        This property allows for a lazy hdf5 file open.
+        Args: 
+            demo_id (int): demo id, ie. 0
+        
+        Returns: run path associated with @demo_id.
         """
-        if self._hdf5_file is None:
-            self._hdf5_file = h5py.File(self.path, 'r', swmr=True, libver='latest')
-        return self._hdf5_file  
+        return os.path.join(self.path, f"run_{demo_id}.pkl.gzip")
 
     @property
     def demos(self):
@@ -109,9 +109,11 @@ class RobomimicDataset(SequenceDataset):
         """
         if self._demos is None:
             if self.filter_by_attribute is not None:
-                self._demos = [elem.decode("utf-8") for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
+                split_path = os.path.join(self.path, f"split.pkl.gzip")
+                split = load_gzip_pickle(filename=split_path)
+                self._demos = split[self.filter_by_attribute]
             else:
-                self._demos = list(self.hdf5_file["data"].keys())
+                self._demos = [i for i in range(len(os.listdir(self.path))) if os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
         return self._demos
     
     def load_dataset(self, preprocess):
@@ -139,34 +141,31 @@ class RobomimicDataset(SequenceDataset):
             for demo_id in self.demos:
                 dataset[demo_id] = {}
 
+                run = load_gzip_pickle(self.demo_id_to_run_path(demo_id=demo_id))
+
                 # get observations
-                dataset[demo_id] = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
+                dataset[demo_id] = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo_id][obs_key] = RobosuiteEnv.preprocess_img(img=dataset[demo_id][obs_key])
+                            dataset[demo_id][obs_key] = IsaacGymEnv.preprocess_img(img=dataset[demo_id][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
-                    dataset[demo_id][dataset_key] = self.hdf5_file[f"data/{demo_id}/{dataset_key}"][()]
+                    dataset[demo_id][dataset_key] = run["policy"][dataset_key]
 
-                dataset[demo_id]["steps"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
+                dataset[demo_id]["steps"] = run["metadata"]["num_steps"] - 1
 
                 progress_bar.update(1)
 
-        return dataset 
-    
-    def __del__(self):
-        if self._hdf5_file is not None:
-            self._hdf5_file.close()
-        self._hdf5_file = None
+        return dataset
 
     def __repr__(self):
         """
         Pretty print the class and important attributes on a call to `print`.
         """
         msg = str(self.__class__.__name__) + "(\n"
-        msg += super(RobomimicDataset, self).__repr__()
+        msg += super(IsaacGymDataset, self).__repr__()
         msg += "\tfilter_key={}\n"+ ")"
         filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
         msg = msg.format(filter_key_str)

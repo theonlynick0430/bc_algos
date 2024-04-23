@@ -23,6 +23,18 @@ class DiscountedMSELoss(nn.Module):
 
         self.discount = discount
 
+    @classmethod
+    def factory(cls, config):
+        """
+        Create a DiscountedMSELoss instance from config.
+
+        Args:
+            config (addict): config object
+
+        Returns: DiscountedMSELoss instance.
+        """
+        return cls(discount=config.train.discount)
+
     def forward(self, src, tgt, mask=None):
         """
         Compute discounted MSE loss.
@@ -65,6 +77,18 @@ class DiscountedL1Loss(nn.Module):
         assert isinstance(discount, float), "discount factor must be a float"
 
         self.discount = discount
+
+    @classmethod
+    def factory(cls, config):
+        """
+        Create a DiscountedL1Loss instance from config.
+
+        Args:
+            config (addict): config object
+
+        Returns: DiscountedL1Loss instance.
+        """
+        return cls(discount=config.train.discount)
 
     def forward(self, src, tgt, mask=None):
         """

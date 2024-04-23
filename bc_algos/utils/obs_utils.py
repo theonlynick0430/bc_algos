@@ -129,22 +129,9 @@ def deinit_obs_utils():
     for modality in list(MODALITY_TO_ENC_CORE_CLASS.keys()):
         unregister_encoder_core_class(modality=modality)
 
-def preprocess_img(img):
-    """
-    Helper function to preprocess images. Specifically does the following:
-    1) Changes shape of @img from [H, W, 3] to [3, H, W]
-    2) Changes scale of @img from [0, 255] to [0, 1]
-
-    Args: 
-        img (np.array): image data of shape [..., H, W, 3]
-    """
-    img = np.moveaxis(img.astype(float), -1, -3)
-    img /= 255.
-    return img.clip(0., 1.)
-
 def compute_traj_stats(traj_dict):
     """
-    Compute stats over a trajectory of numpy data. Specifically, compute for each key
+    Compute stats over a trajectory of data. Specifically, compute for each key
     1) mean 
     2) sum of square distances from the mean 
 
@@ -188,15 +175,17 @@ def aggregate_traj_stats(traj_stats_a, traj_stats_b):
         merged_stats[k] = dict(n=n, mean=mean, sqdiff=M2)
     return merged_stats
 
-def compute_normalization_stats(traj_stats):
+def compute_normalization_stats(traj_stats, tol=0.):
     """
-    Compute normalization stats over a trajectory of numpy data. Specifically, compute for each key
+    Compute normalization stats over a trajectory of data. Specifically, compute for each key
     1) mean 
     2) stdv
 
     Args:
         traj_stats (dict): nested dictionary that maps dataset/observation key
             to a dictionary that contains trajectory stats
+
+        tol (float): tolerance for stdv
 
     Returns:
         normalization_stats (dict): nested dictionary that maps dataset/observation key
@@ -205,15 +194,15 @@ def compute_normalization_stats(traj_stats):
     normalization_stats = {key: {} for key in traj_stats}
     for key in traj_stats:
         normalization_stats[key]["mean"] = traj_stats[key]["mean"]
-        normalization_stats[key]["stdv"] =  np.sqrt(traj_stats[key]["sqdiff"] / traj_stats[key]["n"])
+        normalization_stats[key]["stdv"] =  (traj_stats[key]["sqdiff"] / traj_stats[key]["n"] + tol) ** 0.5
     return normalization_stats
 
 def normalize(data, normalization_stats):
     """
-    Normalize numpy data according to @normalization_stats.
+    Normalize data according to @normalization_stats.
 
     Args: 
-        data (np.ndarray): data to be normalized
+        data: data to be normalized
 
         normalization_stats (dict): dictionary that contains normalization stats
 
@@ -223,10 +212,10 @@ def normalize(data, normalization_stats):
 
 def unnormalize(data, normalization_stats):
     """
-    Unnormalize numpy data according to @normalization_stats.
+    Unnormalize data according to @normalization_stats.
 
     Args: 
-        data (np.ndarray): data to be unnormalized
+        data: data to be unnormalized
 
         normalization_stats (dict): dictionary that contains normalization stats
 
