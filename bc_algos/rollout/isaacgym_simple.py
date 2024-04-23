@@ -1,4 +1,4 @@
-from bc_algos.envs.isaacgym_simple import EnvIsaacGymSimple
+from bc_algos.envs.isaacgym_simple import IsaacGymEnvSimple
 from bc_algos.rollout.rollout_env import RolloutEnv
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
@@ -57,7 +57,7 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         )
 
     def create_env(self):
-        return EnvIsaacGymSimple(
+        return IsaacGymEnvSimple(
             "MentalModelsTaskSimple",
             obs_key_to_modality=self.obs_key_to_modality,
             render=self.render_video,
@@ -70,4 +70,5 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         raise NotImplementedError
 
     def init_demo(self, demo_id):
-        raise NotImplementedError
+        demo_metadata = self.validset.dataset[demo_id]["metadata"]
+        self.env.reset_to(state=demo_metadata)
