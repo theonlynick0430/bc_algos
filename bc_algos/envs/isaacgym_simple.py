@@ -1,11 +1,34 @@
-import torch
+import numpy as np
+import omegaconf
 
 import isaacgymenvs
-from bc_algos.envs.env_base import EnvBase
 from isaacgymenvs.tasks import MentalModelsTaskSimple
 
+import torch
 
-class EnvIsaacGymSimple(EnvBase):
+from bc_algos.envs.env_base import EnvBase
+
+
+class IsaacGymEnvSimple(EnvBase):
+
+    @classmethod
+    def preprocess_img(cls, img):
+        """
+        Helper function to preprocess images from Isaac Gym environment.
+        Specifically does the following:
+        1) Removes alpha (last) channel from @img.
+        2) Changes shape of @img from [H, W, 3] to [3, H, W]
+        3) Changes scale of @img from [0, 255] to [0, 1]
+
+        Args:
+            img (np.array): image data of shape [..., H, W, 4]
+
+        Returns: preprocessed @img of shape [..., 3, H, W].
+        """
+        img = img[:, :, :-1]
+        img = np.moveaxis(img.astype(float), -1, -3)
+        img /= 255.
+        return img.clip(0., 1.)
 
     def __init__(self,
                  env_name,
@@ -13,11 +36,11 @@ class EnvIsaacGymSimple(EnvBase):
                  render=False,
                  use_image_obs=False,
                  use_depth_obs=False,
-                 cfg=None,
+                 cfg: dict = None,
                  **kwargs
                  ):
         super().__init__(env_name, obs_key_to_modality, render, use_image_obs, use_depth_obs)
-        self.cfg = cfg
+        self.cfg = omegaconf.OmegaConf.create(cfg)
 
         self.env: MentalModelsTaskSimple = isaacgymenvs.make(
             self.cfg.seed,
@@ -32,6 +55,7 @@ class EnvIsaacGymSimple(EnvBase):
             self.cfg.force_render,
             self.cfg,
         )
+        self.init_cycles = 10
         self.device = self.env.device
         self.env_id = torch.tensor([0], dtype=torch.long, device=self.device)
 
@@ -39,11 +63,16 @@ class EnvIsaacGymSimple(EnvBase):
         self.env.reset_idx(self.env_id, colors, init_cube_state)
 
     def step(self, action):
+        action = torch.tensor(action, device=self.device).float().unsqueeze(0)
         return self.env.step(action)
 
     def reset(self):
         # Resets randomly.
         self.env.reset_idx(self.env_id)
+
+        # "Warm up" the environment.
+        for _ in range(self.init_cycles):
+            self.step(np.zeros(7))
 
     def reset_to(self, state):
         # Not used in this environment.
@@ -51,7 +80,7 @@ class EnvIsaacGymSimple(EnvBase):
 
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
         obs_dict = self.env.get_observations()
-        return obs_dict["obs"]["images"][0].cpu().numpy()
+        return obs_dict["obs"]["agentview_image"][0].cpu().numpy()
 
     def get_observation(self):
         obs_dict = self.env.get_observations()

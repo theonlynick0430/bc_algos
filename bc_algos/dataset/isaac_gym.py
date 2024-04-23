@@ -1,6 +1,6 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.constants as Const
-from bc_algos.envs.isaac_gym import IsaacGymEnv
+from bc_algos.envs.isaacgym_simple import IsaacGymEnvSimple
 from bc_algos.utils.misc import load_gzip_pickle
 from tqdm import tqdm
 import os
@@ -11,23 +11,24 @@ class IsaacGymDataset(SequenceDataset):
     Class for fetching sequences of experience from Isaac Gym dataset.
     Length of the fetched sequence is equal to (@self.frame_stack + @self.seq_length)
     """
+
     def __init__(
-        self,
-        path,
-        obs_key_to_modality,
-        obs_group_to_key,
-        dataset_keys,
-        frame_stack=0,
-        seq_length=1,
-        pad_frame_stack=True,
-        pad_seq_length=True,
-        get_pad_mask=True,
-        goal_mode=None,
-        num_subgoal=None,
-        filter_by_attribute=None,
-        demos=None,
-        preprocess=False,
-        normalize=True,
+            self,
+            path,
+            obs_key_to_modality,
+            obs_group_to_key,
+            dataset_keys,
+            frame_stack=0,
+            seq_length=1,
+            pad_frame_stack=True,
+            pad_seq_length=True,
+            get_pad_mask=True,
+            goal_mode=None,
+            num_subgoal=None,
+            filter_by_attribute=None,
+            demos=None,
+            preprocess=False,
+            normalize=True,
     ):
         """
         Args:
@@ -83,11 +84,11 @@ class IsaacGymDataset(SequenceDataset):
             obs_group_to_key=obs_group_to_key,
             dataset_keys=dataset_keys,
             frame_stack=frame_stack,
-            seq_length=seq_length, 
-            pad_frame_stack=pad_frame_stack, 
-            pad_seq_length=pad_seq_length, 
-            get_pad_mask=get_pad_mask, 
-            goal_mode=goal_mode, 
+            seq_length=seq_length,
+            pad_frame_stack=pad_frame_stack,
+            pad_seq_length=pad_seq_length,
+            get_pad_mask=get_pad_mask,
+            goal_mode=goal_mode,
             num_subgoal=num_subgoal,
             preprocess=preprocess,
             normalize=normalize,
@@ -113,9 +114,10 @@ class IsaacGymDataset(SequenceDataset):
                 split = load_gzip_pickle(filename=split_path)
                 self._demos = split[self.filter_by_attribute]
             else:
-                self._demos = [i for i in range(len(os.listdir(self.path))) if os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
+                self._demos = [i for i in range(len(os.listdir(self.path))) if
+                               os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
         return self._demos
-    
+
     def load_dataset(self, preprocess):
         """
         Load dataset into memory.
@@ -148,7 +150,7 @@ class IsaacGymDataset(SequenceDataset):
                 if preprocess:
                     for obs_key in self.obs_keys:
                         if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo_id][obs_key] = IsaacGymEnv.preprocess_img(img=dataset[demo_id][obs_key])
+                            dataset[demo_id][obs_key] = IsaacGymEnvSimple.preprocess_img(img=dataset[demo_id][obs_key])
 
                 # get other dataset keys
                 for dataset_key in self.dataset_keys:
@@ -166,7 +168,7 @@ class IsaacGymDataset(SequenceDataset):
         """
         msg = str(self.__class__.__name__) + "(\n"
         msg += super(IsaacGymDataset, self).__repr__()
-        msg += "\tfilter_key={}\n"+ ")"
+        msg += "\tfilter_key={}\n" + ")"
         filter_key_str = self.filter_by_attribute if self.filter_by_attribute is not None else "none"
         msg = msg.format(filter_key_str)
         return msg
