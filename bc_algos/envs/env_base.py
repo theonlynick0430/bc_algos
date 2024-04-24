@@ -22,8 +22,7 @@ class BaseEnv(ABC):
     ):
         """
         Args:
-            env_name (str): name of environment. Only needs to be provided if making a different
-                environment from the one in @env_meta.
+            env_name (str): name of environment
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 

@@ -36,8 +36,7 @@ class RobosuiteEnv(EB.BaseEnv):
     ):
         """
         Args:
-            env_name (str): name of environment. Only needs to be provided if making a different
-                environment from the one in @env_meta.
+            env_name (str): name of environment
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 
@@ -272,7 +271,9 @@ class RobosuiteEnv(EB.BaseEnv):
 
         Args:
             camera_name (str): name of camera
+
             camera_height (int): height of camera images in pixels
+            
             camera_width (int): width of camera images in pixels
             
         Return:
