@@ -119,7 +119,7 @@ class ActionDecoder(nn.Module):
         action_shape,
         input_dim,
         hidden_dims=[],
-        activation=nn.ReLU
+        activation=nn.ReLU,
     ):
         """
         Args:

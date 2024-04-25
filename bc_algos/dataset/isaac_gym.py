@@ -1,9 +1,8 @@
-import numpy as np
-
 from bc_algos.dataset.dataset import SequenceDataset
+from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
 import bc_algos.utils.constants as Const
-from bc_algos.envs.isaacgym_simple import IsaacGymEnvSimple
 from bc_algos.utils.misc import load_gzip_pickle
+import numpy as np
 from tqdm import tqdm
 import os
 
@@ -145,7 +144,7 @@ class IsaacGymDataset(SequenceDataset):
             for demo_id in self.demos:
                 dataset[demo_id] = {}
 
-                run = load_gzip_pickle(self.demo_id_to_run_path(demo_id=demo_id))
+                run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
 
                 # get observations
                 dataset[demo_id] = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
@@ -158,7 +157,7 @@ class IsaacGymDataset(SequenceDataset):
                 for dataset_key in self.dataset_keys:
                     dataset[demo_id][dataset_key] = run["policy"][dataset_key]
 
-                dataset[demo_id]["steps"] = run["metadata"]["num_steps"] - 1
+                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]-1
 
                 # Load demo metadata (used to reset).
                 cubes_pos = run["obs"]["cubes_pos"][0]

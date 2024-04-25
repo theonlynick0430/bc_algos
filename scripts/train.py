@@ -6,6 +6,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
+from bc_algos.rollout.isaac_gym_simple import IsaacGymSimpleRolloutEnv
 from bc_algos.models.loss import DiscountedMSELoss, DiscountedL1Loss
 import bc_algos.utils.constants as Const
 import torch.optim as optim
@@ -86,6 +87,12 @@ def train(config):
     # create env for rollout
     if config.rollout.type == Const.RolloutType.ROBOMIMIC:
         rollout_env = RobomimicRolloutEnv.factory(
+            config=config, 
+            validset=validset,
+            normalization_stats=trainset.normalization_stats,
+        )
+    elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
+        rollout_env = IsaacGymSimpleRolloutEnv.factory(
             config=config, 
             validset=validset,
             normalization_stats=trainset.normalization_stats,
@@ -221,7 +228,8 @@ if __name__ == "__main__":
 
     assert os.path.exists(args.config), f"config at {args.config} does not exist"
     assert os.path.exists(args.dataset), f"dataset at {args.dataset} does not exist"
-    assert os.path.exists(args.weights), f"weights at {args.weights} does not exist"
+    if args.weights is not None:
+        assert os.path.exists(args.weights), f"weights at {args.weights} does not exist"
     assert os.path.exists(args.output), f"output directory at {args.dataset} does not exist"
 
     # load config 

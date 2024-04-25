@@ -101,6 +101,8 @@ class BaseEnv(ABC):
 
             on_screen (bool): if True, render to an on-screen window. Otherwise, render
                 off-screen to RGB array.
+        
+        Returns: rendered image (np.array).
         """
         return NotImplementedError
 

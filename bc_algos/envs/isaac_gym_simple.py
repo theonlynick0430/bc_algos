@@ -1,5 +1,8 @@
-import omegaconf
-import isaacgymenvs
+try:
+    import omegaconf
+    import isaacgymenvs
+except ImportError:
+    pass
 from bc_algos.envs.env_base import BaseEnv
 import bc_algos.utils.constants as Const
 import torch
@@ -8,7 +11,7 @@ import numpy as np
 
 class IsaacGymEnvSimple(BaseEnv):
     """
-    Class for interacting with Isaac Gym environments.
+    Class for interacting with Isaac Gym environment.
     """
     def __init__(
         self,
@@ -17,7 +20,7 @@ class IsaacGymEnvSimple(BaseEnv):
         render=False,
         use_image_obs=False,
         use_depth_obs=False,
-        config = None,
+        config=None,
     ):
         """
         Args:
@@ -81,8 +84,10 @@ class IsaacGymEnvSimple(BaseEnv):
     def get_observation(self, di=None, preprocess=True):
         """
         Args:
-            di (dict): current raw observation dictionary from Isaac Gym to wrap and provide 
+            di (dict): (optional) current raw observation dictionary from Isaac Gym to wrap and provide 
                 as a dictionary. If not provided, will be queried from Isaac Gym.
+
+            preprocess (bool): if True, preprocess observation data
 
         Returns: observation dictionary from environment. 
         """
@@ -171,6 +176,8 @@ class IsaacGymEnvSimple(BaseEnv):
 
             on_screen (bool): if True, render to an on-screen window. otherwise, render
                 off-screen to RGB array.
+
+        Returns: rendered image (np.array).
         """
         obs = self.get_observation(preprocess=False)
         return obs["agentview_image"][0]

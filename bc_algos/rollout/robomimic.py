@@ -1,8 +1,8 @@
 from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.robomimic import RobomimicDataset
+from bc_algos.envs.robosuite import RobosuiteEnv
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.constants as Const
-from bc_algos.envs.robosuite import RobosuiteEnv
 import json
 
 

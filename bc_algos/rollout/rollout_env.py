@@ -120,7 +120,7 @@ class RolloutEnv:
             to data (np.array) of shape [B, T_obs/T_goal, ...]
         """
         if self.normalize:
-            obs = self.normalize_obs(obs)
+            obs = self.normalize_obs(obs=obs)
         
         input = OrderedDict()
 
@@ -129,8 +129,8 @@ class RolloutEnv:
             assert obs_key in obs, f"could not find observation key: {obs_key} in observation from environment"
             input["obs"][obs_key] = obs[obs_key]
 
-        input = TensorUtils.to_batch(input)
-        input = TensorUtils.to_sequence(input)
+        input = TensorUtils.to_batch(x=input)
+        input = TensorUtils.to_sequence(x=input)
         input = TensorUtils.repeat_seq(x=input, k=self.frame_stack+1) # prepare frame_stack
 
         if self.gc:
@@ -156,7 +156,7 @@ class RolloutEnv:
         Returns: updated input @input.
         """
         if self.normalize:
-            obs = self.normalize_obs(obs)
+            obs = self.normalize_obs(obs=obs)
         
         input = TensorUtils.shift_seq(x=input, k=-1)
 
@@ -261,7 +261,7 @@ class RolloutEnv:
 
             # unnormalize actions if necessary
             if self.normalize:
-                actions = ObsUtils.unnormalize(actions, self.normalization_stats["actions"])
+                actions = ObsUtils.unnormalize(data=actions, normalization_stats=self.normalization_stats["actions"])
 
             # execute actions
             for action in actions:

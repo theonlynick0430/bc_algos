@@ -1,9 +1,9 @@
-import numpy as np
-import torch.utils.data
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.utils.constants import GoalMode
 import bc_algos.utils.constants as Const
+import torch
+import numpy as np
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 from collections import OrderedDict

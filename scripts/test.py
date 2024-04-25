@@ -5,6 +5,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
+from bc_algos.rollout.isaac_gym_simple import IsaacGymSimpleRolloutEnv
 import bc_algos.utils.constants as Const
 from torch.utils.data import DataLoader
 import torch
@@ -77,6 +78,12 @@ def test(config):
     # create env for rollout
     if config.rollout.type == Const.RolloutType.ROBOMIMIC:
         rollout_env = RobomimicRolloutEnv.factory(
+            config=config, 
+            validset=validset,
+            normalization_stats=trainset.normalization_stats,
+        )
+    elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
+        rollout_env = IsaacGymSimpleRolloutEnv.factory(
             config=config, 
             validset=validset,
             normalization_stats=trainset.normalization_stats,

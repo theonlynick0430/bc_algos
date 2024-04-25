@@ -4,9 +4,9 @@ from bc_algos.models.backbone import Backbone, MLP, Transformer
 from bc_algos.utils.constants import GoalMode
 import bc_algos.utils.tensor_utils as TensorUtils
 from torch import LongTensor
-from abc import ABC, abstractmethod
 import torch.nn as nn
 import torch
+from abc import ABC
 
 
 class BC(ABC, nn.Module):
@@ -191,7 +191,7 @@ class BC_Transformer(BC):
 
         Returns: action (tensor) of shape [B, T=@self.action_chunk, action_dim].
         """
-        B = TensorUtils.get_batch_dim(input)
+        B = TensorUtils.get_batch_dim(x=input)
         latent_dict = TensorUtils.time_distributed(input=input, op=self.obs_group_enc)
         # src = []
         # for i, (obs_group, latent) in enumerate(latent_dict.items()):

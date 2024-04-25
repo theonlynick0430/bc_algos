@@ -1,8 +1,8 @@
 from bc_algos.dataset.dataset import SequenceDataset
+from bc_algos.envs.robosuite import RobosuiteEnv
+import bc_algos.utils.constants as Const
 import h5py
 from tqdm import tqdm
-import bc_algos.utils.constants as Const
-from bc_algos.envs.robosuite import RobosuiteEnv
 
 
 class RobomimicDataset(SequenceDataset):

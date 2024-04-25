@@ -2,26 +2,20 @@
 This file contains the robosuite environment wrapper that is used
 to provide a standardized environment API for training policies and interacting
 with metadata present in datasets.
-"""
+""" 
+try:
+    import robosuite
+    import robosuite.utils.transform_utils as T
+except ImportError:
+    pass
+from bc_algos.envs.env_base import BaseEnv
+import bc_algos.utils.constants as Const
 import json
 import numpy as np
 from copy import deepcopy
 
-import robosuite
-import robosuite.utils.transform_utils as T
 
-import bc_algos.envs.env_base as EB
-import bc_algos.utils.constants as Const
-
-# protect against missing mujoco-py module, since Robosuite might be using mujoco-py or DM backend
-try:
-    import mujoco_py
-    MUJOCO_EXCEPTIONS = [mujoco_py.builder.MujocoException]
-except ImportError:
-    MUJOCO_EXCEPTIONS = []
-
-
-class RobosuiteEnv(EB.BaseEnv):
+class RobosuiteEnv(BaseEnv):
     """
     Class for interacting with Robosuite environments (https://github.com/ARISE-Initiative/robosuite).
     """
@@ -146,7 +140,7 @@ class RobosuiteEnv(EB.BaseEnv):
     def get_observation(self, di=None):
         """
         Args:
-            di (dict): current raw observation dictionary from Robosuite to wrap and provide 
+            di (dict): (optional) current raw observation dictionary from Robosuite to wrap and provide 
                 as a dictionary. If not provided, will be queried from Robosuite.
 
         Returns: observation dictionary from environment. 
@@ -193,6 +187,8 @@ class RobosuiteEnv(EB.BaseEnv):
 
             on_screen (bool): if True, render to an on-screen window. otherwise, render
                 off-screen to RGB array.
+
+        Returns: rendered image (np.array).
         """
         if on_screen:
             cam_id = self.env.sim.model.camera_name2id(camera_name)
@@ -229,7 +225,7 @@ class RobosuiteEnv(EB.BaseEnv):
 
             camera_width (int): width of camera images in pixels
 
-        Return:
+        Returns:
             K (np.array): 3x3 camera matrix
         """
         cam_id = self.env.sim.model.camera_name2id(camera_name)
@@ -250,7 +246,7 @@ class RobosuiteEnv(EB.BaseEnv):
         Args:
             camera_name (str): name of camera
 
-        Return:
+        Returns:
             R (np.array): 4x4 camera extrinsic matrix
         """
         cam_id = self.env.sim.model.camera_name2id(camera_name)
@@ -276,7 +272,7 @@ class RobosuiteEnv(EB.BaseEnv):
             
             camera_width (int): width of camera images in pixels
             
-        Return:
+        Returns:
             K (np.array): 4x4 camera matrix to project from world coordinates to pixel coordinates
         """
         R = self.get_camera_extrinsic_matrix(camera_name=camera_name)

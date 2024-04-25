@@ -1,10 +1,9 @@
-import json
-
-from bc_algos.envs.isaacgym_simple import IsaacGymEnvSimple
 from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.isaac_gym import IsaacGymDataset
-import bc_algos.utils.constants as Const
+from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
 import bc_algos.utils.tensor_utils as TensorUtils
+import bc_algos.utils.constants as Const
+import json
 
 
 class IsaacGymSimpleRolloutEnv(RolloutEnv):
@@ -44,6 +43,37 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         """
         assert isinstance(validset, IsaacGymDataset)
 
+        super(IsaacGymSimpleRolloutEnv, self).__init__(
+            validset=validset,
+            obs_group_to_key=obs_group_to_key,
+            obs_key_to_modality=obs_key_to_modality,
+            frame_stack=frame_stack,
+            closed_loop=closed_loop,
+            gc=gc,
+            normalization_stats=normalization_stats,
+            render_video=render_video,
+        )
+
+    def fetch_goal(self, demo_id, t):
+        """
+        Get goal for specified demo and time.
+
+        Args:
+            demo_id (int): demo id, ie. 0
+
+            t (int): timestep in trajectory
+
+        Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
+        """
+        demo_length = self.validset.demo_len(demo_id=demo_id)
+        if t >= demo_length:
+            # reuse last goal
+            t = demo_length - 1
+        index = self.validset.index_from_timestep(demo_id=demo_id, t=t)
+        goal = self.validset[index]["goal"]
+        goal = TensorUtils.to_batch(x=goal)
+        return goal
+    
     def create_env(self):
         """
         Create and return Isaac Gym environment.
@@ -59,36 +89,16 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             config=config,
         )
 
-    def fetch_goal(self, demo_id, t):
-        """
-        Get goal for specified demo and time.
-
-        Args:
-            demo_id (str): demo id, ie. "demo_0"
-
-            t (int): timestep in trajectory
-
-        Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
-        """
-        demo_length = self.validset.demo_len(demo_id=demo_id)
-        if t >= demo_length:
-            # reuse last goal
-            t = demo_length - 1
-        index = self.validset.index_from_timestep(demo_id=demo_id, t=t)
-        goal = self.validset[index]["goal"]
-        goal = TensorUtils.to_batch(x=goal)
-        return goal
-
     def init_demo(self, demo_id):
         """
         Initialize environment for demo by loading models
         and setting simulator state. 
 2
         Args:
-            demo_id (str): demo id, ie. "demo_0"
+            demo_id (int): demo id, ie. 0
 
         Returns: dictionary from observation key to data (np.array) obtained
             from environment after initializing demo
         """
-        demo_metadata = self.validset.dataset[demo_id]["metadata"]
-        self.env.reset_to(state=demo_metadata)
+        metadata = self.validset.dataset[demo_id]["metadata"]
+        return self.env.reset_to(state=metadata)
