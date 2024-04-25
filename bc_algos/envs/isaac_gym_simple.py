@@ -1,8 +1,8 @@
 try:
-    import omegaconf
     import isaacgymenvs
 except ImportError:
     pass
+import omegaconf
 from bc_algos.envs.env_base import BaseEnv
 import bc_algos.utils.constants as Const
 import torch
