@@ -2,6 +2,7 @@ from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.isaac_gym import IsaacGymDataset
 from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
 import bc_algos.utils.tensor_utils as TensorUtils
+import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
 import json
 
@@ -15,6 +16,7 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             validset,  
             obs_group_to_key,
             obs_key_to_modality,
+            env_cfg_path,
             frame_stack=0,
             closed_loop=True,
             gc=False,
@@ -28,6 +30,8 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             obs_group_to_key (dict): dictionary from observation group to observation key
 
             obs_key_to_modality (dict): dictionary from observation key to modality
+
+            env_cfg_path (str): path to the config for Isaac Gym simulator
 
             frame_stack (int): number of stacked frames to be provided as input to policy
 
@@ -54,6 +58,35 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             render_video=render_video,
         )
 
+        self.config = json.load(open(env_cfg_path, "r"))
+
+    @classmethod
+    def factory(cls, config, validset, normalization_stats=None):
+        """
+        Create a IsaacGymSimpleRolloutEnv instance from config.
+
+        Args:
+            config (addict): config object
+
+            validset (SequenceDataset): validation dataset for rollout
+
+            normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
+                normalization stats from training dataset
+
+        Returns: RolloutEnv instance.
+        """
+        return cls(
+            validset=validset,
+            obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
+            obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
+            env_cfg_path=config.rollout.env_cfg_path,
+            frame_stack=config.dataset.frame_stack,
+            closed_loop=config.rollout.closed_loop,
+            gc=(config.dataset.goal_mode is not None),
+            normalization_stats=normalization_stats,
+            render_video=False,
+        )
+
     def fetch_goal(self, demo_id, t):
         """
         Get goal for specified demo and time.
@@ -78,15 +111,13 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         """
         Create and return Isaac Gym environment.
         """
-        env_cfg_file = "../config/isaac_gym_env.json"
-        config = json.load(open(env_cfg_file, "r"))
         return IsaacGymEnvSimple(
             "MentalModelsTaskSimple",
             obs_key_to_modality=self.obs_key_to_modality,
             render=self.render_video,
             use_image_obs=(Const.Modality.RGB in self.obs_key_to_modality.values()),
             use_depth_obs=(Const.Modality.DEPTH in self.obs_key_to_modality.values()),
-            config=config,
+            config=self.config,
         )
 
     def init_demo(self, demo_id):
