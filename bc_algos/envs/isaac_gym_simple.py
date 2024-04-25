@@ -96,10 +96,11 @@ class IsaacGymEnvSimple(BaseEnv):
         di = di["obs"]
         obs = {}
         for k in di:
-            if preprocess and (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
-                obs[k] = IsaacGymEnvSimple.preprocess_img(di[k][0].cpu().numpy())
-            elif k in self.obs_key_to_modality:
+            if k in self.obs_key_to_modality:
                 obs[k] = di[k][0].cpu().numpy()
+                if preprocess:
+                    if self.obs_key_to_modality[k] == Const.Modality.RGB:
+                        obs[k] = IsaacGymEnvSimple.preprocess_img(obs[k])                
         return obs
     
     def load_env(self, xml):
@@ -135,9 +136,9 @@ class IsaacGymEnvSimple(BaseEnv):
 
         # "warm up" the environment
         for _ in range(self.init_cycles):
-            self.step(np.zeros(7))
+            obs = self.step(np.zeros(7))
         
-        return self.get_observation()
+        return obs
 
     def reset_to(self, state):
         """

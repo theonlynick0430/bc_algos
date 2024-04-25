@@ -149,19 +149,20 @@ class RobosuiteEnv(BaseEnv):
             di = self.env._get_observations(force_update=True)
         obs = {}
         for k in di:
-            if (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
-                # by default images from mujoco are flipped in height
-                obs[k] = RobosuiteEnv.preprocess_img(di[k][::-1])
-            elif (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.DEPTH:
-                # by default depth images from mujoco are flipped in height
-                obs[k] = di[k][::-1]
-                if len(obs[k].shape) == 2:
-                    obs[k] = obs[k][None, ...] # (1, H, W)
-                assert len(obs[k].shape) == 3 
-                # scale entries in depth map to correspond to real distance.
-                obs[k] = self.get_real_depth_map(obs[k])
-            elif k in self.obs_key_to_modality:
-                obs[k] = di[k]
+            if k in self.obs_key_to_modality:
+                if self.obs_key_to_modality[k] == Const.Modality.RGB:
+                    # by default images from mujoco are flipped in height
+                    obs[k] = RobosuiteEnv.preprocess_img(di[k][::-1])
+                elif self.obs_key_to_modality[k] == Const.Modality.DEPTH:
+                    # by default depth images from mujoco are flipped in height
+                    obs[k] = di[k][::-1]
+                    if len(obs[k].shape) == 2:
+                        obs[k] = obs[k][None, ...] # (1, H, W)
+                    assert len(obs[k].shape) == 3 
+                    # scale entries in depth map to correspond to real distance.
+                    obs[k] = self.get_real_depth_map(obs[k])
+                else:
+                    obs[k] = di[k]                
         return obs
     
     def is_success(self):

@@ -48,7 +48,7 @@
 
     "dataset": {
         "type": "robomimic",
-        "path": "/Users/nikhilsridhar/Desktop/RoboDev/JJ/bc_algos/datasets/test/square_ph.hdf5",
+        "path": null,
         "dataset_keys": [
             "actions"
         ],
@@ -92,6 +92,7 @@
         "type": "robomimic",
         "closed_loop": true,
         "horizon": null,
-        "render_video": false
+        "render_video": false,
+        "env_cfg_path": null
     }
 }

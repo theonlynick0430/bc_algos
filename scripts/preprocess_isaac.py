@@ -18,7 +18,7 @@ def preprocess_dataset(config, dataset_path, output_path):
     ObsUtils.init_obs_utils(config=config)
 
     num_demos = int(len(os.listdir(dataset_path)))
-    obs_keys = list(set([obs_key for obs_group in ObsUtils.OBS_GROUP_TO_KEY.values() for obs_key in obs_group]))
+    obs_keys = list(ObsUtils.OBS_KEY_TO_MODALITY.keys())
 
     with tqdm(total=num_demos, desc="preprocessing dataset", unit='demo') as progress_bar:
         for sub_path in os.listdir(dataset_path):
