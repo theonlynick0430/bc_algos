@@ -48,7 +48,7 @@
 
     "dataset": {
         "type": "isaac_gym",
-        "path": "/Users/nikhilsridhar/Desktop/RoboDev/JJ/bc_algos/datasets/dataset_v12_diff",
+        "path": "/home/niksrid/bc_algos/datasets/dataset_v13_diff",
         "dataset_keys": [
             "actions"
         ],
@@ -59,16 +59,16 @@
         "get_pad_mask": true,
         "goal_mode": null,
         "num_subgoal": null,
-        "preprocess": false,
+        "preprocess": true,
         "normalize": true,
         "kwargs": {
             "train": {
                 "filter_by_attribute": "train",
-                "demos": null
+                "demos": [0, 1]
             },
             "valid": {
                 "filter_by_attribute": "valid",
-                "demos": null
+                "demos": [0, 1]
             }
         }
     },
@@ -93,6 +93,6 @@
         "closed_loop": true,
         "horizon": null,
         "render_video": false,
-        "env_cfg_path": "/Users/nikhilsridhar/Desktop/RoboDev/JJ/bc_algos/config/isaac_gym_env.json"
+        "env_cfg_path": "/home/niksrid/bc_algos/config/isaac_gym_env.json"
     }
 }

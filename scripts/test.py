@@ -1,3 +1,8 @@
+try:
+    from isaacgym import gymtorch
+    from isaacgym import gymapi
+except ImportError:
+    pass
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.dataset.robomimic import RobomimicDataset
 from bc_algos.dataset.isaac_gym import IsaacGymDataset

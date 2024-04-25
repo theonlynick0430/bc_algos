@@ -47,6 +47,8 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         """
         assert isinstance(validset, IsaacGymDataset)
 
+        self.config = json.load(open(env_cfg_path, "r"))
+
         super(IsaacGymSimpleRolloutEnv, self).__init__(
             validset=validset,
             obs_group_to_key=obs_group_to_key,
@@ -57,8 +59,6 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             normalization_stats=normalization_stats,
             render_video=render_video,
         )
-
-        self.config = json.load(open(env_cfg_path, "r"))
 
     @classmethod
     def factory(cls, config, validset, normalization_stats=None):
