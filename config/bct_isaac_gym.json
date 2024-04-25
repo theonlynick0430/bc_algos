@@ -59,16 +59,16 @@
         "get_pad_mask": true,
         "goal_mode": null,
         "num_subgoal": null,
-        "preprocess": true,
+        "preprocess": false,
         "normalize": true,
         "kwargs": {
             "train": {
                 "filter_by_attribute": "train",
-                "demos": [0, 1]
+                "demos": null
             },
             "valid": {
                 "filter_by_attribute": "valid",
-                "demos": [0, 1]
+                "demos": null
             }
         }
     },
