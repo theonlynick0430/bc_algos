@@ -97,11 +97,12 @@ def train(config):
             normalization_stats=trainset.normalization_stats,
         )
     elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
-        rollout_env = IsaacGymSimpleRolloutEnv.factory(
-            config=config, 
-            validset=validset,
-            normalization_stats=trainset.normalization_stats,
-        )
+        pass # TODO: - add support to run Isaac Gym on Great Lakes
+        # rollout_env = IsaacGymSimpleRolloutEnv.factory(
+        #     config=config, 
+        #     validset=validset,
+        #     normalization_stats=trainset.normalization_stats,
+        # )
     else:
         print(f"rollout env {config.rollout.type} not supported")
         exit(1)
