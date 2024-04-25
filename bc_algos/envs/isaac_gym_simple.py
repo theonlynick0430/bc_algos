@@ -97,9 +97,9 @@ class IsaacGymEnvSimple(BaseEnv):
         obs = {}
         for k in di:
             if preprocess and (k in self.obs_key_to_modality) and self.obs_key_to_modality[k] == Const.Modality.RGB:
-                obs[k] = IsaacGymEnvSimple.preprocess_img(di[k].cpu().numpy())
+                obs[k] = IsaacGymEnvSimple.preprocess_img(di[k][0].cpu().numpy())
             elif k in self.obs_key_to_modality:
-                obs[k] = di[k].cpu().numpy()
+                obs[k] = di[k][0].cpu().numpy()
         return obs
     
     def load_env(self, xml):
@@ -180,7 +180,7 @@ class IsaacGymEnvSimple(BaseEnv):
         Returns: rendered image (np.array).
         """
         obs = self.get_observation(preprocess=False)
-        return obs["agentview_image"][0]
+        return obs["agentview_image"]
 
     def is_success(self):
         """
