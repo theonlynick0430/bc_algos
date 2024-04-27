@@ -12,28 +12,35 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
     Class used to rollout policies in Isaac Gym environments. 
     """
     def __init__(
-            self,
-            validset,  
-            obs_group_to_key,
-            obs_key_to_modality,
-            env_cfg_path,
-            frame_stack=0,
-            closed_loop=True,
-            gc=False,
-            normalization_stats=None,
-            render_video=False,
-        ):
+        self,
+        validset,  
+        policy,
+        obs_group_to_key,
+        obs_key_to_modality,
+        env_cfg_path,
+        frame_stack=0,
+        closed_loop=True,
+        gc=False,
+        normalization_stats=None,
+        render_video=False,
+        video_skip=1,
+        terminate_on_success=False,
+        horizon=None,
+        verbose=False,
+    ):
         """
         Args:
             validset (SequenceDataset): validation dataset for rollout
+
+            policy (BC): policy used to query actions
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 
-            env_cfg_path (str): path to the config for Isaac Gym simulator
-
             frame_stack (int): number of stacked frames to be provided as input to policy
+
+            env_cfg_path (str): path to the config for Isaac Gym simulator
 
             closed_loop (bool): if True, query policy at every timstep and execute first action.
                 Otherwise, execute full action chunk before querying the policy again.
@@ -44,6 +51,14 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
                 normalization stats from training dataset
 
             render_video (bool): if True, render rollout on screen
+
+            video_skip (int): how often to write video frames
+
+            terminate_on_success (bool): if True, terminate episodes early when success is encountered
+
+            horizon (int): horizon of episodes. If None, use demo length.
+
+            verbose (bool): if True, log rollout stats and visualize error
         """
         assert isinstance(validset, IsaacGymDataset)
 
@@ -51,6 +66,7 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
 
         super(IsaacGymSimpleRolloutEnv, self).__init__(
             validset=validset,
+            policy=policy,
             obs_group_to_key=obs_group_to_key,
             obs_key_to_modality=obs_key_to_modality,
             frame_stack=frame_stack,
@@ -58,10 +74,14 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             gc=gc,
             normalization_stats=normalization_stats,
             render_video=render_video,
+            video_skip=video_skip,
+            terminate_on_success=terminate_on_success,
+            horizon=horizon,
+            verbose=verbose,
         )
-
+    
     @classmethod
-    def factory(cls, config, validset, normalization_stats=None):
+    def factory(cls, config, validset, policy, normalization_stats=None):
         """
         Create a IsaacGymSimpleRolloutEnv instance from config.
 
@@ -70,13 +90,16 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
 
             validset (SequenceDataset): validation dataset for rollout
 
+            policy (BC): policy used to query actions
+
             normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
                 normalization stats from training dataset
 
-        Returns: RolloutEnv instance.
+        Returns: IsaacGymSimpleRolloutEnv instance.
         """
         return cls(
             validset=validset,
+            policy=policy,
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             env_cfg_path=config.rollout.env_cfg_path,
@@ -85,6 +108,10 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             gc=(config.dataset.goal_mode is not None),
             normalization_stats=normalization_stats,
             render_video=False,
+            video_skip=config.rollout.video_skip,
+            terminate_on_success=config.rollout.terminate_on_success,
+            horizon=config.rollout.horizon,
+            verbose=config.rollout.verbose,
         )
 
     def fetch_goal(self, demo_id, t):

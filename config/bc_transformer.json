@@ -90,9 +90,12 @@
 
     "rollout": {
         "type": "robomimic",
+        "env_cfg_path": null,
         "closed_loop": true,
-        "horizon": null,
         "render_video": false,
-        "env_cfg_path": null
+        "video_skip": 1,
+        "terminate_on_success": false,
+        "horizon": null,
+        "verbose": false
     }
 }

@@ -94,6 +94,7 @@ def train(config):
         rollout_env = RobomimicRolloutEnv.factory(
             config=config, 
             validset=validset,
+            policy=policy,
             normalization_stats=trainset.normalization_stats,
         )
     elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
@@ -101,6 +102,7 @@ def train(config):
         # rollout_env = IsaacGymSimpleRolloutEnv.factory(
         #     config=config, 
         #     validset=validset,
+        #     policy=policy,
         #     normalization_stats=trainset.normalization_stats,
         # )
     else:
@@ -180,7 +182,6 @@ def train(config):
             with tqdm(total=validset.num_demos, unit='demo') as progress:
                 for demo_id in validset.demos:
                     _ = rollout_env.rollout_with_stats(
-                        policy=policy,
                         demo_id=demo_id,
                         video_dir=rollout_epoch_dir,
                         device=accelerator.device,

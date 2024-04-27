@@ -11,19 +11,26 @@ class RobomimicRolloutEnv(RolloutEnv):
     Class used to rollout policies in Robomimic environments. 
     """
     def __init__(
-            self,
-            validset,  
-            obs_group_to_key,
-            obs_key_to_modality,
-            frame_stack=0,
-            closed_loop=True,
-            gc=False,
-            normalization_stats=None,
-            render_video=False,
-        ):
+        self,
+        validset,  
+        policy,
+        obs_group_to_key,
+        obs_key_to_modality,
+        frame_stack=0,
+        closed_loop=True,
+        gc=False,
+        normalization_stats=None,
+        render_video=False,
+        video_skip=1,
+        terminate_on_success=False,
+        horizon=None,
+        verbose=False,
+    ):
         """
         Args:
             validset (SequenceDataset): validation dataset for rollout
+
+            policy (BC): policy used to query actions
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
@@ -40,11 +47,20 @@ class RobomimicRolloutEnv(RolloutEnv):
                 normalization stats from training dataset
 
             render_video (bool): if True, render rollout on screen
+
+            video_skip (int): how often to write video frames
+
+            terminate_on_success (bool): if True, terminate episodes early when success is encountered
+
+            horizon (int): horizon of episodes. If None, use demo length.
+
+            verbose (bool): if True, log rollout stats and visualize error
         """
         assert isinstance(validset, RobomimicDataset)
 
         super(RobomimicRolloutEnv, self).__init__(
             validset=validset,
+            policy=policy,
             obs_group_to_key=obs_group_to_key,
             obs_key_to_modality=obs_key_to_modality,
             frame_stack=frame_stack,
@@ -52,6 +68,10 @@ class RobomimicRolloutEnv(RolloutEnv):
             gc=gc,
             normalization_stats=normalization_stats,
             render_video=render_video,
+            video_skip=video_skip,
+            terminate_on_success=terminate_on_success,
+            horizon=horizon,
+            verbose=verbose,
         )
     
     def fetch_goal(self, demo_id, t):

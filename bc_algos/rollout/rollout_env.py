@@ -2,7 +2,9 @@ from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.models.policy_nets import BC
+import numpy as np
 import imageio
+import matplotlib.pyplot as plt
 import time
 import os
 from collections import OrderedDict
@@ -15,19 +17,26 @@ class RolloutEnv:
     different environments. 
     """
     def __init__(
-            self,
-            validset,  
-            obs_group_to_key,
-            obs_key_to_modality,
-            frame_stack=0,
-            closed_loop=True,
-            gc=False,
-            normalization_stats=None,
-            render_video=False,
-        ):
+        self,
+        validset,  
+        policy,
+        obs_group_to_key,
+        obs_key_to_modality,
+        frame_stack=0,
+        closed_loop=True,
+        gc=False,
+        normalization_stats=None,
+        render_video=False,
+        video_skip=1,
+        terminate_on_success=False,
+        horizon=None,
+        verbose=False,
+    ):
         """
         Args:
             validset (SequenceDataset): validation dataset for rollout
+
+            policy (BC): policy used to query actions
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
@@ -44,11 +53,21 @@ class RolloutEnv:
                 normalization stats from training dataset
 
             render_video (bool): if True, render rollout on screen
+
+            video_skip (int): how often to write video frames
+
+            terminate_on_success (bool): if True, terminate episodes early when success is encountered
+
+            horizon (int): horizon of episodes. If None, use demo length.
+
+            verbose (bool): if True, log rollout stats and visualize error
         """
         assert isinstance(validset, SequenceDataset)
+        assert isinstance(policy, BC)
         assert validset.pad_frame_stack and validset.pad_seq_length, "rollout requires padding"
 
         self.validset = validset
+        self.policy = policy
         self.obs_group_to_key = obs_group_to_key
         self.obs_key_to_modality = obs_key_to_modality
         self.frame_stack = frame_stack
@@ -57,11 +76,15 @@ class RolloutEnv:
         self.normalize = normalization_stats is not None
         self.normalization_stats = normalization_stats
         self.render_video = render_video
+        self.video_skip = video_skip
+        self.terminate_on_success = terminate_on_success
+        self.horizon = horizon
+        self.verbose = verbose
 
         self.env = self.create_env()
 
     @classmethod
-    def factory(cls, config, validset, normalization_stats=None):
+    def factory(cls, config, validset, policy, normalization_stats=None):
         """
         Create a RolloutEnv instance from config.
 
@@ -70,6 +93,8 @@ class RolloutEnv:
 
             validset (SequenceDataset): validation dataset for rollout
 
+            policy (BC): policy used to query actions
+
             normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
                 normalization stats from training dataset
 
@@ -77,6 +102,7 @@ class RolloutEnv:
         """
         return cls(
             validset=validset,
+            policy=policy,
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             frame_stack=config.dataset.frame_stack,
@@ -84,6 +110,10 @@ class RolloutEnv:
             gc=(config.dataset.goal_mode is not None),
             normalization_stats=normalization_stats,
             render_video=False,
+            video_skip=config.rollout.video_skip,
+            terminate_on_success=config.rollout.terminate_on_success,
+            horizon=config.rollout.horizon,
+            verbose=config.rollout.verbose,
         )
 
     def create_env(self):
@@ -196,44 +226,25 @@ class RolloutEnv:
         """
         return NotImplementedError
 
-    def run_rollout(
-            self, 
-            policy, 
-            demo_id,
-            video_writer=None,
-            video_skip=5,
-            horizon=None,
-            terminate_on_success=False,
-            device=None,
-        ):
+    def run_rollout(self, demo_id, video_writer=None, device=None):
         """
-        Run rollout on a single demo and save stats (and video if necessary).
+        Run rollout on a single demo.
 
         Args:
-            policy (BC): policy to use for rollouts
-
             demo_id: id of demo to rollout
 
             video_writer (imageio.Writer): if not None, use video writer object to append frames at 
-                rate given by @video_skip
-
-            video_skip (int): how often to write video frame
-
-            horizon (int): horizon of rollout episode. If None, use demo length.
-
-            terminate_on_success (bool): if True, terminate episode early when success is encountered
+                rate given by @self.video_skip
 
             device: (optional) device to send tensors to
 
-        Returns: dictionary of results with the keys "horizon" and "success".
+        Returns: dictionary of results with the keys "horizon", "success", and "error".
         """
-        assert isinstance(policy, BC)
-
         demo_len = self.validset.demo_len(demo_id=demo_id)
-        horizon = demo_len if horizon is None else horizon
+        horizon = demo_len if self.horizon is None else self.horizon
 
         # switch to eval mode
-        policy.eval()
+        self.policy.eval()
 
         obs = self.init_demo(demo_id=demo_id)
 
@@ -243,17 +254,32 @@ class RolloutEnv:
         results = {}
         video_count = 0  # video frame counter
         success = False
+        error = []
 
         step_i = 0
         # iterate until horizon reached or termination on success
-        while step_i < horizon and not (terminate_on_success and success):
+        while step_i < horizon and not (self.terminate_on_success and success):
             # compute new input
             input = self.input_from_new_obs(input=input, obs=obs, demo_id=demo_id, t=step_i)
             x = BC.prepare_input(input=input, device=device)
 
             # query policy for actions
-            actions = policy(x)
-            actions = actions.squeeze(0).detach().cpu().numpy()
+            actions = self.policy(x)
+            actions = actions.squeeze(0).detach().cpu().numpy() # remove batch dim
+
+            # compute error 
+            index = self.validset.index_from_timestep(demo_id=demo_id, t=step_i)
+            frame = self.validset[index]
+            target = frame["actions"][self.frame_stack:, :]
+            e = np.mean(np.abs(target-actions), axis=-1)
+            coef = np.full([e.shape[0]], 1.)
+            if self.validset.get_pad_mask is True:
+                pad_mask = frame["pad_mask"][self.frame_stack:]
+                coef = pad_mask * coef
+            e = np.sum(coef*e)/np.sum(coef)
+            error.append(e)
+
+            # slice actions based on planning algorithm
             if self.closed_loop:
                 actions = actions[:1, :] # execute only first action
             else:
@@ -272,87 +298,65 @@ class RolloutEnv:
 
                 # visualization
                 if video_writer is not None:
-                    if video_count % video_skip == 0:
+                    if video_count % self.video_skip == 0:
                         video_img = self.env.render()
                         video_writer.append_data(video_img)
                     video_count += 1
 
                 # break if success
-                if terminate_on_success and success:
+                if self.terminate_on_success and success:
                     break
                 
         results["horizon"] = step_i
         results["success"] = success
+        results["error"] = error
         
         return results
 
-    def rollout_with_stats(
-            self, 
-            policy, 
-            demo_id,
-            video_dir=None,
-            video_writer=None,
-            video_skip=1,
-            horizon=None,
-            terminate_on_success=False, 
-            verbose=False,
-            device=None,
-        ):        
+    def rollout_with_stats(self, demo_id, video_dir=None, device=None):        
         """
-        Configure video writer, run rollout, and log progress. 
+        Run rollout on a single demo and log progress. 
 
         Args:
-            policy (RolloutPolicy): policy to use for rollouts
-
             demo_id: id of demo to rollout
 
             video_dir (str): (optional) directory to save rollout videos
 
-            video_writer (imageio.Writer): if not None, use video writer object to append frames at 
-                rate given by @video_skip
-
-            video_skip (int): how often to write video frame
-
-            horizon (int): horizon of rollout episode. If None, use demo length.
-
-            terminate_on_success (bool): if True, terminate episode early when a success is encountered
-
-            verbose (bool): if True, print results of each rollout
-
             device: (optional) device to send tensors to
 
-        Returns: dictionary of results with the keys "time", "horizon", and "success".
+        Returns: dictionary of results with the keys "duration", "horizon", "success", and "error".
         """
-        assert isinstance(policy, BC)
-
-        rollout_timestamp = time.time()
-
-        # create video writer
         write_video = video_dir is not None
-        video_path = None
-        if write_video and video_writer is None:
-            video_str = f"{demo_id}.mp4"
-            video_path = os.path.join(video_dir, f"{video_str}")
-            video_writer = imageio.get_writer(video_path, fps=20)
+        video_writer = None
+        if write_video:
+            video_path = os.path.join(video_dir, f"{demo_id}.mp4")
+            video_writer = imageio.get_writer(video_path, fps=24)
             print("video writes to " + video_path)
         
+        rollout_timestamp = time.time()
         rollout_info = self.run_rollout(
-            policy=policy, 
             demo_id=demo_id, 
             video_writer=video_writer, 
-            video_skip=video_skip, 
-            horizon=horizon,
-            terminate_on_success=terminate_on_success, 
             device=device,
         )
-
-        rollout_info["time"] = time.time() - rollout_timestamp
-        if verbose:
-            horizon = rollout_info["horizon"]
-            success = rollout_info["success"]
-            print(f"demo={demo_id}, horizon={horizon}, success={success}")
+        rollout_info["duration"] = time.time() - rollout_timestamp
 
         if write_video:
             video_writer.close()
+        
+        if self.verbose:
+            horizon = rollout_info["horizon"]
+            success = rollout_info["success"]
+            print(f"demo={demo_id}, horizon={horizon}, success={success}")
+            if write_video:
+                img_path = os.path.join(video_dir, f"{demo_id}_error.png")
+                error = np.array(rollout_info["error"])
+                t = np.arange(error.shape[0])
+                plt.figure()
+                plt.plot(t, error)
+                plt.title("rollout error")
+                plt.xlabel("time")
+                plt.ylabel("error")
+                plt.savefig(img_path)              
 
         return rollout_info
