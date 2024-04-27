@@ -292,7 +292,7 @@ class RolloutEnv:
             demo_id,
             video_dir=None,
             video_writer=None,
-            video_skip=5,
+            video_skip=1,
             horizon=None,
             terminate_on_success=False, 
             verbose=False,
