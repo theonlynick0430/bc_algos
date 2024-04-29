@@ -60,7 +60,7 @@ class IsaacGymEnvSimple(BaseEnv):
 
         self.init_cycles = 10
         self.device = self.env.device
-        self.env_id = torch.tensor([0], dtype=torch.long, device=self.device)
+        self.env_id = torch.tensor([0], dtype=torch.long).to(self.device)
 
     @classmethod
     def preprocess_img(cls, img):
@@ -121,7 +121,7 @@ class IsaacGymEnvSimple(BaseEnv):
 
         Returns: observation dictionary after executing action.
         """
-        action = torch.tensor(action, device=self.device).float().unsqueeze(0)
+        action = torch.from_numpy(action).to(self.device).float().unsqueeze(0)
         obs = self.env.step(action)
         return self.get_observation(obs)
 

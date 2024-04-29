@@ -280,6 +280,27 @@ def slice(x, dim, start, end):
         }
     )
 
+def to_numpy(x):
+    """
+    Converts all torch tensors in nested dictionary or list or tuple to
+    numpy arrays (and leaves existing numpy arrays as-is), and returns 
+    a new nested structure.
+
+    Args:
+        x (dict or list or tuple): a possibly nested dictionary or list or tuple
+
+    Returns:
+        y (dict or list or tuple): new nested dict-list-tuple
+    """
+    return recursive_dict_list_tuple_apply(
+        x,
+        {
+            torch.Tensor: lambda x: x.detach().cpu().numpy(),
+            np.ndarray: lambda x: x,
+            type(None): lambda x: x,
+        }
+    )
+
 def to_tensor(x, device=None):
     """
     Converts all numpy arrays in nested dictionary or list or tuple to
@@ -297,8 +318,8 @@ def to_tensor(x, device=None):
     return recursive_dict_list_tuple_apply(
         x,
         {
-            torch.Tensor: lambda x: x.to(device=device),
-            np.ndarray: lambda x: torch.from_numpy(x).to(device=device),
+            torch.Tensor: lambda x: x.to(device),
+            np.ndarray: lambda x: torch.from_numpy(x).to(device),
             type(None): lambda x: x,
         }
     )
