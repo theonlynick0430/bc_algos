@@ -91,8 +91,6 @@ class IsaacGymDataset(SequenceDataset):
             get_pad_mask=get_pad_mask,
             goal_mode=goal_mode,
             num_subgoal=num_subgoal,
-            preprocess=preprocess,
-            normalize=normalize,
         )
 
     def demo_id_to_run_path(self, demo_id):
@@ -118,60 +116,42 @@ class IsaacGymDataset(SequenceDataset):
                 self._demos = [i for i in range(len(os.listdir(self.path))) if
                                os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
         return self._demos
-
-    def load_dataset(self, preprocess):
+    
+    def demo_len(self, demo_id):
         """
-        Load dataset into memory.
+        Args: 
+            demo_id (int): demo id, ie. 0
+        
+        Returns: length of demo with @demo_id.
+        """
+        run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
+        return run["metadata"]["num_steps"]-1
+    
+    def load_demo(self, demo_id):
+        """
+        Load demo with @demo_id into memory. 
 
         Args: 
-            preprocess (bool): if True, preprocess data while loading into memory
-
-        Returns: nested dictionary with the following format:
-        {
-            demo_id: {
-                dataset_key: data (np.array) of shape [T, ...]
-                ...
-                obs_key: data (np.array) of shape [T, ...]
-                ...
-                "steps": length of trajectory
-            }
-            ...
-        }
+            demo_id (int): demo id, ie. 0
+        
+        Returns: nested dictionary from dataset/observation key to
+            data (np.array) of shape [T, ...]
         """
-        dataset = {}
-
-        with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
-            for demo_id in self.demos:
-                dataset[demo_id] = {}
-
-                run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
-
-                # get observations
-                dataset[demo_id] = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
-                if preprocess:
-                    for obs_key in self.obs_keys:
-                        if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo_id][obs_key] = IsaacGymEnvSimple.preprocess_img(img=dataset[demo_id][obs_key])
-
-                # get other dataset keys
-                for dataset_key in self.dataset_keys:
-                    dataset[demo_id][dataset_key] = run["policy"][dataset_key]
-
-                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]-1
-
-                # Load demo metadata (used to reset).
-                cubes_pos = run["obs"]["cubes_pos"][0]
-                cubes_quat = run["obs"]["cubes_quat"][0]
-                cubes_pose = np.concatenate([cubes_pos, cubes_quat], axis=-1)
-                dataset[demo_id]["metadata"] = {
-                    "block_colors": run["metadata"]["block_colors"],
-                    "block_init_pose": cubes_pose,
-                    "start_q": run["obs"]["q"][0],
-                }
-
-                progress_bar.update(1)
-
-        return dataset
+        run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
+        demo = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
+        # get other dataset keys
+        for dataset_key in self.dataset_keys:
+            demo[dataset_key] = run["policy"][dataset_key]
+        # load demo metadata (used to reset)
+        cubes_pos = run["obs"]["cubes_pos"][0]
+        cubes_quat = run["obs"]["cubes_quat"][0]
+        cubes_pose = np.concatenate([cubes_pos, cubes_quat], axis=-1)
+        demo["metadata"] = {
+            "block_colors": run["metadata"]["block_colors"],
+            "block_init_pose": cubes_pose,
+            "start_q": run["obs"]["q"][0],
+        }
+        return demo
 
     def __repr__(self):
         """

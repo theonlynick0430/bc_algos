@@ -89,8 +89,6 @@ class RobomimicDataset(SequenceDataset):
             get_pad_mask=get_pad_mask, 
             goal_mode=goal_mode, 
             num_subgoal=num_subgoal,
-            preprocess=preprocess,
-            normalize=normalize,
         )
 
     @property
@@ -114,47 +112,31 @@ class RobomimicDataset(SequenceDataset):
                 self._demos = list(self.hdf5_file["data"].keys())
         return self._demos
     
-    def load_dataset(self, preprocess):
+    def demo_len(self, demo_id):
         """
-        Load dataset into memory.
+        Args: 
+            demo_id (str): demo id, ie "demo_0"
+        
+        Returns: length of demo with @demo_id.
+        """
+        return self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"]
+    
+    def load_demo(self, demo_id):
+        """
+        Load demo with @demo_id into memory. 
 
         Args: 
-            preprocess (bool): if True, preprocess data while loading into memory
-
-        Returns: nested dictionary with the following format:
-        {
-            demo_id: {
-                dataset_key: data (np.array) of shape [T, ...]
-                ...
-                obs_key: data (np.array) of shape [T, ...]
-                ...
-                "steps": length of trajectory
-            }
-            ...
-        }
+            demo_id (str): demo id, ie "demo_0"
+        
+        Returns: nested dictionary from dataset/observation key to
+            data (np.array) of shape [T, ...]
         """
-        dataset = {}
-
-        with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
-            for demo_id in self.demos:
-                dataset[demo_id] = {}
-
-                # get observations
-                dataset[demo_id] = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
-                if preprocess:
-                    for obs_key in self.obs_keys:
-                        if self.obs_key_to_modality[obs_key] == Const.Modality.RGB:
-                            dataset[demo_id][obs_key] = RobosuiteEnv.preprocess_img(img=dataset[demo_id][obs_key])
-
-                # get other dataset keys
-                for dataset_key in self.dataset_keys:
-                    dataset[demo_id][dataset_key] = self.hdf5_file[f"data/{demo_id}/{dataset_key}"][()]
-
-                dataset[demo_id]["steps"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
-
-                progress_bar.update(1)
-
-        return dataset 
+        # get observations
+        demo = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
+        # get other dataset keys
+        for dataset_key in self.dataset_keys:
+            demo[dataset_key] = self.hdf5_file[f"data/{demo_id}/{dataset_key}"][()]
+        return demo
     
     def __del__(self):
         if self._hdf5_file is not None:
