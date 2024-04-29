@@ -1,8 +1,5 @@
 from bc_algos.dataset.dataset import SequenceDataset
-from bc_algos.envs.robosuite import RobosuiteEnv
-import bc_algos.utils.constants as Const
 import h5py
-from tqdm import tqdm
 
 
 class RobomimicDataset(SequenceDataset):
@@ -25,8 +22,6 @@ class RobomimicDataset(SequenceDataset):
         num_subgoal=None,
         filter_by_attribute=None,
         demos=None,
-        preprocess=False,
-        normalize=True,
     ):
         """
         Args:
@@ -68,10 +63,6 @@ class RobomimicDataset(SequenceDataset):
                 to look up a subset of demos to load
 
             demos (array): (optional) if provided, only load demos with these selected ids
-
-            preprocess (bool): if True, preprocess data while loading into memory
-
-            normalize (bool): if True, normalize data using mean and stdv from dataset
         """
         self.path = path
         self._hdf5_file = None
@@ -107,15 +98,28 @@ class RobomimicDataset(SequenceDataset):
         """
         if self._demos is None:
             if self.filter_by_attribute is not None:
-                self._demos = [elem.decode("utf-8") for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
+                self._demos = [elem.decode("utf-8") 
+                               for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
             else:
                 self._demos = list(self.hdf5_file["data"].keys())
         return self._demos
     
+    @property
+    def normalization_stats(self):
+        """
+        Returns: if dataset is normalized, a nested dictionary from dataset/observation key 
+            to a dictionary that contains keys "mean" and "stdv". Otherwise, None.
+        """
+        if "normalization_stats" in self.hdf5_file:
+            return {key: self.hdf5_file[f"normalization_stats/{key}"][()] 
+                    for key in self.hdf5_file["normalization_stats"]}
+        else:
+            return None
+    
     def demo_len(self, demo_id):
         """
         Args: 
-            demo_id (str): demo id, ie "demo_0"
+            demo_id (str): demo id, ie. "demo_0"
         
         Returns: length of demo with @demo_id.
         """
@@ -126,7 +130,7 @@ class RobomimicDataset(SequenceDataset):
         Load demo with @demo_id into memory. 
 
         Args: 
-            demo_id (str): demo id, ie "demo_0"
+            demo_id (str): demo id, ie. "demo_0"
         
         Returns: nested dictionary from dataset/observation key to
             data (np.array) of shape [T, ...]

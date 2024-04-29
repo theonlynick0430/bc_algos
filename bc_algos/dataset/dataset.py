@@ -137,6 +137,15 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         return self.goal_mode is not None
     
+    @property
+    @abstractmethod
+    def normalization_stats(self):
+        """
+        Returns: if dataset is normalized, a nested dictionary from dataset/observation key 
+            to a dictionary that contains keys "mean" and "stdv". Otherwise, None.
+        """
+        return NotImplementedError
+    
     @abstractmethod
     def demo_len(self, demo_id):
         """
@@ -284,12 +293,13 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
                 progress.update(1)
 
-    def get_data_seq(self, demo_id, keys, seq_index):
+    def get_data_seq(self, demo, keys, seq_index):
         """
-        Extract a (sub)sequence of dataset items from demo with @demo_id.
+        Extract a (sub)sequence of dataset items from @demo.
 
         Args:
-            demo_id: demo id
+            demo (dict): nested dictionary from dataset/observation key 
+                to data (np.array) of shape [T, ...]
 
             keys (array): keys to extract
 
@@ -298,7 +308,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Returns: nested dictionary from dataset/observation key to
             data (np.array) of shape [T, ...]
         """
-        demo = self.load_demo(demo_id=demo_id)
         seq = OrderedDict()
         for k in keys:
             seq[k] = demo[k][seq_index]
@@ -323,12 +332,13 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         demo_id = self.index_to_demo_id[index]
         cache = self.index_cache[index]
+        demo = self.load_demo(demo_id=demo_id)
 
         data_seq_index, pad_mask, goal_index = cache
-        item = self.get_data_seq(demo_id=demo_id, keys=self.dataset_keys, seq_index=data_seq_index)
-        item["obs"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
+        item = self.get_data_seq(demo=demo, keys=self.dataset_keys, seq_index=data_seq_index)
+        item["obs"] = self.get_data_seq(demo=demo, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
-            item["goal"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
+            item["goal"] = self.get_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
         if self.get_pad_mask:
             item["pad_mask"] = pad_mask
 

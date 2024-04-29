@@ -65,6 +65,11 @@ if __name__ == "__main__":
         required=True,
         help="path to output directory"
     )
+
+    parser.add_argument(
+        "--normalize",
+        action="store_true",
+    )
     args = parser.parse_args()
 
     assert os.path.exists(args.config), f"config at {args.config} does not exist"

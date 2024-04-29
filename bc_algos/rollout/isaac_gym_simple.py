@@ -1,9 +1,11 @@
 from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.isaac_gym import IsaacGymDataset
 from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
+from bc_algos.utils.misc import load_gzip_pickle
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
+import numpy as np
 import json
 
 
@@ -56,7 +58,7 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
 
             terminate_on_success (bool): if True, terminate episodes early when success is encountered
 
-            horizon (int): horizon of episodes. If None, use demo length.
+            horizon (int): (optional) horizon of episodes. If None, use demo length.
 
             verbose (bool): if True, log rollout stats and visualize error
         """
@@ -116,7 +118,7 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
 
     def fetch_goal(self, demo_id, t):
         """
-        Get goal for specified demo and time.
+        Get goal for timestep @t in demo with @demo_id.
 
         Args:
             demo_id (int): demo id, ie. 0
@@ -149,14 +151,22 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
 
     def init_demo(self, demo_id):
         """
-        Initialize environment for demo by loading models
-        and setting simulator state. 
-2
+        Initialize environment for demo with @demo_id 
+        by loading models and setting simulator state. 
+
         Args:
             demo_id (int): demo id, ie. 0
 
         Returns: dictionary from observation key to data (np.array) obtained
             from environment after initializing demo
         """
-        metadata = self.validset.dataset[demo_id]["metadata"]
+        run = load_gzip_pickle(filename=self.validset.demo_id_to_run_path(demo_id=demo_id))
+        cubes_pos = run["obs"]["cubes_pos"][0]
+        cubes_quat = run["obs"]["cubes_quat"][0]
+        cubes_pose = np.concatenate([cubes_pos, cubes_quat], axis=-1)
+        metadata = {
+            "block_colors": run["metadata"]["block_colors"],
+            "block_init_pose": cubes_pose,
+            "start_q": run["obs"]["q"][0],
+        }
         return self.env.reset_to(state=metadata)

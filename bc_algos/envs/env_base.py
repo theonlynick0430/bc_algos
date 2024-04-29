@@ -18,7 +18,6 @@ class BaseEnv(ABC):
         render=False, 
         use_image_obs=False, 
         use_depth_obs=False, 
-        **kwargs,
     ):
         """
         Args:
@@ -35,8 +34,6 @@ class BaseEnv(ABC):
             use_depth_obs (bool): if True, environment is expected to render depth image observations
                 on every env.step call. Set this to False for efficiency reasons, if depth
                 observations are not required.
-
-            kwargs (dict): environment specific parameters
         """
         self.env_name = env_name
         self.obs_key_to_modality = obs_key_to_modality

@@ -52,7 +52,7 @@ class RobomimicRolloutEnv(RolloutEnv):
 
             terminate_on_success (bool): if True, terminate episodes early when success is encountered
 
-            horizon (int): horizon of episodes. If None, use demo length.
+            horizon (int): (optional) horizon of episodes. If None, use demo length.
 
             verbose (bool): if True, log rollout stats and visualize error
         """
@@ -76,7 +76,7 @@ class RobomimicRolloutEnv(RolloutEnv):
     
     def fetch_goal(self, demo_id, t):
         """
-        Get goal for specified demo and time.
+        Get goal for timestep @t in demo with @demo_id.
 
         Args: 
             demo_id (str): demo id, ie. "demo_0"
@@ -111,8 +111,8 @@ class RobomimicRolloutEnv(RolloutEnv):
 
     def init_demo(self, demo_id):
         """
-        Initialize environment for demo by loading models
-        and setting simulator state. 
+        Initialize environment for demo with @demo_id 
+        by loading models and setting simulator state. 
 
         Args:
             demo_id (str): demo id, ie. "demo_0"

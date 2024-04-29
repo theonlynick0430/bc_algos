@@ -1,9 +1,5 @@
 from bc_algos.dataset.dataset import SequenceDataset
-from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
-import bc_algos.utils.constants as Const
 from bc_algos.utils.misc import load_gzip_pickle
-import numpy as np
-from tqdm import tqdm
 import os
 
 
@@ -14,22 +10,20 @@ class IsaacGymDataset(SequenceDataset):
     """
 
     def __init__(
-            self,
-            path,
-            obs_key_to_modality,
-            obs_group_to_key,
-            dataset_keys,
-            frame_stack=0,
-            seq_length=1,
-            pad_frame_stack=True,
-            pad_seq_length=True,
-            get_pad_mask=True,
-            goal_mode=None,
-            num_subgoal=None,
-            filter_by_attribute=None,
-            demos=None,
-            preprocess=False,
-            normalize=True,
+        self,
+        path,
+        obs_key_to_modality,
+        obs_group_to_key,
+        dataset_keys,
+        frame_stack=0,
+        seq_length=1,
+        pad_frame_stack=True,
+        pad_seq_length=True,
+        get_pad_mask=True,
+        goal_mode=None,
+        num_subgoal=None,
+        filter_by_attribute=None,
+        demos=None,
     ):
         """
         Args:
@@ -71,10 +65,6 @@ class IsaacGymDataset(SequenceDataset):
                 to look up a subset of demos to load
 
             demos (array): (optional) if provided, only load demos with these selected ids
-
-            preprocess (bool): if True, preprocess data while loading into memory
-
-            normalize (bool): if True, normalize data using mean and stdv from dataset
         """
         self.path = path
         self.filter_by_attribute = filter_by_attribute
@@ -109,13 +99,25 @@ class IsaacGymDataset(SequenceDataset):
         """
         if self._demos is None:
             if self.filter_by_attribute is not None:
-                split_path = os.path.join(self.path, f"split.pkl.gzip")
+                split_path = os.path.join(self.path, "split.pkl.gzip")
                 split = load_gzip_pickle(filename=split_path)
                 self._demos = split[self.filter_by_attribute]
             else:
                 self._demos = [i for i in range(len(os.listdir(self.path))) if
                                os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
         return self._demos
+    
+    @property
+    def normalization_stats(self):
+        """
+        Returns: if dataset is normalized, a nested dictionary from dataset/observation key 
+            to a dictionary that contains keys "mean" and "stdv". Otherwise, None.
+        """
+        stats_path = os.path.join(self.path, "normalization_stats.pkl.gzip")
+        if os.path.isfile(stats_path):
+            return load_gzip_pickle(filename=stats_path)
+        else:
+            return None
     
     def demo_len(self, demo_id):
         """
@@ -138,19 +140,11 @@ class IsaacGymDataset(SequenceDataset):
             data (np.array) of shape [T, ...]
         """
         run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
+        # get observations
         demo = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
         # get other dataset keys
         for dataset_key in self.dataset_keys:
             demo[dataset_key] = run["policy"][dataset_key]
-        # load demo metadata (used to reset)
-        cubes_pos = run["obs"]["cubes_pos"][0]
-        cubes_quat = run["obs"]["cubes_quat"][0]
-        cubes_pose = np.concatenate([cubes_pos, cubes_quat], axis=-1)
-        demo["metadata"] = {
-            "block_colors": run["metadata"]["block_colors"],
-            "block_init_pose": cubes_pose,
-            "start_q": run["obs"]["q"][0],
-        }
         return demo
 
     def __repr__(self):

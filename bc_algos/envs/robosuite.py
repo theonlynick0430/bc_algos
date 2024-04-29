@@ -52,7 +52,6 @@ class RobosuiteEnv(BaseEnv):
             render=render,
             use_image_obs=use_image_obs,
             use_depth_obs=use_depth_obs,
-            **kwargs
         )
 
         kwargs = deepcopy(kwargs)

@@ -58,7 +58,7 @@ class RolloutEnv:
 
             terminate_on_success (bool): if True, terminate episodes early when success is encountered
 
-            horizon (int): horizon of episodes. If None, use demo length.
+            horizon (int): (optional) horizon of episodes. If None, use demo length.
 
             verbose (bool): if True, log rollout stats and visualize error
         """
@@ -202,7 +202,7 @@ class RolloutEnv:
     
     def fetch_goal(self, demo_id, t):
         """
-        Get goal for specified demo and time.
+        Get goal for timestep @t in demo with @demo_id.
 
         Args: 
             demo_id: demo id
@@ -215,8 +215,8 @@ class RolloutEnv:
     
     def init_demo(self, demo_id):
         """
-        Initialize environment for demo by loading models
-        and setting simulator state. 
+        Initialize environment for demo with @demo_id 
+        by loading models and setting simulator state. 
 
         Args:
             demo_id: demo id
@@ -228,7 +228,7 @@ class RolloutEnv:
 
     def run_rollout(self, demo_id, video_writer=None, device=None):
         """
-        Run rollout on a single demo.
+        Run rollout on demo with @demo_id.
 
         Args:
             demo_id: id of demo to rollout
@@ -315,7 +315,7 @@ class RolloutEnv:
 
     def rollout_with_stats(self, demo_id, video_dir=None, device=None):        
         """
-        Run rollout on a single demo and log progress. 
+        Run rollout on demo with @demo_id and log progress. 
 
         Args:
             demo_id: id of demo to rollout
