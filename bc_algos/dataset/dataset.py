@@ -83,6 +83,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.goal_mode = goal_mode
         self.num_subgoal = num_subgoal
 
+        self.dataset = self.load_dataset()
+
         self.load_demo_info()
         self.cache_index()
 
@@ -147,6 +149,27 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         return NotImplementedError
     
     @abstractmethod
+    def load_dataset(self, preprocess):
+        """
+        Load dataset into memory.
+
+        Args: 
+            preprocess (bool): if True, preprocess data while loading into memory
+
+        Returns: nested dictionary with the following format:
+        {
+            demo_id: {
+                dataset_key: data (np.array) of shape [T, ...]
+                ...
+                obs_key: data (np.array) of shape [T, ...]
+                ...
+                "steps": length of trajectory
+            }
+            ...
+        }
+        """
+        return NotImplementedError
+    
     def demo_len(self, demo_id):
         """
         Args: 
@@ -154,20 +177,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         
         Returns: length of demo with @demo_id.
         """
-        return NotImplementedError
-    
-    @abstractmethod
-    def load_demo(self, demo_id):
-        """
-        Load demo with @demo_id into memory. 
-
-        Args: 
-            demo_id: demo id
-        
-        Returns: nested dictionary from dataset/observation key to
-            data (np.array) of shape [T, ...]
-        """
-        return NotImplementedError
+        return self.dataset[demo_id]["steps"]
 
     def load_demo_info(self):
         """
@@ -293,13 +303,12 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
                 progress.update(1)
 
-    def get_data_seq(self, demo, keys, seq_index):
+    def get_data_seq(self, demo_id, keys, seq_index):
         """
         Extract a (sub)sequence of dataset items from @demo.
 
         Args:
-            demo (dict): nested dictionary from dataset/observation key 
-                to data (np.array) of shape [T, ...]
+            demo_id: demo id
 
             keys (array): keys to extract
 
@@ -310,7 +319,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         seq = OrderedDict()
         for k in keys:
-            seq[k] = demo[k][seq_index]
+            seq[k] = self.dataset[demo_id][k][seq_index]
         return seq
 
     def get_item(self, index):
@@ -332,13 +341,12 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         demo_id = self.index_to_demo_id[index]
         cache = self.index_cache[index]
-        demo = self.load_demo(demo_id=demo_id)
 
         data_seq_index, pad_mask, goal_index = cache
-        item = self.get_data_seq(demo=demo, keys=[self.action_key], seq_index=data_seq_index)
-        item["obs"] = self.get_data_seq(demo=demo, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
+        item = self.get_data_seq(demo_id=demo_id, keys=[self.action_key], seq_index=data_seq_index)
+        item["obs"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
-            item["goal"] = self.get_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
+            item["goal"] = self.get_data_seq(demo_id=demo_id, keys=self.obs_group_to_key["goal"], seq_index=goal_index)
         if self.get_pad_mask:
             item["pad_mask"] = pad_mask
 

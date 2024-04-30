@@ -1,5 +1,6 @@
 from bc_algos.dataset.dataset import SequenceDataset
 from bc_algos.utils.misc import load_gzip_pickle
+from tqdm import tqdm
 import os
 
 
@@ -119,32 +120,38 @@ class IsaacGymDataset(SequenceDataset):
         else:
             return None
     
-    def demo_len(self, demo_id):
+    def load_dataset(self):
         """
-        Args: 
-            demo_id (int): demo id, ie. 0
-        
-        Returns: length of demo with @demo_id.
-        """
-        run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
-        return run["metadata"]["num_steps"]-1
-    
-    def load_demo(self, demo_id):
-        """
-        Load demo with @demo_id into memory. 
+        Load dataset into memory.
 
-        Args: 
-            demo_id (int): demo id, ie. 0
-        
-        Returns: nested dictionary from dataset/observation key to
-            data (np.array) of shape [T, ...]
+        Returns: nested dictionary with the following format:
+        {
+            demo_id: {
+                dataset_key: data (np.array) of shape [T, ...]
+                ...
+                obs_key: data (np.array) of shape [T, ...]
+                ...
+                "steps": length of trajectory
+            }
+            ...
+        }
         """
-        run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
-        # get observations
-        demo = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
-        # get actions
-        demo[self.action_key] = run["policy"][self.action_key]
-        return demo
+        dataset = {}
+
+        with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
+            for demo_id in self.demos:
+                run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
+
+                dataset[demo_id] = {}
+                # get observations
+                dataset[demo_id] = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
+                # get oations
+                dataset[demo_id][self.action_key] = run["policy"][self.action_key]
+                dataset[demo_id]["steps"] = run["metadata"]["num_steps"]-1
+
+                progress_bar.update(1)
+
+        return dataset
 
     def __repr__(self):
         """

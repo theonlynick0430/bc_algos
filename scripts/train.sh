@@ -5,11 +5,11 @@
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=100G
 #SBATCH --gres=gpu:1
-#SBATCH --job-name="bct_isaac_test_train"
-#SBATCH --output=/nfs/turbo/coe-jjparkcv/niksrid/outputs/bct_isaac_test_train.log
+#SBATCH --job-name="bct_isaac_var1_train"
+#SBATCH --output=/nfs/turbo/coe-jjparkcv/niksrid/outputs/bct_isaac_var1_train.log
 #SBATCH --mail-type=BEGIN,END,NONE,FAIL,REQUEUE
 
 source /sw/pkgs/arc/python3.10-anaconda/2023.03/etc/profile.d/conda.sh

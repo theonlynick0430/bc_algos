@@ -1,5 +1,6 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import h5py
+from tqdm import tqdm
 
 
 class RobomimicDataset(SequenceDataset):
@@ -116,30 +117,36 @@ class RobomimicDataset(SequenceDataset):
         else:
             return None
     
-    def demo_len(self, demo_id):
+    def load_dataset(self):
         """
-        Args: 
-            demo_id (str): demo id, ie. "demo_0"
-        
-        Returns: length of demo with @demo_id.
-        """
-        return self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"]
-    
-    def load_demo(self, demo_id):
-        """
-        Load demo with @demo_id into memory. 
+        Load dataset into memory.
 
-        Args: 
-            demo_id (str): demo id, ie. "demo_0"
-        
-        Returns: nested dictionary from dataset/observation key to
-            data (np.array) of shape [T, ...]
+        Returns: nested dictionary with the following format:
+        {
+            demo_id: {
+                dataset_key: data (np.array) of shape [T, ...]
+                ...
+                obs_key: data (np.array) of shape [T, ...]
+                ...
+                "steps": length of trajectory
+            }
+            ...
+        }
         """
-        # get observations
-        demo = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
-        # get actions
-        demo[self.action_key] = self.hdf5_file[f"data/{demo_id}/{self.action_key}"][()]
-        return demo
+        dataset = {}
+
+        with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
+            for demo_id in self.demos:
+                dataset[demo_id] = {}
+                # get observations
+                dataset[demo_id] = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
+                # get actions
+                dataset[demo_id][self.action_key] = self.hdf5_file[f"data/{demo_id}/{self.action_key}"][()]
+                dataset[demo_id]["steps"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
+
+                progress_bar.update(1)
+
+        return dataset 
     
     def __del__(self):
         if self._hdf5_file is not None:

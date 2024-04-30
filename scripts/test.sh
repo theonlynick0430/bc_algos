@@ -5,8 +5,8 @@
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=100G
 #SBATCH --gres=gpu:1
 #SBATCH --job-name="bct_isaac_var1_test"
 #SBATCH --output=/nfs/turbo/coe-jjparkcv/niksrid/outputs/bct_isaac_var1_test.log
