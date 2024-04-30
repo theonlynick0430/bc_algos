@@ -2,7 +2,7 @@ from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.models.policy_nets import BC
-from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d, axis_angle_to_matrix, matrix_to_quaternion, quaternion_to_axis_angle, rotation_6d_to_matrix
+from pytorch3d.transforms import quaternion_to_matrix, axis_angle_to_matrix, matrix_to_quaternion, quaternion_to_axis_angle, rotation_6d_to_matrix
 import torch
 import numpy as np
 import imageio
@@ -240,11 +240,10 @@ class RolloutEnv:
     
     def postprocess_action(self, action, obs):
         """
-        Postprocess action from model if action orientations use ortho6D or
-        are represented in the world frame.
+        Postprocess action if its orientation uses ortho6D or it is represented in the world frame.
 
         Args: 
-            action (tensor): output queried from model
+            action (tensor): output queried from model of shape [T, action_dim]
 
             obs (dict): dictionary from observation key to data (np.array)
 
@@ -259,9 +258,9 @@ class RolloutEnv:
             action_aa = action[:, 3:-1]
             action_mat = axis_angle_to_matrix(action_aa)
         if self.use_world:
-            state_quat = obs["robot0_eef_quat"]
+            state_quat = torch.from_numpy(obs["robot0_eef_quat"]).to(action.device)
             state_mat = quaternion_to_matrix(state_quat)
-            state_pos = obs["robot0_eef_pos"]
+            state_pos = torch.from_numpy(obs["robot0_eef_pos"]).to(action.device)
             ee_pose = TensorUtils.se3_matrix(rot=state_mat, pos=state_pos)
             action_pose = TensorUtils.se3_matrix(rot=action_mat, pos=action_pos)
             action_pose = TensorUtils.change_basis(pose=action_pose, transform=ee_pose)
@@ -270,6 +269,7 @@ class RolloutEnv:
         # hack since matrix_to_axis_angle is broken
         action_aa = quaternion_to_axis_angle(matrix_to_quaternion(action_mat))
         action = torch.cat((action_pos, action_aa, action_grip), dim=-1)
+        return action
 
     def run_rollout(self, demo_id, video_writer=None, device=None):
         """

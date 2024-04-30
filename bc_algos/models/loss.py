@@ -51,7 +51,7 @@ class DiscountedMSELoss(nn.Module):
         B, T = src.shape[0], src.shape[1]
         loss = torch.square(tgt-src).view(B, T, -1)
         loss = torch.mean(loss, -1)
-        coef = torch.pow(torch.full([T], self.discount, device=src.device), torch.arange(T, device=src.device))
+        coef = torch.pow(torch.full([T], self.discount).to(src.device), torch.arange(T).to(src.device))
         if mask is not None:
             coef = mask * coef
         return torch.mean(torch.sum(coef*loss, dim=-1)/torch.sum(coef, dim=-1))
@@ -106,7 +106,7 @@ class DiscountedL1Loss(nn.Module):
         B, T = src.shape[0], src.shape[1]
         loss = torch.abs(tgt-src).view(B, T, -1)
         loss = torch.mean(loss, -1)
-        coef = torch.pow(torch.full([T], self.discount, device=src.device), torch.arange(T, device=src.device))
+        coef = torch.pow(torch.full([T], self.discount).to(src.evice), torch.arange(T).to(src.device))
         if mask is not None:
             coef = mask * coef
         return torch.mean(torch.sum(coef*loss, dim=-1)/torch.sum(coef, dim=-1))

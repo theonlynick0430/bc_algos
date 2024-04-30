@@ -83,14 +83,14 @@ class SpatialSoftArgmax(nn.Module):
         if self.normalize:
             return torch.stack(
                 torch.meshgrid(
-                    torch.linspace(-1, 1, w, device=device),
-                    torch.linspace(-1, 1, h, device=device),
+                    torch.linspace(-1, 1, w).to(device),
+                    torch.linspace(-1, 1, h).to(device),
                 )
             )
         return torch.stack(
             torch.meshgrid(
-                torch.arange(0, w, device=device),
-                torch.arange(0, h, device=device),
+                torch.arange(0, w).to(device),
+                torch.arange(0, h).to(device),
             )
         )
 

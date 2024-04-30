@@ -49,7 +49,7 @@ def pad_single(seq, dim, padding, pad_same=True, pad_values=None):
     Pad input tensor or array @seq in the @dim dimension.
 
     Args:
-        seq (np.ndarray or torch.Tensor): sequence to be padded
+        seq (np.ndarray or tensor): sequence to be padded
 
         dim (int): dimension in which to pad
 
@@ -60,7 +60,7 @@ def pad_single(seq, dim, padding, pad_same=True, pad_values=None):
         pad_values (scalar or (ndarray, Tensor)): (optional) values to be padded if not pad_same
 
     Returns:
-        padded sequence (np.ndarray or torch.Tensor)
+        padded sequence (np.ndarray or tensor)
     """
     assert isinstance(seq, (np.ndarray, torch.Tensor))
     assert pad_same or pad_values is not None
@@ -274,7 +274,7 @@ def slice(x, dim, start, end):
     return recursive_dict_list_tuple_apply(
         x,
         {
-            torch.Tensor: lambda x: torch.index_select(x, dim, torch.arange(start, end, device=x.device)),
+            torch.Tensor: lambda x: torch.index_select(x, dim, torch.arange(start, end).to(x.device)),
             np.ndarray: lambda x: np.take(x, np.arange(start, end), axis=dim),
             type(None): lambda x: x,
         }
@@ -349,13 +349,13 @@ def change_basis(pose, transform, standard=True):
     Change basis of @pose according to @transform
 
     Args: 
-        pose (tensor): matrix of shape [..., 4, 4] to be transformed into new basis
+        pose (tensor): matrix of shape [B, 4, 4] to be transformed into new basis
 
-        transform (tensor): matrix of shape [..., 4, 4] used to transform @pose into new basis
+        transform (tensor): matrix of shape [B, 4, 4] used to transform @pose into new basis
 
         standard (bool): if True, compute S^-1TS. If False, compute, STS^-1
 
-    Returns: transformed @pose (tensor) of shape [..., 4, 4].
+    Returns: transformed @pose (tensor) of shape [B, 4, 4].
     """
     if standard:
         return torch.matmul(torch.matmul(torch.inverse(transform), pose), transform) 
@@ -367,14 +367,15 @@ def se3_matrix(rot=None, pos=None):
     Copmute SE(3) matrix from rotation and position.
 
     Args: 
-        rot (tensor): rotation matrix of shape [..., 3, 3]
+        rot (tensor): rotation matrix of shape [B, 3, 3]
 
-        pos (tensor): position vector of shape [..., 3, 1]
+        pos (tensor): position vector of shape [B, 3]
 
-    Returns: SE(3) matrix (tensor) of shape [..., 4, 4].
+    Returns: SE(3) matrix (tensor) of shape [B, 4, 4].
     """
     B = rot.shape[0] if rot is not None else pos.shape[0]
-    se3_mat = torch.eye(4, device=rot.device).unsqueeze(0).repeat(B, 1, 1)
+    device = rot.device if rot is not None else pos.device
+    se3_mat = torch.eye(4).to(device).unsqueeze(0).repeat(B, 1, 1)
     if rot is not None:
         se3_mat[:, :3, :3] = rot
     if pos is not None:
