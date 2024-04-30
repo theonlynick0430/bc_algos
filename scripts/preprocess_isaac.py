@@ -18,8 +18,8 @@ def preprocess_dataset(
     output_path, 
     obs_keys,
     action_key,
-    use_world=False,
     use_ortho6D=False,
+    use_world=False,
     device=None,
 ):
     num_demos = int(len(os.listdir(dataset_path)))
@@ -91,7 +91,7 @@ def main(args):
 
     device = None
     if args.cuda is True:
-        device = torch.cuda.device(0)
+        device = torch.device(0)
 
     with open(args.config, 'r') as f:
         config = json.load(f)
@@ -106,8 +106,8 @@ def main(args):
         output_path=args.output, 
         obs_keys=obs_keys,
         action_key=action_key,
-        use_world=args.world,
         use_ortho6D=args.ortho6D,
+        use_world=args.world,
         device=device,
     )
 
@@ -136,12 +136,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--world",
+        "--ortho6D",
         action="store_true",
     )
 
     parser.add_argument(
-        "--ortho6D",
+        "--world",
         action="store_true",
     )
 
