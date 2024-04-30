@@ -4,7 +4,7 @@
     "physics_engine": "physx",
     "policy": {
       "simFrequency": 60,
-      "actionFrequency": 8
+      "actionFrequency": 32
     },
     "env": {
       "numEnvs": 1,
@@ -32,8 +32,8 @@
       },
       "enableCameraSensors": true,
       "cameraResolution": [
-        256,
-        256
+        480,
+        640
       ]
     },
     "sim": {

@@ -36,22 +36,14 @@ def test(config):
     # init obs utils
     ObsUtils.init_obs_utils(config=config)
 
-    # directory handling
-    exp_dir = os.path.join(config.experiment.output_dir, config.experiment.name)
-    os.makedirs(exp_dir)
-
     # load datasets and dataloaders
     if config.dataset.type == Const.DatasetType.ROBOMIMIC:
-        trainset = RobomimicDataset.factory(config=config, train=True)
         validset = RobomimicDataset.factory(config=config, train=False)
     elif config.dataset.type == Const.DatasetType.ISAAC_GYM:
-        trainset = IsaacGymDataset.factory(config=config, train=True)
         validset = IsaacGymDataset.factory(config=config, train=False)    
     else:
         print(f"unsupported dataset type {config.dataset.type}")
         exit(1)
-    train_loader = DataLoader(trainset, batch_size=config.train.batch_size, shuffle=True)
-    valid_loader = DataLoader(validset, batch_size=config.train.batch_size, shuffle=True)
 
     # load obs encoder
     obs_group_enc = ObservationGroupEncoder.factory(config=config)
@@ -86,30 +78,28 @@ def test(config):
             config=config, 
             validset=validset,
             policy=policy,
-            normalization_stats=trainset.normalization_stats,
+            normalization_stats=validset.normalization_stats,
         )
     elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
         rollout_env = IsaacGymSimpleRolloutEnv.factory(
             config=config, 
             validset=validset,
             policy=policy,
-            normalization_stats=trainset.normalization_stats,
+            normalization_stats=validset.normalization_stats,
         )
     else:
         print(f"rollout env {config.rollout.type} not supported")
         exit(1)
 
     accelerator = Accelerator()
-    train_loader, valid_loader, policy = accelerator.prepare(
-        train_loader, valid_loader, policy
-    )
+    policy = accelerator.prepare(policy)
 
     print("rolling out...")
     with tqdm(total=validset.num_demos, unit='demo') as progress:
         for demo_id in validset.demos:
             _ = rollout_env.rollout_with_stats(
                 demo_id=demo_id,
-                video_dir=exp_dir,
+                video_dir=config.experiment.output_dir,
                 device=accelerator.device,
             )
             progress.update(1)
@@ -152,15 +142,14 @@ if __name__ == "__main__":
     assert os.path.exists(args.config), f"config at {args.config} does not exist"
     assert os.path.exists(args.dataset), f"dataset at {args.dataset} does not exist"
     assert os.path.exists(args.weights), f"weights at {args.weights} does not exist"
-    assert os.path.exists(args.output), f"output directory at {args.dataset} does not exist"
+    if not os.path.exists(args.output):
+        os.mkdir(args.output)
 
     # load config 
     with open(args.config, 'r') as f:
         config = json.load(f)
     config = Dict(config)
 
-    exp_dir = os.path.join(args.output, config.experiment.name)
-    assert not os.path.exists(exp_dir), f"experiment directory {exp_dir} already exists"
 
     # overwrite config values
     config.dataset.path = args.dataset

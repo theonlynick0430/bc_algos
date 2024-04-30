@@ -43,7 +43,7 @@ def run_epoch(model, data_loader, loss_fn, frame_stack, optimizer=None, validate
         for batch in data_loader:
             # prepare input and target
             batch = BC.prepare_input(input=batch, device=device)
-            target = batch["actions"][:, frame_stack:, :]
+            target = batch[data_loader.dataset.action_key][:, frame_stack:, :]
             pad_mask = None
             if data_loader.dataset.get_pad_mask is True:
                 pad_mask = batch["pad_mask"][:, frame_stack:]

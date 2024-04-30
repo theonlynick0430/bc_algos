@@ -22,7 +22,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 256, 256]
+            "agentview_image": [3, 480, 640]
         },
         "modalities": {
             "obs": {
@@ -42,12 +42,14 @@
                 "output_shape": [512],
                 "hidden_dims": []
             },
-            "rgb": {}
+            "rgb": {
+                "embed_shape": [512, 15, 20]
+            }
         }
     },
 
     "dataset": {
-        "type": "robomimic",
+        "type": "isaac_gym",
         "path": null,
         "action_key": "actions",
         "frame_stack": 0,
@@ -85,15 +87,15 @@
     },
 
     "rollout": {
-        "type": "robomimic",
+        "type": "isaac_gym",
         "ortho6D": false,
         "world": false,
-        "env_cfg_path": null,
+        "env_cfg_path": "/home/niksrid/JJ/bc_algos/config/isaac_gym_env.json",
         "closed_loop": true,
         "render_video": false,
         "video_skip": 1,
         "terminate_on_success": false,
         "horizon": null,
-        "verbose": false
+        "verbose": true
     }
 }
