@@ -58,8 +58,8 @@ def train(config):
     else:
         print(f"unsupported dataset type {config.dataset.type}")
         exit(1)
-    train_loader = DataLoader(trainset, batch_size=config.train.batch_size, shuffle=True)
-    valid_loader = DataLoader(validset, batch_size=config.train.batch_size, shuffle=True)
+    train_loader = DataLoader(trainset, batch_size=config.train.batch_size, shuffle=True, num_workers=4, pin_memory=True, prefetch_factor=1)
+    valid_loader = DataLoader(validset, batch_size=config.train.batch_size, shuffle=True, num_workers=4, pin_memory=True, prefetch_factor=1)
 
     # load obs encoder
     obs_group_enc = ObservationGroupEncoder.factory(config=config)
