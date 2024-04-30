@@ -12,6 +12,7 @@ from bc_algos.envs.env_base import BaseEnv
 import bc_algos.utils.constants as Const
 import json
 import numpy as np
+import torch
 from copy import deepcopy
 
 
@@ -79,15 +80,18 @@ class RobosuiteEnv(BaseEnv):
         """
         Helper function to preprocess images from Robosuite environment. 
         Specifically does the following:
-        1) Changes shape of @img from [H, W, 3] to [3, H, W]
-        2) Changes scale of @img from [0, 255] to [0, 1]
+        1) Changes shape of images from [H, W, 3] to [3, H, W]
+        2) Changes scale of images from [0, 255] to [0, 1]
 
         Args: 
-            img (np.array): image data of shape [..., H, W, 3]
+            img: image data of shape [..., H, W, 3]
 
         Returns: preprocessed @img of shape [..., 3, H, W].
         """
-        img = np.moveaxis(img.astype(float), -1, -3)
+        if isinstance(img, np.ndarray):
+            img = np.moveaxis(img, -1, -3).astype(float)
+        elif isinstance(img, torch.Tensor):
+            img = torch.moveaxis(img, -1, -3).float()
         img /= 255.
         return img.clip(0., 1.)
     
