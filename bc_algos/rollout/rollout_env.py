@@ -2,6 +2,8 @@ from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.models.policy_nets import BC
+from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d, axis_angle_to_matrix, matrix_to_quaternion, quaternion_to_axis_angle, rotation_6d_to_matrix
+import torch
 import numpy as np
 import imageio
 import matplotlib.pyplot as plt
@@ -23,6 +25,8 @@ class RolloutEnv:
         obs_group_to_key,
         obs_key_to_modality,
         frame_stack=0,
+        use_ortho6D=False,
+        use_world=False,
         closed_loop=True,
         gc=False,
         normalization_stats=None,
@@ -43,6 +47,10 @@ class RolloutEnv:
             obs_key_to_modality (dict): dictionary from observation key to modality
 
             frame_stack (int): number of stacked frames to be provided as input to policy
+
+            use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
+
+            use_world (bool): if True, environment represents actions in world frame
 
             closed_loop (bool): if True, query policy at every timstep and execute first action.
                 Otherwise, execute full action chunk before querying the policy again.
@@ -71,6 +79,8 @@ class RolloutEnv:
         self.obs_group_to_key = obs_group_to_key
         self.obs_key_to_modality = obs_key_to_modality
         self.frame_stack = frame_stack
+        self.use_ortho6D = use_ortho6D
+        self.use_world = use_world
         self.closed_loop = closed_loop
         self.gc = gc
         self.normalize = normalization_stats is not None
@@ -106,6 +116,8 @@ class RolloutEnv:
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             frame_stack=config.dataset.frame_stack,
+            use_ortho6D=config.rollout.ortho6D,
+            use_world=config.rollout.world,
             closed_loop=config.rollout.closed_loop,
             gc=(config.dataset.goal_mode is not None),
             normalization_stats=normalization_stats,
@@ -225,6 +237,39 @@ class RolloutEnv:
             from environment after initializing demo.
         """
         return NotImplementedError
+    
+    def postprocess_action(self, action, obs):
+        """
+        Postprocess action from model if action orientations use ortho6D or
+        are represented in the world frame.
+
+        Args: 
+            action (tensor): output queried from model
+
+            obs (dict): dictionary from observation key to data (np.array)
+
+        Returns: postprocessed @action of shape [T, 7].
+        """
+        action_pos = action[:, :3]
+        action_grip = action[:, -1:]
+        if self.use_ortho6D:
+            action_ortho6D = action[:, 3:-1]
+            action_mat = rotation_6d_to_matrix(action_ortho6D)
+        else:
+            action_aa = action[:, 3:-1]
+            action_mat = axis_angle_to_matrix(action_aa)
+        if self.use_world:
+            state_quat = obs["robot0_eef_quat"]
+            state_mat = quaternion_to_matrix(state_quat)
+            state_pos = obs["robot0_eef_pos"]
+            ee_pose = TensorUtils.se3_matrix(rot=state_mat, pos=state_pos)
+            action_pose = TensorUtils.se3_matrix(rot=action_mat, pos=action_pos)
+            action_pose = TensorUtils.change_basis(pose=action_pose, transform=ee_pose)
+            action_pos = action_pose[:, :3, 3]
+            action_mat = action_pose[:, :3, :3]
+        # hack since matrix_to_axis_angle is broken
+        action_aa = quaternion_to_axis_angle(matrix_to_quaternion(action_mat))
+        action = torch.cat((action_pos, action_aa, action_grip), dim=-1)
 
     def run_rollout(self, demo_id, video_writer=None, device=None):
         """
@@ -264,8 +309,10 @@ class RolloutEnv:
             x = BC.prepare_input(input=input, device=device)
 
             # query policy for actions
-            actions = self.policy(x)
-            actions = actions.squeeze(0).detach().cpu().numpy() # remove batch dim
+            actions = self.policy(x).squeeze(0) # remove batch dim
+            if self.use_ortho6D or self.use_world:
+                actions = self.postprocess_action(action=actions, obs=obs)
+            actions = actions.detach().cpu().numpy()
 
             # compute error 
             index = self.validset.index_from_timestep(demo_id=demo_id, t=step_i)

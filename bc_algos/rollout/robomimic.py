@@ -17,6 +17,8 @@ class RobomimicRolloutEnv(RolloutEnv):
         obs_group_to_key,
         obs_key_to_modality,
         frame_stack=0,
+        use_ortho6D=False,
+        use_world=False,
         closed_loop=True,
         gc=False,
         normalization_stats=None,
@@ -37,6 +39,10 @@ class RobomimicRolloutEnv(RolloutEnv):
             obs_key_to_modality (dict): dictionary from observation key to modality
 
             frame_stack (int): number of stacked frames to be provided as input to policy
+
+            use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
+
+            use_world (bool): if True, environment represents actions in world frame
 
             closed_loop (bool): if True, query policy at every timstep and execute first action.
                 Otherwise, execute full action chunk before querying the policy again.
@@ -64,6 +70,8 @@ class RobomimicRolloutEnv(RolloutEnv):
             obs_group_to_key=obs_group_to_key,
             obs_key_to_modality=obs_key_to_modality,
             frame_stack=frame_stack,
+            use_ortho6D=use_ortho6D,
+            use_world=use_world,
             closed_loop=closed_loop,
             gc=gc,
             normalization_stats=normalization_stats,
@@ -106,6 +114,7 @@ class RobomimicRolloutEnv(RolloutEnv):
             render=self.render_video,
             use_image_obs=(Const.Modality.RGB in self.obs_key_to_modality.values()),
             use_depth_obs=(Const.Modality.DEPTH in self.obs_key_to_modality.values()),
+            use_ortho6D=self.use_ortho6D,
             **env_meta["env_kwargs"]
         )
 

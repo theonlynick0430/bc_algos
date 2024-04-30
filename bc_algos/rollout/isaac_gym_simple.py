@@ -21,6 +21,8 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         obs_key_to_modality,
         env_cfg_path,
         frame_stack=0,
+        use_ortho6D=False,
+        use_world=False,
         closed_loop=True,
         gc=False,
         normalization_stats=None,
@@ -41,6 +43,10 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             obs_key_to_modality (dict): dictionary from observation key to modality
 
             frame_stack (int): number of stacked frames to be provided as input to policy
+            
+            use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
+
+            use_world (bool): if True, environment represents actions in world frame
 
             env_cfg_path (str): path to the config for Isaac Gym simulator
 
@@ -72,6 +78,8 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             obs_group_to_key=obs_group_to_key,
             obs_key_to_modality=obs_key_to_modality,
             frame_stack=frame_stack,
+            use_ortho6D=use_ortho6D,
+            use_world=use_world,
             closed_loop=closed_loop,
             gc=gc,
             normalization_stats=normalization_stats,
@@ -106,6 +114,8 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             env_cfg_path=config.rollout.env_cfg_path,
             frame_stack=config.dataset.frame_stack,
+            use_ortho6D=config.rollout.ortho6D,
+            use_world=config.rollout.world,
             closed_loop=config.rollout.closed_loop,
             gc=(config.dataset.goal_mode is not None),
             normalization_stats=normalization_stats,
@@ -146,6 +156,7 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
             render=self.render_video,
             use_image_obs=(Const.Modality.RGB in self.obs_key_to_modality.values()),
             use_depth_obs=(Const.Modality.DEPTH in self.obs_key_to_modality.values()),
+            use_ortho6D=self.use_ortho6D,
             config=self.config,
         )
 

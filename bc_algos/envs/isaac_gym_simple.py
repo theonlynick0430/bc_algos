@@ -5,6 +5,7 @@ except ImportError:
 import omegaconf
 from bc_algos.envs.env_base import BaseEnv
 import bc_algos.utils.constants as Const
+from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d
 import torch
 import numpy as np
 
@@ -20,6 +21,7 @@ class IsaacGymEnvSimple(BaseEnv):
         render=False,
         use_image_obs=False,
         use_depth_obs=False,
+        use_ortho6D=False,
         config=None,
     ):
         """
@@ -38,9 +40,18 @@ class IsaacGymEnvSimple(BaseEnv):
                 on every env.step call. Set this to False for efficiency reasons, if depth
                 observations are not required.
 
+            use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
+                
             config (dict): parameters for Isaac Gym simulator
         """
-        super().__init__(env_name, obs_key_to_modality, render, use_image_obs, use_depth_obs)
+        super().__init__(
+            env_name=env_name,
+            obs_key_to_modality=obs_key_to_modality,
+            render=render,
+            use_image_obs=use_image_obs,
+            use_depth_obs=use_depth_obs,
+            use_ortho6D=use_ortho6D,
+        )
 
         self.config = omegaconf.OmegaConf.create(config)
 
@@ -103,7 +114,13 @@ class IsaacGymEnvSimple(BaseEnv):
                 obs[k] = di[k][0].cpu().numpy()
                 if preprocess:
                     if self.obs_key_to_modality[k] == Const.Modality.RGB:
-                        obs[k] = IsaacGymEnvSimple.preprocess_img(obs[k])                
+                        obs[k] = IsaacGymEnvSimple.preprocess_img(obs[k])
+        # convert orientation to ortho6D
+        if self.use_ortho6D:
+            state_quat = obs["robot0_eef_quat"]
+            state_mat = quaternion_to_matrix(state_quat)
+            state_ortho6D = matrix_to_rotation_6d(state_mat)
+            obs["robot0_eef_ortho6D"] = state_ortho6D
         return obs
     
     def load_env(self, xml):

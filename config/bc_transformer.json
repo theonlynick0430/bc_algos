@@ -86,6 +86,8 @@
 
     "rollout": {
         "type": "robomimic",
+        "ortho6D": false,
+        "world": false,
         "env_cfg_path": null,
         "closed_loop": true,
         "render_video": false,

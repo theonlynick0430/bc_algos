@@ -18,6 +18,7 @@ class BaseEnv(ABC):
         render=False, 
         use_image_obs=False, 
         use_depth_obs=False, 
+        use_ortho6D=False,
     ):
         """
         Args:
@@ -34,12 +35,15 @@ class BaseEnv(ABC):
             use_depth_obs (bool): if True, environment is expected to render depth image observations
                 on every env.step call. Set this to False for efficiency reasons, if depth
                 observations are not required.
+
+            use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
         """
         self.env_name = env_name
         self.obs_key_to_modality = obs_key_to_modality
         self._render = render
         self.use_image_obs = use_image_obs
         self.use_depth_obs = use_depth_obs
+        self.use_ortho6D = use_ortho6D
     
     @abstractmethod
     def load_env(self, xml):

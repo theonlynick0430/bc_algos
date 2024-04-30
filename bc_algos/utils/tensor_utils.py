@@ -343,3 +343,40 @@ def to_float(x):
             type(None): lambda x: x,
         }
     )
+
+def change_basis(pose, transform, standard=True):
+    """
+    Change basis of @pose according to @transform
+
+    Args: 
+        pose (tensor): matrix of shape [..., 4, 4] to be transformed into new basis
+
+        transform (tensor): matrix of shape [..., 4, 4] used to transform @pose into new basis
+
+        standard (bool): if True, compute S^-1TS. If False, compute, STS^-1
+
+    Returns: transformed @pose (tensor) of shape [..., 4, 4].
+    """
+    if standard:
+        return torch.matmul(torch.matmul(torch.inverse(transform), pose), transform) 
+    else:
+        return torch.matmul(torch.matmul(transform, pose), torch.inverse(transform))
+
+def se3_matrix(rot=None, pos=None):
+    """
+    Copmute SE(3) matrix from rotation and position.
+
+    Args: 
+        rot (tensor): rotation matrix of shape [..., 3, 3]
+
+        pos (tensor): position vector of shape [..., 3, 1]
+
+    Returns: SE(3) matrix (tensor) of shape [..., 4, 4].
+    """
+    B = rot.shape[0] if rot is not None else pos.shape[0]
+    se3_mat = torch.eye(4, device=rot.device).unsqueeze(0).repeat(B, 1, 1)
+    if rot is not None:
+        se3_mat[:, :3, :3] = rot
+    if pos is not None:
+        se3_mat[:, :3, 3] = pos
+    return se3_mat

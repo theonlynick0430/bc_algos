@@ -10,6 +10,7 @@ except ImportError:
     pass
 from bc_algos.envs.env_base import BaseEnv
 import bc_algos.utils.constants as Const
+from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d
 import json
 import numpy as np
 import torch
@@ -27,6 +28,7 @@ class RobosuiteEnv(BaseEnv):
         render=False, 
         use_image_obs=False, 
         use_depth_obs=False, 
+        use_ortho6D=False,
         **kwargs,
     ):
         """
@@ -45,14 +47,17 @@ class RobosuiteEnv(BaseEnv):
                 on every env.step call. Set this to False for efficiency reasons, if depth
                 observations are not required.
 
+            use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
+                
             kwargs (dict): environment specific parameters
         """
-        super(RobosuiteEnv, self).__init__(
-            env_name=env_name, 
+        super().__init__(
+            env_name=env_name,
             obs_key_to_modality=obs_key_to_modality,
             render=render,
             use_image_obs=use_image_obs,
             use_depth_obs=use_depth_obs,
+            use_ortho6D=use_ortho6D,
         )
 
         kwargs = deepcopy(kwargs)
@@ -165,7 +170,13 @@ class RobosuiteEnv(BaseEnv):
                     # scale entries in depth map to correspond to real distance.
                     obs[k] = self.get_real_depth_map(obs[k])
                 else:
-                    obs[k] = di[k]                
+                    obs[k] = di[k]        
+        # convert orientation to ortho6D
+        if self.use_ortho6D:
+            state_quat = obs["robot0_eef_quat"]
+            state_mat = quaternion_to_matrix(state_quat)
+            state_ortho6D = matrix_to_rotation_6d(state_mat)
+            obs["robot0_eef_ortho6D"] = state_ortho6D        
         return obs
     
     def is_success(self):
