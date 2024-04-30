@@ -18,7 +18,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self,
         obs_key_to_modality,
         obs_group_to_key,
-        dataset_keys,
+        action_key,
         frame_stack=0,
         seq_length=1,
         pad_frame_stack=True,
@@ -33,7 +33,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
-            dataset_keys (array): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
+            action_key (str): key to dataset actions
 
             frame_stack (int): number of stacked frames to fetch. Defaults to 0 (no stacking).
 
@@ -64,7 +64,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.obs_key_to_modality = obs_key_to_modality
         self.obs_group_to_key = obs_group_to_key
         self.obs_keys = list(set([obs_key for obs_group in obs_group_to_key.values() for obs_key in obs_group]))
-        self.dataset_keys = list(dataset_keys)
+        self.action_key = action_key
 
         assert frame_stack >= 0
         self.frame_stack = frame_stack
@@ -104,7 +104,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             path=config.dataset.path,
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
-            dataset_keys=config.dataset.dataset_keys,
+            action_key=config.dataset.action_key,
             frame_stack=config.dataset.frame_stack,
             seq_length=config.dataset.seq_length,
             pad_frame_stack=config.dataset.pad_frame_stack,
@@ -335,7 +335,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         demo = self.load_demo(demo_id=demo_id)
 
         data_seq_index, pad_mask, goal_index = cache
-        item = self.get_data_seq(demo=demo, keys=self.dataset_keys, seq_index=data_seq_index)
+        item = self.get_data_seq(demo=demo, keys=[self.action_key], seq_index=data_seq_index)
         item["obs"] = self.get_data_seq(demo=demo, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
             item["goal"] = self.get_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_index)

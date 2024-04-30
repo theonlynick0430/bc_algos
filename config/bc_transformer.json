@@ -49,9 +49,7 @@
     "dataset": {
         "type": "robomimic",
         "path": null,
-        "dataset_keys": [
-            "actions"
-        ],
+        "action_key": "actions",
         "frame_stack": 0,
         "seq_length": 1,
         "pad_frame_stack": true,

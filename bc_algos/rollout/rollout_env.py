@@ -270,7 +270,7 @@ class RolloutEnv:
             # compute error 
             index = self.validset.index_from_timestep(demo_id=demo_id, t=step_i)
             frame = self.validset[index]
-            target = frame["actions"][self.frame_stack:, :]
+            target = frame[self.validset.action_key][self.frame_stack:, :]
             e = np.mean(np.abs(target-actions), axis=-1)
             coef = np.full([e.shape[0]], 1.)
             if self.validset.get_pad_mask is True:
@@ -287,7 +287,10 @@ class RolloutEnv:
 
             # unnormalize actions if necessary
             if self.normalize:
-                actions = ObsUtils.unnormalize(data=actions, normalization_stats=self.normalization_stats["actions"])
+                actions = ObsUtils.unnormalize(
+                    data=actions, 
+                    normalization_stats=self.normalization_stats[self.validset.action_key],
+                )
 
             # execute actions
             for action in actions:

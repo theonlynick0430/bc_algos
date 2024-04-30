@@ -12,7 +12,7 @@ class RobomimicDataset(SequenceDataset):
         path,
         obs_key_to_modality,
         obs_group_to_key,
-        dataset_keys,
+        action_key,
         frame_stack=0,
         seq_length=1,
         pad_frame_stack=True,
@@ -31,7 +31,7 @@ class RobomimicDataset(SequenceDataset):
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
-            dataset_keys (array): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
+            action_key (str): key to dataset actions
 
             frame_stack (int): number of stacked frames to fetch. Defaults to 0 (no stacking).
 
@@ -72,7 +72,7 @@ class RobomimicDataset(SequenceDataset):
         super(RobomimicDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
             obs_group_to_key=obs_group_to_key,
-            dataset_keys=dataset_keys,
+            action_key=action_key,
             frame_stack=frame_stack,
             seq_length=seq_length, 
             pad_frame_stack=pad_frame_stack, 
@@ -137,9 +137,8 @@ class RobomimicDataset(SequenceDataset):
         """
         # get observations
         demo = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
-        # get other dataset keys
-        for dataset_key in self.dataset_keys:
-            demo[dataset_key] = self.hdf5_file[f"data/{demo_id}/{dataset_key}"][()]
+        # get actions
+        demo[self.action_key] = self.hdf5_file[f"data/{demo_id}/{self.action_key}"][()]
         return demo
     
     def __del__(self):

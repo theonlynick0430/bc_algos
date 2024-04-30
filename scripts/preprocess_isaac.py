@@ -1,8 +1,9 @@
 from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
-import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.tensor_utils as TensorUtils
+import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
 from bc_algos.utils.misc import load_gzip_pickle, save_gzip_pickle
+from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d, axis_angle_to_matrix, matrix_to_axis_angle
 from addict import Dict
 import os
 import argparse
@@ -11,11 +12,25 @@ import torch
 from tqdm import tqdm
 import numpy as np
 
+
+def change_basis(pose, transform):
+    return torch.matmul(torch.matmul(transform, pose), torch.inverse(transform)) # STS^-1
+
+def se3_matrix(rot=None, pos=None):
+    B = rot.shape[0] if rot is not None else pos.shape[0]
+    se3_mat = torch.eye(4, device=rot.device).unsqueeze(0).expand(B, -1, -1)
+    if rot is not None:
+        se3_mat[:, :3, :3] = rot
+    if pos is not None:
+        se3_mat[:, :3, 3] = pos
     
 def preprocess_dataset(
     dataset_path, 
     output_path, 
     obs_keys,
+    action_key,
+    use_world=False,
+    use_ortho6D=False,
     device=None,
 ):
     num_demos = int(len(os.listdir(dataset_path)))
@@ -27,11 +42,42 @@ def preprocess_dataset(
             demo = {}
             demo["obs"] = {obs_key: run["obs"][obs_key] for obs_key in obs_keys}
             demo["policy"] = {}
-            demo["policy"]["actions"] = run["policy"]["actions"]
+            demo["policy"][action_key] = run["policy"][action_key]
             demo = TensorUtils.to_tensor(x=demo, device=device)
 
             # preprocess images
-            demo["obs"]["agentview_image"] = IsaacGymEnvSimple.preprocess_img(img=demo["obs"]["agentview_image"])
+            for obs_key in obs_keys:
+                if ObsUtils.OBS_KEY_TO_MODALITY[obs_key] == Const.Modality.RGB:
+                    demo["obs"][obs_key] = IsaacGymEnvSimple.preprocess_img(img=demo["obs"][obs_key])
+            
+            # convert orientation to ortho6D / world frame
+            if use_ortho6D or use_world:
+                # state
+                state_quat = demo["obs"]["robot0_eef_quat"]
+                state_mat = quaternion_to_matrix(state_quat)
+                if use_ortho6D:
+                    state_ortho6D = matrix_to_rotation_6d(state_mat)
+                    demo["obs"]["robot0_eef_ortho6D"] = state_ortho6D
+                # action
+                action_pos = demo["policy"][action_key][:, :3]
+                action_aa = demo["policy"][action_key][:, 3:-1]
+                action_grip = demo["policy"][action_key][:, -1:]
+                action_mat = axis_angle_to_matrix(action_aa)
+                if use_world:
+                    state_pos = demo["obs"]["robot0_eef_pos"]
+                    ee_pose = se3_matrix(rot=state_mat, pos=state_pos)
+                    action_pose = se3_matrix(rot=action_mat, pos=action_pos)
+                    action_pose = change_basis(pose=action_pose, transform=ee_pose)
+                    action_pos = action_pose[:, :3, 3]
+                    action_mat = action_pose[:, :3, :3]
+                if use_ortho6D:
+                    action_ortho6D = matrix_to_rotation_6d(action_mat)
+                    action = torch.cat((action_pos, action_ortho6D, action_grip), dim=-1)
+                    demo["policy"][action_key+"_ortho6D_world" if use_world else "_ortho6D"] = action
+                else:
+                    action_aa = matrix_to_axis_angle(action_mat)
+                    action = torch.cat((action_pos, action_aa, action_grip), dim=-1)
+                    demo["policy"][action_key+"_world"] = action
 
             demo = TensorUtils.to_numpy(x=demo)
             run.update(demo)
@@ -63,11 +109,17 @@ def main(args):
         config = json.load(f)
     config = Dict(config)
     obs_keys = list(config.observation.shapes.keys())
+    action_key = config.dataset.action_key
+
+    ObsUtils.init_obs_utils(config=config)
 
     preprocess_dataset(
         dataset_path=args.dataset,
         output_path=args.output, 
         obs_keys=obs_keys,
+        action_key=action_key,
+        use_world=args.world,
+        use_ortho6D=args.ortho6D,
         device=device,
     )
 
@@ -101,7 +153,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--othor6D",
+        "--ortho6D",
         action="store_true",
     )
 

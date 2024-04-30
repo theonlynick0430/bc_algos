@@ -14,7 +14,7 @@ class IsaacGymDataset(SequenceDataset):
         path,
         obs_key_to_modality,
         obs_group_to_key,
-        dataset_keys,
+        action_key,
         frame_stack=0,
         seq_length=1,
         pad_frame_stack=True,
@@ -33,7 +33,7 @@ class IsaacGymDataset(SequenceDataset):
 
             obs_group_to_key (dict): dictionary from observation group to observation key
 
-            dataset_keys (array): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
+            action_key (str): key to dataset actions
 
             frame_stack (int): number of stacked frames to fetch. Defaults to 0 (no stacking).
 
@@ -73,7 +73,7 @@ class IsaacGymDataset(SequenceDataset):
         super(IsaacGymDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
             obs_group_to_key=obs_group_to_key,
-            dataset_keys=dataset_keys,
+            action_key=action_key,
             frame_stack=frame_stack,
             seq_length=seq_length,
             pad_frame_stack=pad_frame_stack,
@@ -142,9 +142,8 @@ class IsaacGymDataset(SequenceDataset):
         run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
         # get observations
         demo = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
-        # get other dataset keys
-        for dataset_key in self.dataset_keys:
-            demo[dataset_key] = run["policy"][dataset_key]
+        # get actions
+        demo[self.action_key] = run["policy"][self.action_key]
         return demo
 
     def __repr__(self):
