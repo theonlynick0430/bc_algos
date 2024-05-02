@@ -29,6 +29,7 @@ def preprocess_dataset(
             run = load_gzip_pickle(filename=run_path)
 
             demo = {}
+            obs_keys = obs_keys + ["cubes_pos", "cubes_quat", "q"]
             demo["obs"] = {obs_key: run["obs"][obs_key] for obs_key in obs_keys}
             demo["policy"] = {}
             demo["policy"][action_key] = run["policy"][action_key]
@@ -68,7 +69,8 @@ def preprocess_dataset(
                     demo["policy"][action_key+"_world"] = action
 
             demo = TensorUtils.to_numpy(x=demo)
-            run.update(demo)
+            demo["metadata"] = run["metadata"]
+            # run.update(demo)
 
             new_run_path = os.path.join(output_path, sub_path)
             save_gzip_pickle(data=run, filename=new_run_path)
