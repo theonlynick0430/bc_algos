@@ -175,7 +175,7 @@ class IsaacGymEnvSimple(BaseEnv):
         block_init_pose = state["block_init_pose"]
         q_init = torch.from_numpy(state["start_q"]).to(self.device).float().unsqueeze(0)
         block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)
-        self.env.reset_idx(self.env_id, block_colors, block_init_pose)
+        self.env.reset_idx(self.env_id, colors=block_colors, init_cube_state=block_init_pose)
 
         # "warm up" the environment
         for _ in range(self.init_cycles):

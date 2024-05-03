@@ -4,7 +4,7 @@
     "physics_engine": "physx",
     "policy": {
       "simFrequency": 60,
-      "actionFrequency": 32
+      "actionFrequency": 8
     },
     "env": {
       "numEnvs": 1,
@@ -25,7 +25,7 @@
       "alignRewardScale": 2.0,
       "stackRewardScale": 16.0,
       "controlType": "osc",
-      "numCubes": 4,
+      "numCubes": 1,
       "asset": {
         "assetRoot": "../../assets",
         "assetFileNameFranka": "urdf/franka_description/robots/franka_panda_gripper.urdf"

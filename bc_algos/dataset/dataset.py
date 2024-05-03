@@ -1,6 +1,7 @@
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.utils.constants import GoalMode
+from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -149,12 +150,9 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         return NotImplementedError
     
     @abstractmethod
-    def load_dataset(self, preprocess):
+    def load_dataset(self):
         """
         Load dataset into memory.
-
-        Args: 
-            preprocess (bool): if True, preprocess data while loading into memory
 
         Returns: nested dictionary with the following format:
         {

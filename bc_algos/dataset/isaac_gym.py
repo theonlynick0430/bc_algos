@@ -145,7 +145,7 @@ class IsaacGymDataset(SequenceDataset):
                 dataset[demo_id] = {}
                 # get observations
                 dataset[demo_id] = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
-                # get oations
+                # get actions
                 dataset[demo_id][self.action_key] = run["policy"][self.action_key]
                 dataset[demo_id]["steps"] = run["metadata"]["num_steps"]-1
 
