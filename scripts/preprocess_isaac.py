@@ -71,7 +71,7 @@ def preprocess_dataset(
             demo["metadata"] = run["metadata"]
 
             new_run_path = os.path.join(output_path, sub_path)
-            save_gzip_pickle(data=run, filename=new_run_path)
+            save_gzip_pickle(data=demo, filename=new_run_path)
 
             progress_bar.update(1)
 

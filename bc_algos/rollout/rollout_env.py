@@ -2,7 +2,7 @@ from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.models.policy_nets import BC
-from pytorch3d.transforms import quaternion_to_matrix, axis_angle_to_matrix, matrix_to_quaternion, quaternion_to_axis_angle, rotation_6d_to_matrix
+from pytorch3d.transforms import quaternion_to_matrix, axis_angle_to_matrix, matrix_to_axis_angle, rotation_6d_to_matrix
 import torch
 import numpy as np
 import imageio
@@ -266,8 +266,7 @@ class RolloutEnv:
             action_pose = TensorUtils.change_basis(pose=action_pose, transform=ee_pose)
             action_pos = action_pose[:, :3, 3]
             action_mat = action_pose[:, :3, :3]
-        # hack since matrix_to_axis_angle is broken
-        action_aa = quaternion_to_axis_angle(matrix_to_quaternion(action_mat))
+        action_aa = matrix_to_axis_angle(action_mat)
         action = torch.cat((action_pos, action_aa, action_grip), dim=-1)
         return action
 
