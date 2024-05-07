@@ -9,11 +9,11 @@
 
     "train": {
         "epochs": 100,
-        "batch_size": 64, 
-        "loss": "L2",
+        "batch_size": 8, 
+        "loss": "L1",
         "discount": 1.0,
         "lr": 1e-5,
-        "weight_decay": 1e-5,
+        "weight_decay": 1e-4,
         "betas": [0.9, 0.999], 
         "weights": null
     },

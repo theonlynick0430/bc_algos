@@ -152,7 +152,7 @@ class ResNet18Core(EncoderCore):
     """
     EncoderCore subclass used to encode visual data with ResNet-18 backbone.
     """
-    def __init__(self, input_shape, embed_shape=[512, 8, 8], freeze=True):
+    def __init__(self, input_shape, embed_shape=[512, 8, 8], freeze=False):
         """
         Args: 
             input_shape (array): input shape excluding batch dim.
@@ -207,5 +207,5 @@ class ResNet18Core(EncoderCore):
         C, H, W = self.embed_shape
         input = self.preprocessor(input)
         latent = self.resnet18(input)
-        latent += self.pos_enc
+        latent = latent + self.pos_enc
         return torch.transpose(latent.view(-1, C, H*W), -1, -2).contiguous()
