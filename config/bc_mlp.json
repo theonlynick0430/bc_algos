@@ -14,7 +14,7 @@
         "discount": 1.0,
         "lr": 1e-3,
         "weight_decay": 1e-2,
-        "betas": [0.9, 0.95],
+        "betas": [0.9, 0.999],
         "weights": null
     },
 
@@ -85,7 +85,7 @@
         "type": "isaac_gym",
         "ortho6D": false,
         "world": false,
-        "env_cfg_path": null,
+        "env_cfg_path": "/home/niksrid/nik/bc_algos/config/isaac_gym_env.json",
         "closed_loop": true,
         "render_video": false,
         "video_skip": 1,
