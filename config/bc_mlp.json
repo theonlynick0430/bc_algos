@@ -9,8 +9,8 @@
 
     "train": {
         "epochs": 100,
-        "batch_size": 128, 
-        "loss": "L2",
+        "batch_size": 8, 
+        "loss": "L1",
         "discount": 1.0,
         "lr": 1e-3,
         "weight_decay": 1e-2,
@@ -47,7 +47,7 @@
     },
 
     "dataset": {
-        "type": "robomimic",
+        "type": "isaac_gym",
         "path": null,
         "action_key": "actions",
         "frame_stack": 0,
@@ -82,7 +82,7 @@
     },
 
     "rollout": {
-        "type": "robomimic",
+        "type": "isaac_gym",
         "ortho6D": false,
         "world": false,
         "env_cfg_path": null,
@@ -91,6 +91,6 @@
         "video_skip": 1,
         "terminate_on_success": false,
         "horizon": null,
-        "verbose": false
+        "verbose": true
     }
 }
