@@ -258,9 +258,9 @@ class RolloutEnv:
             action_aa = action[:, 3:-1]
             action_mat = axis_angle_to_matrix(action_aa)
         if self.use_world:
-            state_quat = torch.from_numpy(obs["robot0_eef_quat"]).to(action.device)
+            state_pos = torch.from_numpy(obs["robot0_eef_pos"]).to(action.device).unsqueeze(0)
+            state_quat = torch.from_numpy(obs["robot0_eef_quat"]).to(action.device).unsqueeze(0)
             state_mat = quaternion_to_matrix(state_quat)
-            state_pos = torch.from_numpy(obs["robot0_eef_pos"]).to(action.device)
             ee_pose = TensorUtils.se3_matrix(rot=state_mat, pos=state_pos)
             action_pose = TensorUtils.se3_matrix(rot=action_mat, pos=action_pos)
             action_pose = TensorUtils.change_basis(pose=action_pose, transform=ee_pose)
