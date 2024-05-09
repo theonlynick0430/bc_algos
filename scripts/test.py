@@ -50,7 +50,7 @@ def test(config):
 
     # load backbone network
     if config.policy.type == Const.PolicyType.MLP:
-        backbone = MLP.factory(config=config, embed_dim=obs_group_enc.output_dim)
+        backbone = MLP.factory(config=config, embed_dim=sum(obs_group_enc.output_dim.values()))
     elif config.policy.type == Const.PolicyType.TRANSFORMER:
         backbone = Transformer.factory(config=config)
 
