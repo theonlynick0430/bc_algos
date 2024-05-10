@@ -13,15 +13,16 @@ class IsaacGymEnv(BaseEnv):
     """
     Class for interacting with Isaac Gym environment.
     """
+
     def __init__(
-        self,
-        env_name,
-        obs_key_to_modality,
-        render=False,
-        use_image_obs=False,
-        use_depth_obs=False,
-        use_ortho6D=False,
-        config=None,
+            self,
+            env_name,
+            obs_key_to_modality,
+            render=False,
+            use_image_obs=False,
+            use_depth_obs=False,
+            use_ortho6D=False,
+            config=None,
     ):
         """
         Args:
@@ -53,6 +54,7 @@ class IsaacGymEnv(BaseEnv):
         )
 
         self.config = config
+        self.task = self.config["task"]["name"]
 
         self.env = isaacgymenvs.make(
             config.seed,
@@ -121,7 +123,7 @@ class IsaacGymEnv(BaseEnv):
             state_ortho6D = matrix_to_rotation_6d(state_mat)
             obs["robot0_eef_ortho6D"] = state_ortho6D
         return obs
-    
+
     def load_env(self, xml):
         """
         Load environment from XML string.
@@ -156,7 +158,7 @@ class IsaacGymEnv(BaseEnv):
         # "warm up" the environment
         for _ in range(self.init_cycles):
             obs = self.step(np.zeros(7))
-        
+
         return obs
 
     def reset_to(self, state):
@@ -170,17 +172,30 @@ class IsaacGymEnv(BaseEnv):
         """
         assert type(state) == dict, "state must be a dictionary"
 
-        block_colors = state["block_colors"]
-        block_init_pose = state["block_init_pose"]
-        q_init = torch.from_numpy(state["start_q"]).to(self.device).float().unsqueeze(0)
-        block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)
-        self.env.reset_idx(self.env_id, colors=block_colors, init_cube_state=block_init_pose)
+        if self.task == "MentalModelsTaskSimple":
+            block_colors = state["block_colors"]
+            block_init_pose = state["block_init_pose"]
+            q_init = torch.from_numpy(state["start_q"]).to(self.device).float().unsqueeze(0)
+            block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)
+            self.env.reset_idx(self.env_id, colors=block_colors, init_cube_state=block_init_pose)
+        elif self.task == "MentalModelsTask":
+            block_indices = torch.from_numpy(state["block_indices"]).to(self.device).long().unsqueeze(0)
+            block_radius = torch.from_numpy(state["block_radius"]).to(self.device).float().unsqueeze(0)
+            block_type = state["block_types"]
+            block_colors = state["block_colors"]
+            block_init_pose = state["block_init_pose"]
+            q_init = torch.from_numpy(state["start_q"]).to(self.device).float().unsqueeze(0)
+            block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)
+            self.env.reset_idx(self.env_id, active_cube_indices=block_indices, active_cube_radius=block_radius,
+                               active_cube_asset_types=block_type, colors=block_colors, init_cube_state=block_init_pose)
+        else:
+            raise Exception(f"Task {self.task} not supported")
 
         # "warm up" the environment
         for _ in range(self.init_cycles):
             self.env.set_arm_dof(self.env_id, q_init)
             obs = self.step(np.zeros(7))
-        
+
         return obs
 
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
