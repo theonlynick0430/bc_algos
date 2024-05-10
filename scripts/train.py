@@ -11,7 +11,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
-from nik.bc_algos.bc_algos.rollout.isaac_gym import IsaacGymRolloutEnv
+from bc_algos.rollout.isaac_gym import IsaacGymRolloutEnv
 from bc_algos.models.loss import DiscountedMSELoss, DiscountedL1Loss
 import bc_algos.utils.constants as Const
 import torch.optim as optim
@@ -249,7 +249,8 @@ if __name__ == "__main__":
 
     # overwrite config values
     config.dataset.path = args.dataset
-    config.train.weights = args.weights
+    if args.weights is not None:
+        config.train.weights = args.weights
     config.experiment.output_dir = args.output
 
     train(config=config)
