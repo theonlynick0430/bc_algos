@@ -11,7 +11,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
-from bc_algos.rollout.isaac_gym_simple import IsaacGymSimpleRolloutEnv
+from nik.bc_algos.bc_algos.rollout.isaac_gym import IsaacGymRolloutEnv
 from bc_algos.models.loss import DiscountedMSELoss, DiscountedL1Loss
 import bc_algos.utils.constants as Const
 import torch.optim as optim
@@ -99,7 +99,7 @@ def train(config):
         )
     elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
         pass # TODO: - add support to run Isaac Gym on Great Lakes
-        # rollout_env = IsaacGymSimpleRolloutEnv.factory(
+        # rollout_env = IsaacGymRolloutEnv.factory(
         #     config=config, 
         #     validset=validset,
         #     policy=policy,

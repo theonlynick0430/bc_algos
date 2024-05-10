@@ -1,94 +1,94 @@
 {
-  "task": {
-    "name": "MentalModelsTaskSimple",
-    "physics_engine": "physx",
-    "policy": {
-      "simFrequency": 60,
-      "actionFrequency": 16
-    },
-    "env": {
-      "numEnvs": 1,
-      "envSpacing": 1.5,
-      "episodeLength": 300,
-      "enableDebugVis": false,
-      "numRuns": 100,
-      "clipObservations": 5.0,
-      "startPositionNoise": 0.25,
-      "startRotationNoise": 0.785,
-      "frankaPositionNoise": 0.0,
-      "frankaRotationNoise": 0.0,
-      "frankaDofNoise": 0.0,
-      "aggregateMode": 0,
-      "actionScale": 1.0,
-      "distRewardScale": 0.1,
-      "liftRewardScale": 1.5,
-      "alignRewardScale": 2.0,
-      "stackRewardScale": 16.0,
-      "controlType": "osc",
-      "numCubes": 1,
-      "asset": {
-        "assetRoot": "../../assets",
-        "assetFileNameFranka": "urdf/franka_description/robots/franka_panda_gripper.urdf"
+    "task": {
+      "name": "MentalModelsTask",
+      "physics_engine": "physx",
+      "policy": {
+        "simFrequency": 60,
+        "actionFrequency": 8
       },
-      "enableCameraSensors": true,
-      "cameraResolution": [
-        480,
-        640
-      ]
-    },
-    "sim": {
-      "dt": 0.01667,
-      "substeps": 2,
-      "up_axis": "z",
-      "use_gpu_pipeline": true,
-      "gravity": [
-        0.0,
-        0.0,
-        -9.81
-      ],
-      "physx": {
-        "num_threads": 4,
-        "solver_type": 1,
-        "use_gpu": true,
-        "num_position_iterations": 8,
-        "num_velocity_iterations": 1,
-        "contact_offset": 0.005,
-        "rest_offset": 0.0,
-        "bounce_threshold_velocity": 0.2,
-        "max_depenetration_velocity": 1000.0,
-        "default_buffer_size_multiplier": 5.0,
-        "max_gpu_contact_pairs": 1048576,
-        "num_subscenes": 0,
-        "contact_collection": 0
+      "env": {
+        "numEnvs": 9,
+        "envSpacing": 1.5,
+        "episodeLength": 300,
+        "enableDebugVis": false,
+        "numRuns": 100,
+        "clipObservations": 5.0,
+        "startPositionNoise": 0.25,
+        "startRotationNoise": 0.785,
+        "frankaPositionNoise": 0.0,
+        "frankaRotationNoise": 0.0,
+        "frankaDofNoise": 0.0,
+        "aggregateMode": 0,
+        "actionScale": 1.0,
+        "distRewardScale": 0.1,
+        "liftRewardScale": 1.5,
+        "alignRewardScale": 2.0,
+        "stackRewardScale": 16.0,
+        "controlType": "osc",
+        "numCubes": 4,
+        "asset": {
+          "assetRoot": "../../assets",
+          "assetFileNameFranka": "urdf/franka_description/robots/franka_panda_gripper.urdf"
+        },
+        "enableCameraSensors": true,
+        "cameraResolution": [
+          480,
+          640
+        ]
+      },
+      "sim": {
+        "dt": 0.01667,
+        "substeps": 2,
+        "up_axis": "z",
+        "use_gpu_pipeline": true,
+        "gravity": [
+          0.0,
+          0.0,
+          -9.81
+        ],
+        "physx": {
+          "num_threads": 4,
+          "solver_type": 1,
+          "use_gpu": true,
+          "num_position_iterations": 8,
+          "num_velocity_iterations": 1,
+          "contact_offset": 0.005,
+          "rest_offset": 0.0,
+          "bounce_threshold_velocity": 0.2,
+          "max_depenetration_velocity": 1000.0,
+          "default_buffer_size_multiplier": 5.0,
+          "max_gpu_contact_pairs": 1048576,
+          "num_subscenes": 0,
+          "contact_collection": 0
+        }
+      },
+      "task": {
+        "randomize": false
       }
     },
-    "task": {
-      "randomize": false
-    }
-  },
-  "task_name": "MentalModelsTaskSimple",
-  "experiment": "",
-  "num_envs": "",
-  "seed": -1,
-  "torch_deterministic": false,
-  "max_iterations": "",
-  "physics_engine": "physx",
-  "pipeline": "gpu",
-  "sim_device": "cuda:0",
-  "rl_device": "cuda:0",
-  "graphics_device_id": 0,
-  "num_threads": 4,
-  "solver_type": 1,
-  "num_subscenes": 0,
-  "test": false,
-  "checkpoint": "",
-  "sigma": "",
-  "multi_gpu": false,
-  "capture_video": false,
-  "capture_video_freq": 1464,
-  "capture_video_len": 100,
-  "force_render": true,
-  "headless": true,
-  "out_dir": "out/mm_simple/dataset_v13_diff/",
-  "policy": "FSMControlSimple"
-}
+    "task_name": "MentalModelsTask",
+    "experiment": "",
+    "num_envs": "",
+    "seed": -1,
+    "torch_deterministic": false,
+    "max_iterations": "",
+    "physics_engine": "physx",
+    "pipeline": "gpu",
+    "sim_device": "cuda:0",
+    "rl_device": "cuda:0",
+    "graphics_device_id": 0,
+    "num_threads": 4,
+    "solver_type": 1,
+    "num_subscenes": 0,
+    "test": false,
+    "checkpoint": "",
+    "sigma": "",
+    "multi_gpu": false,
+    "capture_video": false,
+    "capture_video_freq": 1464,
+    "capture_video_len": 100,
+    "force_render": true,
+    "headless": false,
+    "out_dir": "out/mm/dataset_test/",
+    "policy": "FSMControl"
+  }

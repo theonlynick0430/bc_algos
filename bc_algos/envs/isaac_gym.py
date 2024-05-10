@@ -2,7 +2,6 @@ try:
     import isaacgymenvs
 except ImportError:
     pass
-import omegaconf
 from bc_algos.envs.env_base import BaseEnv
 import bc_algos.utils.constants as Const
 from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d
@@ -10,7 +9,7 @@ import torch
 import numpy as np
 
 
-class IsaacGymEnvSimple(BaseEnv):
+class IsaacGymEnv(BaseEnv):
     """
     Class for interacting with Isaac Gym environment.
     """
@@ -42,9 +41,9 @@ class IsaacGymEnvSimple(BaseEnv):
 
             use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
                 
-            config (dict): parameters for Isaac Gym simulator
+            config (OmegaConf): parameters for Isaac Gym simulator
         """
-        super().__init__(
+        super(IsaacGymEnv, self).__init__(
             env_name=env_name,
             obs_key_to_modality=obs_key_to_modality,
             render=render,
@@ -53,20 +52,20 @@ class IsaacGymEnvSimple(BaseEnv):
             use_ortho6D=use_ortho6D,
         )
 
-        self.config = omegaconf.OmegaConf.create(config)
+        self.config = config
 
         self.env = isaacgymenvs.make(
-            self.config.seed,
-            self.config.task_name,
+            config.seed,
+            config.task_name,
             1,
-            self.config.sim_device,
-            self.config.rl_device,
-            self.config.graphics_device_id,
-            self.config.headless,
-            self.config.multi_gpu,
-            self.config.capture_video,
-            self.config.force_render,
-            self.config,
+            config.sim_device,
+            config.rl_device,
+            config.graphics_device_id,
+            config.headless,
+            config.multi_gpu,
+            config.capture_video,
+            config.force_render,
+            config,
         )
 
         self.init_cycles = 10
@@ -114,7 +113,7 @@ class IsaacGymEnvSimple(BaseEnv):
                 obs[k] = di[k][0].cpu().numpy()
                 if preprocess:
                     if self.obs_key_to_modality[k] == Const.Modality.RGB:
-                        obs[k] = IsaacGymEnvSimple.preprocess_img(obs[k])
+                        obs[k] = IsaacGymEnv.preprocess_img(obs[k])
         # convert orientation to ortho6D
         if self.use_ortho6D:
             state_quat = obs["robot0_eef_quat"]

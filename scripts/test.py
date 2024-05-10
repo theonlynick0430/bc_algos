@@ -10,7 +10,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
-from bc_algos.rollout.isaac_gym_simple import IsaacGymSimpleRolloutEnv
+from nik.bc_algos.bc_algos.rollout.isaac_gym import IsaacGymRolloutEnv
 import bc_algos.utils.constants as Const
 from torch.utils.data import DataLoader
 import torch
@@ -81,7 +81,7 @@ def test(config):
             normalization_stats=validset.normalization_stats,
         )
     elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
-        rollout_env = IsaacGymSimpleRolloutEnv.factory(
+        rollout_env = IsaacGymRolloutEnv.factory(
             config=config, 
             validset=validset,
             policy=policy,

@@ -1,4 +1,4 @@
-from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
+from nik.bc_algos.bc_algos.envs.isaac_gym import IsaacGymEnv
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
@@ -35,7 +35,7 @@ def preprocess_dataset(
             # preprocess images
             for obs_key in obs_keys:
                 if ObsUtils.OBS_KEY_TO_MODALITY[obs_key] == Const.Modality.RGB:
-                    demo["obs"][obs_key] = IsaacGymEnvSimple.preprocess_img(img=demo["obs"][obs_key])
+                    demo["obs"][obs_key] = IsaacGymEnv.preprocess_img(img=demo["obs"][obs_key])
             
             # convert orientation to ortho6D and world frame
             state_pos = demo["obs"]["robot0_eef_pos"]

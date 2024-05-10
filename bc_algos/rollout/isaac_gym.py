@@ -1,15 +1,16 @@
 from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.isaac_gym import IsaacGymDataset
-from bc_algos.envs.isaac_gym_simple import IsaacGymEnvSimple
+from nik.bc_algos.bc_algos.envs.isaac_gym import IsaacGymEnv
 from bc_algos.utils.misc import load_gzip_pickle
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
+import omegaconf
 import numpy as np
 import json
 
 
-class IsaacGymSimpleRolloutEnv(RolloutEnv):
+class IsaacGymRolloutEnv(RolloutEnv):
     """
     Class used to rollout policies in Isaac Gym environments. 
     """
@@ -70,9 +71,9 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         """
         assert isinstance(validset, IsaacGymDataset)
 
-        self.config = json.load(open(env_cfg_path, "r"))
+        self.config = omegaconf.OmegaConf.create(json.load(open(env_cfg_path, "r")))
 
-        super(IsaacGymSimpleRolloutEnv, self).__init__(
+        super(IsaacGymRolloutEnv, self).__init__(
             validset=validset,
             policy=policy,
             obs_group_to_key=obs_group_to_key,
@@ -150,8 +151,8 @@ class IsaacGymSimpleRolloutEnv(RolloutEnv):
         """
         Create and return Isaac Gym environment.
         """
-        return IsaacGymEnvSimple(
-            "MentalModelsTaskSimple",
+        return IsaacGymEnv(
+            self.config.task.name,
             obs_key_to_modality=self.obs_key_to_modality,
             render=self.render_video,
             use_image_obs=(Const.Modality.RGB in self.obs_key_to_modality.values()),
