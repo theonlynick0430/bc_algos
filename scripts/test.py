@@ -10,7 +10,7 @@ from bc_algos.models.obs_nets import ObservationGroupEncoder, ActionDecoder
 from bc_algos.models.backbone import Transformer, MLP
 from bc_algos.models.policy_nets import BC_Transformer, BC_MLP
 from bc_algos.rollout.robomimic import RobomimicRolloutEnv
-from nik.bc_algos.bc_algos.rollout.isaac_gym import IsaacGymRolloutEnv
+from bc_algos.rollout.isaac_gym import IsaacGymRolloutEnv
 import bc_algos.utils.constants as Const
 from torch.utils.data import DataLoader
 import torch

@@ -1,6 +1,6 @@
 from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.isaac_gym import IsaacGymDataset
-from nik.bc_algos.bc_algos.envs.isaac_gym import IsaacGymEnv
+from bc_algos.envs.isaac_gym import IsaacGymEnv
 from bc_algos.utils.misc import load_gzip_pickle
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils

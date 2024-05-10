@@ -1,4 +1,4 @@
-from nik.bc_algos.bc_algos.envs.isaac_gym import IsaacGymEnv
+from bc_algos.envs.isaac_gym import IsaacGymEnv
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
