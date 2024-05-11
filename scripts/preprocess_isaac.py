@@ -18,6 +18,7 @@ def preprocess_dataset(
     output_path, 
     obs_keys,
     action_key,
+    rot=False,
     device=None,
 ):
     num_demos = int(len(os.listdir(dataset_path)))
@@ -36,31 +37,37 @@ def preprocess_dataset(
             for obs_key in obs_keys:
                 if ObsUtils.OBS_KEY_TO_MODALITY[obs_key] == Const.Modality.RGB:
                     demo["obs"][obs_key] = IsaacGymEnv.preprocess_img(img=demo["obs"][obs_key])
-            
-            # convert orientation to ortho6D and world frame
-            state_pos = demo["obs"]["robot0_eef_pos"]
-            state_quat = demo["obs"]["robot0_eef_quat"]
-            state_mat = quaternion_to_matrix(state_quat)
-            state_ortho6D = matrix_to_rotation_6d(state_mat)
-            ee_pose = TensorUtils.se3_matrix(rot=state_mat, pos=state_pos)
-            
-            action_pos = demo["policy"][action_key][:, :3]
-            action_aa = demo["policy"][action_key][:, 3:-1]
-            action_grip = demo["policy"][action_key][:, -1:]
-            action_mat = axis_angle_to_matrix(action_aa)
-            action_ortho6D = matrix_to_rotation_6d(action_mat)
-            action_pose = TensorUtils.se3_matrix(rot=action_mat, pos=action_pos)
-            
-            action_pose_world = TensorUtils.change_basis(pose=action_pose, transform=ee_pose, standard=False)
-            action_pos_world = action_pose_world[:, :3, 3]
-            action_mat_world = action_pose_world[:, :3, :3]
-            action_aa_world = matrix_to_axis_angle(action_mat_world)
-            action_ortho6D_world = matrix_to_rotation_6d(action_mat_world)
 
-            demo["obs"]["robot0_eef_ortho6D"] = state_ortho6D
-            demo["policy"][action_key+"_ortho6D"] = torch.cat((action_pos, action_ortho6D, action_grip), dim=-1)
-            demo["policy"][action_key+"_world"] =  torch.cat((action_pos_world, action_aa_world, action_grip), dim=-1)
-            demo["policy"][action_key+"_ortho6D_world"] = torch.cat((action_pos_world, action_ortho6D_world, action_grip), dim=-1)
+            # preprocess gripper actions to be more conducive for learning
+            mask = demo["policy"][action_key][:, -1] >= 0
+            demo["policy"][action_key][:, -1][mask] = 1
+            demo["policy"][action_key][:, -1][~mask] = -1
+
+            if rot:
+                # convert orientation to ortho6D and world frame
+                state_pos = demo["obs"]["robot0_eef_pos"]
+                state_quat = demo["obs"]["robot0_eef_quat"]
+                state_mat = quaternion_to_matrix(state_quat)
+                state_ortho6D = matrix_to_rotation_6d(state_mat)
+                ee_pose = TensorUtils.se3_matrix(rot=state_mat, pos=state_pos)
+                
+                action_pos = demo["policy"][action_key][:, :3]
+                action_aa = demo["policy"][action_key][:, 3:-1]
+                action_grip = demo["policy"][action_key][:, -1:]
+                action_mat = axis_angle_to_matrix(action_aa)
+                action_ortho6D = matrix_to_rotation_6d(action_mat)
+                action_pose = TensorUtils.se3_matrix(rot=action_mat, pos=action_pos)
+                
+                action_pose_world = TensorUtils.change_basis(pose=action_pose, transform=ee_pose, standard=False)
+                action_pos_world = action_pose_world[:, :3, 3]
+                action_mat_world = action_pose_world[:, :3, :3]
+                action_aa_world = matrix_to_axis_angle(action_mat_world)
+                action_ortho6D_world = matrix_to_rotation_6d(action_mat_world)
+
+                demo["obs"]["robot0_eef_ortho6D"] = state_ortho6D
+                demo["policy"][action_key+"_ortho6D"] = torch.cat((action_pos, action_ortho6D, action_grip), dim=-1)
+                demo["policy"][action_key+"_world"] =  torch.cat((action_pos_world, action_aa_world, action_grip), dim=-1)
+                demo["policy"][action_key+"_ortho6D_world"] = torch.cat((action_pos_world, action_ortho6D_world, action_grip), dim=-1)
 
             demo = TensorUtils.to_numpy(x=demo)
 
@@ -106,6 +113,7 @@ def main(args):
         output_path=args.output, 
         obs_keys=obs_keys,
         action_key=action_key,
+        rot=args.rot,
         device=device,
     )
 
@@ -131,6 +139,12 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="path to output directory"
+    )
+
+    parser.add_argument(
+        "--rot",
+        action="store_true",
+        help="flag to convert rotations to ortho6D and world frame"
     )
 
     parser.add_argument(
