@@ -173,12 +173,12 @@ class IsaacGymRolloutEnv(RolloutEnv):
             from environment after initializing demo
         """
         run = load_gzip_pickle(filename=self.validset.demo_id_to_run_path(demo_id=demo_id))
+        metadata = run["metadata"]
         cubes_pos = run["obs"]["cubes_pos"][0]
         cubes_quat = run["obs"]["cubes_quat"][0]
         cubes_pose = np.concatenate([cubes_pos, cubes_quat], axis=-1)
-        metadata = {
-            "block_colors": run["metadata"]["block_colors"],
+        metadata.update({
             "block_init_pose": cubes_pose,
             "start_q": run["obs"]["q"][0],
-        }
+        })
         return self.env.reset_to(state=metadata)
