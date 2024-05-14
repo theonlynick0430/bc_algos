@@ -51,10 +51,18 @@ def train(config):
     # load datasets and dataloaders
     if config.dataset.type == Const.DatasetType.ROBOMIMIC:
         trainset = RobomimicDataset.factory(config=config, train=True)
-        validset = RobomimicDataset.factory(config=config, train=False)
+        validset = RobomimicDataset.factory(
+            config=config, 
+            train=False, 
+            normalization_stats=trainset.normalization_stats,
+        )
     elif config.dataset.type == Const.DatasetType.ISAAC_GYM:
         trainset = IsaacGymDataset.factory(config=config, train=True)
-        validset = IsaacGymDataset.factory(config=config, train=False)    
+        validset = IsaacGymDataset.factory(
+            config=config, 
+            train=False, 
+            normalization_stats=trainset.normalization_stats,
+        )    
     else:
         print(f"unsupported dataset type {config.dataset.type}")
         exit(1)

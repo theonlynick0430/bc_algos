@@ -38,9 +38,19 @@ def test(config):
 
     # load datasets and dataloaders
     if config.dataset.type == Const.DatasetType.ROBOMIMIC:
-        validset = RobomimicDataset.factory(config=config, train=False)
+        trainset = RobomimicDataset.factory(config=config, train=True)
+        validset = RobomimicDataset.factory(
+            config=config, 
+            train=False, 
+            normalization_stats=trainset.normalization_stats,
+        )
     elif config.dataset.type == Const.DatasetType.ISAAC_GYM:
-        validset = IsaacGymDataset.factory(config=config, train=False)    
+        trainset = IsaacGymDataset.factory(config=config, train=True)
+        validset = IsaacGymDataset.factory(
+            config=config, 
+            train=False, 
+            normalization_stats=trainset.normalization_stats,
+        )    
     else:
         print(f"unsupported dataset type {config.dataset.type}")
         exit(1)
@@ -78,14 +88,14 @@ def test(config):
             config=config, 
             validset=validset,
             policy=policy,
-            normalization_stats=validset.normalization_stats,
+            normalization_stats=trainset.normalization_stats,
         )
     elif config.rollout.type == Const.RolloutType.ISAAC_GYM:
         rollout_env = IsaacGymRolloutEnv.factory(
             config=config, 
             validset=validset,
             policy=policy,
-            normalization_stats=validset.normalization_stats,
+            normalization_stats=trainset.normalization_stats,
         )
     else:
         print(f"rollout env {config.rollout.type} not supported")
@@ -149,7 +159,6 @@ if __name__ == "__main__":
     with open(args.config, 'r') as f:
         config = json.load(f)
     config = Dict(config)
-
 
     # overwrite config values
     config.dataset.path = args.dataset

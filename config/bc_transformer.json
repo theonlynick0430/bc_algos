@@ -59,6 +59,7 @@
         "get_pad_mask": true,
         "goal_mode": null,
         "num_subgoal": null,
+        "normalize": false,
         "kwargs": {
             "train": {
                 "filter_by_attribute": "train",

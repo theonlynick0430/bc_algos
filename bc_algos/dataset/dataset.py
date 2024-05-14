@@ -1,6 +1,7 @@
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.utils.constants import GoalMode
+import bc_algos.utils.constants as Const
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -26,6 +27,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         get_pad_mask=True,
         goal_mode=None,
         num_subgoal=None,
+        normalize=False,
+        normalization_stats=None,
     ):
         """
         Args:
@@ -60,6 +63,11 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             num_subgoal (int): (optional) number of subgoals for each trajectory.
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
+
+            normalize (bool): if True, normalize data using mean and stdv from dataset
+
+            normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
+                normalization stats from training dataset
         """
         self.obs_key_to_modality = obs_key_to_modality
         self.obs_group_to_key = obs_group_to_key
@@ -85,11 +93,18 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
         self.dataset = self.load_dataset()
 
+        self.normalize = normalize
+        self._normalization_stats = normalization_stats
+        if normalization_stats is None:
+            self._normalization_stats = self.compute_normalization_stats(dataset=self.dataset)
+        if normalize:
+            self.normalize_dataset(dataset=self.dataset, normalization_stats=self._normalization_stats)
+
         self.load_demo_info()
         self.cache_index()
 
     @classmethod
-    def factory(cls, config, train=True):
+    def factory(cls, config, train=True, normalization_stats=None):
         """
         Create a SequenceDataset instance from config.
 
@@ -98,6 +113,9 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
             train (bool): if True, use kwargs for training dataset. 
                 Otherwise, use kwargs for validation dataset.
+
+            normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
+                normalization stats from training dataset
 
         Returns: SequenceDataset instance.
         """
@@ -114,6 +132,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             get_pad_mask=config.dataset.get_pad_mask,
             goal_mode=config.dataset.goal_mode,
             num_subgoal=config.dataset.num_subgoal,
+            normalize=config.dataset.normalize,
+            normalization_stats=normalization_stats,
             **kwargs
         )
 
@@ -175,6 +195,60 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Returns: length of demo with @demo_id.
         """
         return self.dataset[demo_id]["steps"]
+    
+    def compute_normalization_stats(self, dataset):
+        """
+        Compute the mean and stdv for items in @dataset.
+
+        Args: 
+            dataset (dict): dataset returned from @self.load_dataset
+
+        Returns: nested dictionary from dataset/observation key 
+            to a dictionary that contains mean and stdv. 
+        """
+        traj_dict = {}
+        merged_stats = {}
+
+        # don't compute normalization stats for RGB data since we use backbone encoders
+        # with their own normalization stats
+        keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + [self.action_key]
+
+        with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
+            for i, demo_id in enumerate(self.demos):
+                traj_dict = {key: dataset[demo_id][key] for key in keys}
+                if i == 0:
+                    merged_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
+                else:
+                    traj_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
+                    merged_stats = ObsUtils.aggregate_traj_stats(traj_stats_a=merged_stats, traj_stats_b=traj_stats)
+
+                progress_bar.update(1)
+        
+        return ObsUtils.compute_normalization_stats(traj_stats=merged_stats, tol=1e-3)
+
+    def normalize_dataset(self, dataset, normalization_stats):
+        """
+        Normalize items in @dataset in place according to @normalization_stats.
+
+        Args: 
+            dataset (dict): dataset returned from @self.load_dataset
+
+            normalization_stats (dict): normalization stats returned from @self.compute_normalization_stats
+        """
+        with tqdm(total=self.num_demos, desc="normalizing data", unit="demo") as progress_bar:
+            for demo_id in self.demos:
+                for key in normalization_stats:
+                    dataset[demo_id][key] = ObsUtils.normalize(data=dataset[demo_id][key], normalization_stats=normalization_stats[key])
+                    
+                progress_bar.update(1)
+
+    @property
+    def normalization_stats(self):
+        """
+        Returns: if @self.normalize is True, a nested dictionary from dataset/observation key
+            to a dictionary that contains mean and stdv. Otherwise, None.
+        """
+        return self._normalization_stats
 
     def load_demo_info(self):
         """
