@@ -21,6 +21,8 @@ class RobomimicDataset(SequenceDataset):
         get_pad_mask=True,
         goal_mode=None,
         num_subgoal=None,
+        normalize=False,
+        normalization_stats=None,
         filter_by_attribute=None,
         demos=None,
     ):
@@ -60,6 +62,11 @@ class RobomimicDataset(SequenceDataset):
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
 
+            normalize (bool): if True, normalize data using mean and stdv from dataset
+
+            normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
+                normalization stats from training dataset
+
             filter_by_attribute (str): (optional) if provided, use the provided filter key 
                 to look up a subset of demos to load
 
@@ -81,6 +88,8 @@ class RobomimicDataset(SequenceDataset):
             get_pad_mask=get_pad_mask, 
             goal_mode=goal_mode, 
             num_subgoal=num_subgoal,
+            normalize=normalize,
+            normalization_stats=normalization_stats,
         )
 
     @property
