@@ -353,8 +353,8 @@ class RolloutEnv:
                         video_writer.append_data(video_img)
                     video_count += 1
 
-                # break if success
-                if self.terminate_on_success and success:
+                # break if overall success
+                if self.terminate_on_success and success["success"]:
                     break
                 
         results["horizon"] = step_i
