@@ -64,7 +64,8 @@ class IsaacGymDataset(SequenceDataset):
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
 
-            normalize (bool): if True, normalize data using mean and stdv from dataset
+            normalize (bool): if True, normalize data according to mean and stdv 
+                computed from the dataset or provided in @normalization_stats.
 
             normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
                 normalization stats from training dataset
@@ -116,18 +117,6 @@ class IsaacGymDataset(SequenceDataset):
                 self._demos = [i for i in range(len(os.listdir(self.path))) if
                                os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
         return self._demos
-    
-    @property
-    def normalization_stats(self):
-        """
-        Returns: if dataset is normalized, a nested dictionary from dataset/observation key 
-            to a dictionary that contains keys "mean" and "stdv". Otherwise, None.
-        """
-        stats_path = os.path.join(self.path, "normalization_stats.pkl.gzip")
-        if os.path.isfile(stats_path):
-            return load_gzip_pickle(filename=stats_path)
-        else:
-            return None
     
     def load_dataset(self):
         """

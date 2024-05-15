@@ -64,7 +64,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
 
-            normalize (bool): if True, normalize data using mean and stdv from dataset
+            normalize (bool): if True, normalize data according to mean and stdv 
+                computed from the dataset or provided in @normalization_stats.
 
             normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
                 normalization stats from training dataset
@@ -160,13 +161,12 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         return self.goal_mode is not None
     
     @property
-    @abstractmethod
     def normalization_stats(self):
         """
         Returns: if dataset is normalized, a nested dictionary from dataset/observation key 
             to a dictionary that contains keys "mean" and "stdv". Otherwise, None.
         """
-        return NotImplementedError
+        return self._normalization_stats
     
     @abstractmethod
     def load_dataset(self):
@@ -241,14 +241,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                     dataset[demo_id][key] = ObsUtils.normalize(data=dataset[demo_id][key], normalization_stats=normalization_stats[key])
                     
                 progress_bar.update(1)
-
-    @property
-    def normalization_stats(self):
-        """
-        Returns: if @self.normalize is True, a nested dictionary from dataset/observation key
-            to a dictionary that contains mean and stdv. Otherwise, None.
-        """
-        return self._normalization_stats
 
     def load_demo_info(self):
         """
@@ -443,11 +435,13 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         msg = "\tframe_stack={}\n\tseq_length={}\n\tpad_frame_stack={}\n\tpad_seq_length={}\n"
         msg += "\tnum_demos={}\n\tnum_sequences={}\n"
         msg += "\tgoal_mode={}\n\tnum_subgoal={}\n"
+        msg += "\tnormalize={}\n"
         goal_mode_str = self.goal_mode if self.goal_mode is not None else "none"
         num_subgoal_str = self.num_subgoal if self.num_subgoal is not None else "none"
         msg = msg.format(
             self.frame_stack, self.seq_length, self.pad_frame_stack, self.pad_seq_length,
             self.num_demos, self.total_num_sequences,
             goal_mode_str, num_subgoal_str,
+            self.normalize,
         )
         return msg

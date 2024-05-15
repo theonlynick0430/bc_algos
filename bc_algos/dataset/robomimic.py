@@ -62,7 +62,8 @@ class RobomimicDataset(SequenceDataset):
                 Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
                 Assumes that @num_subgoal <= min trajectory length.
 
-            normalize (bool): if True, normalize data using mean and stdv from dataset
+            normalize (bool): if True, normalize data according to mean and stdv 
+                computed from the dataset or provided in @normalization_stats.
 
             normalization_stats (dict): (optional) dictionary from dataset/observation keys to 
                 normalization stats from training dataset
@@ -113,18 +114,6 @@ class RobomimicDataset(SequenceDataset):
             else:
                 self._demos = list(self.hdf5_file["data"].keys())
         return self._demos
-    
-    @property
-    def normalization_stats(self):
-        """
-        Returns: if dataset is normalized, a nested dictionary from dataset/observation key 
-            to a dictionary that contains keys "mean" and "stdv". Otherwise, None.
-        """
-        if "normalization_stats" in self.hdf5_file:
-            return {key: self.hdf5_file[f"normalization_stats/{key}"][()] 
-                    for key in self.hdf5_file["normalization_stats"]}
-        else:
-            return None
     
     def load_dataset(self):
         """
