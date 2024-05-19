@@ -3,12 +3,12 @@
         "name": "bc_transformer",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 50, 
-        "rollout_rate": 10
+        "save_rate": 0, 
+        "rollout_rate": 100
     },
 
     "train": {
-        "epochs": 100,
+        "epochs": 1000,
         "batch_size": 8, 
         "loss": "L1",
         "discount": 1.0,
@@ -59,7 +59,7 @@
         "get_pad_mask": true,
         "goal_mode": null,
         "num_subgoal": null,
-        "normalize": false,
+        "normalize": true,
         "kwargs": {
             "train": {
                 "filter_by_attribute": "train",
