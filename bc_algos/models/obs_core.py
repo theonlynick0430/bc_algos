@@ -152,7 +152,7 @@ class ResNet18Core(EncoderCore):
     """
     EncoderCore subclass used to encode visual data with ResNet-18 backbone.
     """
-    def __init__(self, input_shape, embed_shape=[512, 8, 8], freeze=False):
+    def __init__(self, input_shape, embed_shape=[512, 8, 8], spatial_softmax=False, freeze=False):
         """
         Args: 
             input_shape (array): input shape excluding batch dim.
@@ -161,10 +161,13 @@ class ResNet18Core(EncoderCore):
             embed_shape (array): output shape of ResNet-18 backbone excluding batch dim. 
                 Defaults to output shape for input images of resolution 256x256.
 
+            spatial_softmax (bool): if True, use SpatialSoftArgmax 
+
             freeze (bool): if True, freeze ResNet-18 backbone
         """
         super(ResNet18Core, self).__init__(input_shape=input_shape)
         self.embed_shape = embed_shape
+        self.spat_soft = spatial_softmax
 
         self.create_layers()
 
@@ -187,14 +190,16 @@ class ResNet18Core(EncoderCore):
             param.requires_grad = False
     
     def create_layers(self):
-        C, H, W = self.embed_shape
-        # self.pos_enc = nn.Parameter(pos_enc_2d(d_model=C, H=H, W=W))
-        # self.pos_enc.requires_grad = False # buffer
         self.preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
         resnet18_classifier = models.resnet18(pretrained=True)
         # remove pooling and fc layers
         self.resnet18 = nn.Sequential(*list(resnet18_classifier.children())[:-2])
-        self.spatial_softmax = SpatialSoftArgmax(normalize=True)
+        if self.spat_soft:
+            self.spatial_softmax = SpatialSoftArgmax(normalize=True)
+        else:
+            C, H, W = self.embed_shape
+            self.pos_enc = nn.Parameter(pos_enc_2d(d_model=C, H=H, W=W))
+            self.pos_enc.requires_grad = False # buffer
 
     def forward(self, input):
         """
@@ -208,6 +213,10 @@ class ResNet18Core(EncoderCore):
         C, H, W = self.embed_shape
         input = self.preprocessor(input)
         latent = self.resnet18(input)
-        latent = self.spatial_softmax(latent)
-        # latent = latent + self.pos_enc
-        return torch.transpose(latent.view(-1, C, 2), -1, -2).contiguous()
+        if self.spat_soft:
+            latent = self.spatial_softmax(latent)
+            latent = latent.view(-1, C, 2)
+        else:
+            latent = latent + self.pos_enc
+            latent = latent.view(-1, C, H*W)
+        return torch.transpose(latent, -1, -2).contiguous()

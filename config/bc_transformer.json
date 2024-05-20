@@ -3,7 +3,7 @@
         "name": "bc_transformer",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 0, 
+        "save_rate": 100, 
         "rollout_rate": 100
     },
 
@@ -43,7 +43,8 @@
                 "hidden_dims": []
             },
             "rgb": {
-                "embed_shape": [512, 15, 20]
+                "embed_shape": [512, 15, 20], 
+                "spatial_softmax": true
             }
         }
     },
