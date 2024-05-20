@@ -1,4 +1,4 @@
-from bc_algos.models.base_nets import pos_enc_2d
+from bc_algos.models.base_nets import pos_enc_2d, SpatialSoftArgmax
 import bc_algos.utils.constants as Const
 from transformers import ViTMAEModel
 import torchvision.models as models
@@ -177,7 +177,7 @@ class ResNet18Core(EncoderCore):
         Returns: output shape of ResNet-18 encoder core.
         """
         C, H, W = self.embed_shape
-        return [H*W, C]
+        return [2, C]
     
     def freeze(self):
         """
@@ -188,12 +188,13 @@ class ResNet18Core(EncoderCore):
     
     def create_layers(self):
         C, H, W = self.embed_shape
-        self.pos_enc = nn.Parameter(pos_enc_2d(d_model=C, H=H, W=W))
-        self.pos_enc.requires_grad = False # buffer
+        # self.pos_enc = nn.Parameter(pos_enc_2d(d_model=C, H=H, W=W))
+        # self.pos_enc.requires_grad = False # buffer
         self.preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
         resnet18_classifier = models.resnet18(pretrained=True)
         # remove pooling and fc layers
         self.resnet18 = nn.Sequential(*list(resnet18_classifier.children())[:-2])
+        self.spatial_softmax = SpatialSoftArgmax(normalize=True)
 
     def forward(self, input):
         """
@@ -207,5 +208,6 @@ class ResNet18Core(EncoderCore):
         C, H, W = self.embed_shape
         input = self.preprocessor(input)
         latent = self.resnet18(input)
-        latent = latent + self.pos_enc
-        return torch.transpose(latent.view(-1, C, H*W), -1, -2).contiguous()
+        latent = self.spatial_softmax(latent)
+        # latent = latent + self.pos_enc
+        return torch.transpose(latent.view(-1, C, 2), -1, -2).contiguous()
