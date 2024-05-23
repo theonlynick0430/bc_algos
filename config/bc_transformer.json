@@ -43,8 +43,8 @@
                 "hidden_dims": []
             },
             "rgb": {
-                "embed_shape": [512, 15, 20], 
-                "spatial_softmax": true
+                "spatial_reduction": null,
+                "spatial_reduction_args": {}
             }
         }
     },
@@ -92,8 +92,8 @@
         "type": "isaac_gym",
         "ortho6D": false,
         "world": false,
-        "env_cfg_path": "/home/niksrid/nik/bc_algos/config/isaac_gym_env_simple.json",
-        "closed_loop": true,
+        "env_cfg_path": "config/isaac_gym_env_simple.json",
+        "closed_loop": false,
         "render_video": false,
         "video_skip": 1,
         "terminate_on_success": false,

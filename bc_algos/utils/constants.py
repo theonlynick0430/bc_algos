@@ -21,6 +21,12 @@ class GoalMode(StrEnum):
     FULL = "full"
 
 
+class SpatialReduction(StrEnum):
+    SPATIAL_SOFTMAX = "spatial_softmax"
+    TOKEN_LEARNER_CONV = "token_learner_conv"
+    TOKEN_LEARNER_MLP = "token_learner_mlp"
+
+
 class PolicyType(StrEnum):
     MLP = "mlp"
     TRANSFORMER = "transformer"

@@ -49,13 +49,13 @@ class MLP(Backbone):
         Args:
             embed_dim (int): input embedding dim
 
-            output_dim (int): dim of output embeddings
+            output_dim (int): output embedding dim
 
-            hidden_dims (array): hidden dims of nueral net used for policy backbone
+            hidden_dims (array): MLP hidden dims
 
-            activation (nn.Module): activation to use between linear layers
+            activation (nn.Module): MLP activation
 
-            dropout (float): dropout probability
+            dropout (float): MLP dropout probability
         """
         super(MLP, self).__init__(embed_dim=embed_dim)
 

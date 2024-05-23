@@ -112,11 +112,11 @@ class SpatialSoftArgmax(nn.Module):
         # with the softmax, then sum over the h*w dimension
         # this effectively computes the weighted mean of x
         # and y locations
-        x_mean = (softmax * xc.flatten()).sum(dim=1, keepdims=True)
-        y_mean = (softmax * yc.flatten()).sum(dim=1, keepdims=True)
+        x_mean = (softmax * xc.flatten()).sum(dim=1)
+        y_mean = (softmax * yc.flatten()).sum(dim=1)
 
         # concatenate and reshape the result
-        # to (B, C*2) where for every feature
+        # to (B, 2, C) where for every feature
         # we have the expected x and y pixel
         # locations
-        return torch.cat([x_mean, y_mean], dim=1).view(-1, c * 2)
+        return torch.stack((x_mean.view(b, c), y_mean.view(b, c)), dim=1)
