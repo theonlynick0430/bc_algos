@@ -31,8 +31,8 @@ class TokenLearnerMLP(nn.Module):
         self.create_layers()
 
     def create_layers(self):
-        C, H, W = self.input_shape
-        self.layer_norm = nn.LayerNorm((H, W))
+        C, _, _ = self.input_shape
+        self.layer_norm = nn.LayerNorm(C)
         layers = []
         prev_dim = C
         for hidden_dim in self.hidden_dims:
@@ -51,15 +51,15 @@ class TokenLearnerMLP(nn.Module):
         Returns: output data (tensor) of shape [B, C, S].
         """
         B, _, H, W = input.shape
+        input = input.permute(0, 2, 3, 1)
         input = self.layer_norm(input)
-        input = input.permute(0, 2, 3, 1).contiguous()
         fmap = self.mlp(input)
         # spatial softmax
         fmap = torch.exp(fmap.view(B, -1, self.S))
         fmap = fmap/torch.sum(fmap, dim=1, keepdim=True)
         fmap = fmap.view(B, H, W, self.S)
         # spatial attention
-        return torch.einsum("bhwc,bhws->bsc", input, fmap)
+        return torch.einsum("bhwc,bhws->bsc", input, fmap).contiguous()
 
 
 class TokenLearnerConv(nn.Module):
@@ -93,8 +93,7 @@ class TokenLearnerConv(nn.Module):
         self.create_layers()
 
     def create_layers(self):
-        C, H, W = self.input_shape
-        self.layer_norm = nn.LayerNorm((H, W))
+        C, _, _ = self.input_shape
         layers = []
         for i in range(self.n_layers):
             if i == 0:
@@ -116,11 +115,10 @@ class TokenLearnerConv(nn.Module):
         Returns: output data (tensor) of shape [B, S, C].
         """
         B, _, H, W = input.shape
-        input = self.layer_norm(input)
         fmap = self.conv(input)
         # spatial softmax
         fmap = torch.exp(fmap.view(B, self.S, -1))
         fmap = fmap/torch.sum(fmap, dim=-1, keepdim=True)
         fmap = fmap.view(B, self.S, H, W)
         # spatial attention
-        return torch.einsum("bchw,bshw->bsc", input, fmap)
+        return torch.einsum("bchw,bshw->bsc", input, fmap).contiguous()
