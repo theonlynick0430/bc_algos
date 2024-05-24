@@ -71,13 +71,12 @@ class MLP(Backbone):
         return self._output_dim
 
     def create_layers(self):
-        self.dropout = nn.Dropout(self._dropout)
         layers = []
-        prev_dim = np.prod(self.embed_dim)
+        prev_dim = self.embed_dim
         for hidden_dim in self.hidden_dims:
-            layers.extend([nn.Linear(prev_dim, hidden_dim), self.activation()])
+            layers.extend([nn.Linear(prev_dim, hidden_dim), self.activation(), nn.Dropout(self._dropout)])
             prev_dim = hidden_dim
-        layers.append(nn.Linear(prev_dim, np.prod(self._output_dim)))
+        layers.append(nn.Linear(prev_dim, self._output_dim))
         self.mlp = nn.Sequential(*layers)
 
     def forward(self, input):
@@ -89,7 +88,6 @@ class MLP(Backbone):
 
         Returns: output data (tensor) of shape [B, @self.output_dim].
         """
-        input = self.dropout(input)
         return self.mlp(input)
     
 

@@ -120,16 +120,19 @@ class ActionDecoder(nn.Module):
         input_dim,
         hidden_dims=[],
         activation=nn.ReLU,
+        dropout=0.1,
     ):
         """
         Args:
             action_shape (int): shape of single action
 
-            input_dim (int): input dim
+            input_dim (int): input embedding dim
 
-            hidden_dims (array): hidden dims of nueral net used for decoding
+            hidden_dims (array): MLP hidden dims
 
-            activation (nn.Module): activation to use between linear layers
+            activation (nn.Module): MLP activation
+
+            dropout (float): MLP dropout probability
         """
         super(ActionDecoder, self).__init__()
 
@@ -137,6 +140,7 @@ class ActionDecoder(nn.Module):
         self.input_dim = input_dim
         self.hidden_dims = hidden_dims
         self.activation = activation
+        self._dropout = dropout
 
         self.create_layers()
 
@@ -148,7 +152,7 @@ class ActionDecoder(nn.Module):
         Args:
             config (addict): config object
 
-            input_dim (int): dim of input embeddings
+            input_dim (int): input embedding dim
 
         Returns: ActionDecoder instance.
         """
@@ -162,7 +166,7 @@ class ActionDecoder(nn.Module):
         layers = []
         prev_dim = np.prod(self.input_dim)
         for hidden_dim in self.hidden_dims:
-            layers.extend([nn.Linear(prev_dim, hidden_dim), self.activation()])
+            layers.extend([nn.Linear(prev_dim, hidden_dim), self.activation(), nn.Dropout(self._dropout)])
             prev_dim = hidden_dim
         layers.append(nn.Linear(prev_dim, np.prod(self.action_shape)))
         self.mlp = nn.Sequential(*layers)

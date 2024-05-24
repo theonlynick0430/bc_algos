@@ -70,9 +70,9 @@ class LowDimCore(EncoderCore):
         layers = []
         prev_dim = np.prod(self.input_shape)
         for hidden_dim in self.hidden_dims:
-            layers.extend([nn.Dropout(self._dropout), nn.Linear(prev_dim, hidden_dim), self.activation()])
+            layers.extend([nn.Linear(prev_dim, hidden_dim), self.activation(), nn.Dropout(self._dropout)])
             prev_dim = hidden_dim
-        layers.extend([nn.Dropout(self._dropout), nn.Linear(prev_dim, np.prod(self._output_shape))])
+        layers.extend([nn.Linear(prev_dim, np.prod(self._output_shape))])
         self.mlp = nn.Sequential(*layers)
 
     def forward(self, input):

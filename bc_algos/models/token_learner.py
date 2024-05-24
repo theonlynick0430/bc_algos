@@ -36,9 +36,9 @@ class TokenLearnerMLP(nn.Module):
         layers = []
         prev_dim = C
         for hidden_dim in self.hidden_dims:
-            layers.extend([nn.Dropout(self._dropout), nn.Linear(prev_dim, hidden_dim), self.activation()])
+            layers.extend([nn.Linear(prev_dim, hidden_dim), self.activation(), nn.Dropout(self._dropout)])
             prev_dim = hidden_dim
-        layers.extend([nn.Dropout(self._dropout), nn.Linear(prev_dim, self.S)])
+        layers.extend([nn.Linear(prev_dim, self.S)])
         self.mlp = nn.Sequential(*layers)
 
     def forward(self, input):
@@ -97,13 +97,13 @@ class TokenLearnerConv(nn.Module):
         self.layer_norm = nn.LayerNorm((H, W))
         layers = []
         for i in range(self.n_layers):
-            layers.append(nn.Dropout(self._dropout))
             if i == 0:
                 layers.append(nn.Conv2d(C, self.S, self.kernel_size, padding="same"))
             else:
                 layers.append(nn.Conv2d(self.S, self.S, self.kernel_size, padding="same"))
             if i < self.n_layers-1:
                 layers.append(self.activation())
+                layers.append(nn.Dropout(self._dropout))
         self.conv = nn.Sequential(*layers)
 
     def forward(self, input):
