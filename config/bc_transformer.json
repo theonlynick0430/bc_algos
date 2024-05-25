@@ -44,7 +44,8 @@
             },
             "rgb": {
                 "spatial_reduction": null,
-                "spatial_reduction_args": {}
+                "spatial_reduction_args": {}, 
+                "freeze": false
             }
         }
     },
