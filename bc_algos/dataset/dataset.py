@@ -224,6 +224,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                     data_index = np.append(np.zeros(self.history), data_index)
                 if self.pad_action_chunk:
                     data_index = np.append(data_index, np.full(self.action_chunk-1, -1))
+                data_index = data_index.astype(np.int32)
 
                 pad_index = None
                 if self.get_pad_mask:
@@ -232,6 +233,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                         pad_index = np.append(np.zeros(self.history), pad_index)
                     if self.pad_action_chunk:
                         pad_index = np.append(pad_index, np.zeros(self.action_chunk-1))
+                    pad_index = pad_index.astype(np.int32)
                 
                 goal_index = None
                 if self.goal_mode == GoalMode.LAST:
@@ -294,7 +296,9 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         item = self.extract_data_seq(demo=demo, keys=[self.action_key], seq_index=data_seq_index)
         item["obs"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
-            goal_seq_index = goal_index[t:t+self.seq_length]
+            goal_seq_index = goal_index
+            if self.goal_mode == GoalMode.SUBGOAL:
+                goal_seq_index = goal_index[t+self.history:t+self.seq_length]
             item["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
         if self.get_pad_mask:
             item["pad_mask"] = pad_index[t:t+self.seq_length]
