@@ -1,6 +1,5 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import h5py
-from tqdm import tqdm
 
 
 class RobomimicDataset(SequenceDataset):
@@ -14,10 +13,10 @@ class RobomimicDataset(SequenceDataset):
         obs_key_to_modality,
         obs_group_to_key,
         action_key,
-        frame_stack=0,
-        seq_length=1,
-        pad_frame_stack=True,
-        pad_seq_length=True,
+        history=0,
+        action_chunk=1,
+        pad_history=True,
+        pad_action_chunk=True,
         get_pad_mask=True,
         goal_mode=None,
         num_subgoal=None,
@@ -36,18 +35,17 @@ class RobomimicDataset(SequenceDataset):
 
             action_key (str): key to dataset actions
 
-            frame_stack (int): number of stacked frames to fetch. Defaults to 0 (no stacking).
+            history (int): number of frames to fetch for history
 
-            seq_length (int): length of sequences to sample. Defaults to 1 (single frame).
+            action_chunk (int): number of frames to fetch for action prediction
 
-            pad_frame_stack (int): if True, pad sequence for frame stacking at the beginning of a demo. This
-                ensures that partial frame stacks are observed, such as (s_0, s_0, s_0, s_1). Otherwise, the
-                first frame stacked observation would be (s_0, s_1, s_2, s_3).
+            pad_history (bool): if True, pad sequence for history at the beginning of a demo. For example, 
+                padding for @history=3 and @action_chunk=1, the first sequence would be (s_0, s_0, s_0, s_0) 
+                instead of (s_0, s_1, s_2, s_3). 
 
-            pad_seq_length (int): if True, to pad sequence for sequence fetching at the end of a demo. This
-                ensures that partial sequences at the end of a demonstration are observed, such as
-                (s_{T-1}, s_{T}, s_{T}, s_{T}). Otherwise, the last sequence provided would be
-                (s_{T-3}, s_{T-2}, s_{T-1}, s_{T}).
+            pad_action_chunk (bool): if True, pad sequence for action_chunk at the end of a demo. For example, 
+                padding for @history=0 and @action_chunk=3, the last sequence would be (s_T, s_T, s_T) 
+                instead of (s_T-2, s_T-1, s_T). 
 
             get_pad_mask (bool): if True, also provide padding masks as part of the batch. This can be
                 useful for masking loss functions on padded parts of the data.
@@ -82,12 +80,12 @@ class RobomimicDataset(SequenceDataset):
             obs_key_to_modality=obs_key_to_modality,
             obs_group_to_key=obs_group_to_key,
             action_key=action_key,
-            frame_stack=frame_stack,
-            seq_length=seq_length, 
-            pad_frame_stack=pad_frame_stack, 
-            pad_seq_length=pad_seq_length, 
-            get_pad_mask=get_pad_mask, 
-            goal_mode=goal_mode, 
+            history=history,
+            action_chunk=action_chunk,
+            pad_history=pad_history,
+            pad_action_chunk=pad_action_chunk,
+            get_pad_mask=get_pad_mask,
+            goal_mode=goal_mode,
             num_subgoal=num_subgoal,
             normalize=normalize,
             normalization_stats=normalization_stats,
@@ -115,36 +113,26 @@ class RobomimicDataset(SequenceDataset):
                 self._demos = list(self.hdf5_file["data"].keys())
         return self._demos
     
-    def load_dataset(self):
+    def load_demo(self, demo_id):
         """
-        Load dataset into memory.
+        Load demo with @demo_id into memory.
+
+        Args: 
+            demo_id: demo id
 
         Returns: nested dictionary with the following format:
         {
-            demo_id: {
-                dataset_key: data (np.array) of shape [T, ...]
-                ...
-                obs_key: data (np.array) of shape [T, ...]
-                ...
-                "steps": length of trajectory
-            }
+            dataset_key: data (np.array) of shape [T, ...]
             ...
+            obs_key: data (np.array) of shape [T, ...]
+            ...
+            "length": length of trajectory
         }
         """
-        dataset = {}
-
-        with tqdm(total=self.num_demos, desc="loading dataset into memory", unit='demo') as progress_bar:
-            for demo_id in self.demos:
-                dataset[demo_id] = {}
-                # get observations
-                dataset[demo_id] = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
-                # get actions
-                dataset[demo_id][self.action_key] = self.hdf5_file[f"data/{demo_id}/{self.action_key}"][()]
-                dataset[demo_id]["steps"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
-
-                progress_bar.update(1)
-
-        return dataset 
+        demo = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
+        demo[self.action_key] = self.hdf5_file[f"data/{demo_id}/{self.action_key}"][()]
+        demo["steps"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
+        return demo
     
     def __del__(self):
         if self._hdf5_file is not None:
