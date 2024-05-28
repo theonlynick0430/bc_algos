@@ -204,6 +204,16 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             if key in demo: demo[key] = ObsUtils.normalize(data=demo[key], normalization_stats=normalization_stats[key])
 
     @abstractmethod
+    def demo_len(self, demo_id):
+        """
+        Args: 
+            demo_id: demo id
+        
+        Returns: length of demo with @demo_id.
+        """
+        return NotImplementedError
+
+    @abstractmethod
     def _fetch_demo(self, demo_id):
         """
         Fetch demo with @demo_id from memory.
@@ -217,7 +227,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             ...
             obs_key: data (np.array) of shape [T, ...]
             ...
-            "length": length of trajectory
         }
         """
         return NotImplementedError
@@ -235,7 +244,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             ...
             obs_key: data (np.array) of shape [T, ...]
             ...
-            "length": length of trajectory
         }
         """
         demo = self._fetch_demo(demo_id=demo_id)
@@ -250,8 +258,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         self.index_cache = {}
         with tqdm(total=self.num_demos, desc="caching sequences", unit="demo") as progress_bar:
             for demo_id in self.demo_ids:
-                demo = self.load_demo(demo_id=demo_id)
-                demo_length = demo["length"]
+                demo_length = self.demo_len(demo_id=demo_id)
 
                 data_index = np.arange(demo_length)
                 if self.pad_history:
@@ -306,7 +313,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
     
     def seq_from_timstep(self, demo_id, demo, t):
         """
-        Get sequence for timestep @t in demo @demo.
+        Get sequence for timestep @t in @demo.
 
         Args: 
             demo_id: demo id
@@ -344,7 +351,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         demo_id = self.demo_ids[index]
         demo = self.load_demo(demo_id=demo_id)
-        sample_size = demo["length"]
+        sample_size = self.demo_len(demo_id=demo_id)
         if not self.pad_history:
             sample_size -= self.history
         if not self.pad_action_chunk:

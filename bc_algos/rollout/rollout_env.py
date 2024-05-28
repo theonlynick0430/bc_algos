@@ -302,8 +302,8 @@ class RolloutEnv:
 
         Returns: dictionary of results with the keys "horizon", "success", and "error".
         """
+        demo_length = self.validset.demo_len(demo_id=demo_id)
         demo = self.validset.load_demo(demo_id=demo_id)
-        demo_length = demo["length"]
         horizon = demo_length if self.horizon is None else self.horizon
 
         # switch to eval mode

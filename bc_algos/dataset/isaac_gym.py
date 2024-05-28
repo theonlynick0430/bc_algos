@@ -76,6 +76,7 @@ class IsaacGymDataset(SequenceDataset):
         self.path = path
         self.filter_by_attribute = filter_by_attribute
         self._demo_ids = demo_ids
+        self.demo_id_to_demo_length  = {}
 
         super(IsaacGymDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
@@ -116,6 +117,18 @@ class IsaacGymDataset(SequenceDataset):
                                os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
         return self._demo_ids
     
+    def demo_len(self, demo_id):
+        """
+        Args: 
+            demo_id: demo id
+        
+        Returns: length of demo with @demo_id.
+        """
+        if demo_id not in self.demo_id_to_demo_length:
+            run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
+            self.demo_id_to_demo_length[demo_id] = run["metadata"]["num_steps"]-1
+        return self.demo_id_to_demo_length[demo_id]
+    
     def _fetch_demo(self, demo_id):
         """
         Fetch demo with @demo_id from memory.
@@ -129,13 +142,11 @@ class IsaacGymDataset(SequenceDataset):
             ...
             obs_key: data (np.array) of shape [T, ...]
             ...
-            "length": length of trajectory
         }
         """
         run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
         demo = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
         demo[self.action_key] = run["policy"][self.action_key]
-        demo["length"] = run["metadata"]["num_steps"]-1
         return demo
 
     def __repr__(self):

@@ -75,6 +75,7 @@ class RobomimicDataset(SequenceDataset):
         self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
         self._demo_ids = demo_ids
+        self.demo_id_to_demo_length  = {}
 
         super(RobomimicDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
@@ -113,6 +114,17 @@ class RobomimicDataset(SequenceDataset):
                 self._demo_ids = list(self.hdf5_file["data"].keys())
         return self._demo_ids
     
+    def demo_len(self, demo_id):
+        """
+        Args: 
+            demo_id: demo id
+        
+        Returns: length of demo with @demo_id.
+        """
+        if demo_id not in self.demo_id_to_demo_length:
+            self.demo_id_to_demo_length[demo_id] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
+        return self.demo_id_to_demo_length[demo_id]
+    
     def _fetch_demo(self, demo_id):
         """
         Fetch demo with @demo_id from memory.
@@ -126,12 +138,10 @@ class RobomimicDataset(SequenceDataset):
             ...
             obs_key: data (np.array) of shape [T, ...]
             ...
-            "length": length of trajectory
         }
         """
         demo = {obs_key: self.hdf5_file[f"data/{demo_id}/obs/{obs_key}"][()] for obs_key in self.obs_keys}
         demo[self.action_key] = self.hdf5_file[f"data/{demo_id}/{self.action_key}"][()]
-        demo["steps"] = self.hdf5_file[f"data/{demo_id}"].attrs["num_samples"] 
         return demo
     
     def __del__(self):
