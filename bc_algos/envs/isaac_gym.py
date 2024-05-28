@@ -13,16 +13,15 @@ class IsaacGymEnv(BaseEnv):
     """
     Class for interacting with Isaac Gym environment.
     """
-
     def __init__(
-            self,
-            env_name,
-            obs_key_to_modality,
-            render=False,
-            use_image_obs=False,
-            use_depth_obs=False,
-            use_ortho6D=False,
-            config=None,
+        self,
+        env_name,
+        obs_key_to_modality,
+        render=False,
+        use_image_obs=False,
+        use_depth_obs=False,
+        use_ortho6D=False,
+        config=None,
     ):
         """
         Args:

@@ -287,7 +287,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
     def extract_data_seq(self, demo, keys, seq_index):
         """
-        Extract a (sub)sequence of frames from @demo.
+        Extract a (sub)sequence from @demo.
 
         Args:
             demo (dict): nested dictionary returned from self.load_demo()
@@ -304,9 +304,9 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             data_seq[k] = demo[k][seq_index]
         return data_seq
     
-    def item_from_timstep(self, demo_id, demo, t):
+    def seq_from_timstep(self, demo_id, demo, t):
         """
-        Get dataset item for timestep @t in demo @demo.
+        Get sequence for timestep @t in demo @demo.
 
         Args: 
             demo_id: demo id
@@ -327,16 +327,16 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         data_index, pad_index, goal_index = self.index_cache[demo_id]
         data_seq_index = data_index[t:t+self.seq_length]
-        item = self.extract_data_seq(demo=demo, keys=[self.action_key], seq_index=data_seq_index)
-        item["obs"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
+        seq = self.extract_data_seq(demo=demo, keys=[self.action_key], seq_index=data_seq_index)
+        seq["obs"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["obs"], seq_index=data_seq_index)
         if self.gc:
             goal_seq_index = goal_index
             if self.goal_mode == GoalMode.SUBGOAL:
                 goal_seq_index = goal_index[t+self.history:t+self.seq_length]
-            item["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
+            seq["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
         if self.get_pad_mask:
-            item["pad_mask"] = pad_index[t:t+self.seq_length]
-        return item
+            seq["pad_mask"] = pad_index[t:t+self.seq_length]
+        return seq
     
     def __getitem__(self, index):
         """
@@ -350,7 +350,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         if not self.pad_action_chunk:
             sample_size -= (self.action_chunk-1) 
         t = np.random.choice(sample_size)
-        return self.item_from_timstep(demo_id=demo_id, demo=demo, t=t)
+        return self.seq_from_timstep(demo_id=demo_id, demo=demo, t=t)
     
     def __len__(self):
         """
