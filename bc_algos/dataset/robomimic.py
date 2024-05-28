@@ -23,7 +23,7 @@ class RobomimicDataset(SequenceDataset):
         normalize=False,
         normalization_stats=None,
         filter_by_attribute=None,
-        demos=None,
+        demo_ids=None,
     ):
         """
         Args:
@@ -51,14 +51,14 @@ class RobomimicDataset(SequenceDataset):
                 useful for masking loss functions on padded parts of the data.
 
             goal_mode (GoalMode): (optional) type of goals to be fetched. 
-                If GoalMode.LAST, provide last observation as goal for each frame.
-                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame.
-                If GoalMode.FULL, provide all subgoals for a single batch.
+                If GoalMode.LAST, provide last observation as goal for each sequence.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each sequence.
+                If GoalMode.FULL, provide all subgoals for each sequence.
                 Defaults to None, or no goals. 
 
-            num_subgoal (int): (optional) number of subgoals for each trajectory.
-                Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
-                Assumes that @num_subgoal <= min trajectory length.
+            num_subgoal (int): (optional) number of subgoals for each demo.
+                Defaults to None, which indicates that every frame in the demo is also a subgoal. 
+                Assumes that @num_subgoal <= min demo length.
 
             normalize (bool): if True, normalize data according to mean and stdv 
                 computed from the dataset or provided in @normalization_stats.
@@ -69,12 +69,12 @@ class RobomimicDataset(SequenceDataset):
             filter_by_attribute (str): (optional) if provided, use the provided filter key 
                 to look up a subset of demos to load
 
-            demos (array): (optional) if provided, only load demos with these selected ids
+            demo_ids (array): (optional) if provided, only load demos with these selected ids
         """
         self.path = path
         self._hdf5_file = None
         self.filter_by_attribute = filter_by_attribute
-        self._demos = demos
+        self._demo_ids = demo_ids
 
         super(RobomimicDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
@@ -101,21 +101,21 @@ class RobomimicDataset(SequenceDataset):
         return self._hdf5_file  
 
     @property
-    def demos(self):
+    def demo_ids(self):
         """
         Returns: all demo ids.
         """
-        if self._demos is None:
+        if self._demo_ids is None:
             if self.filter_by_attribute is not None:
-                self._demos = [elem.decode("utf-8") 
+                self._demo_ids = [elem.decode("utf-8") 
                                for elem in self.hdf5_file[f"mask/{self.filter_by_attribute}"][:]]
             else:
-                self._demos = list(self.hdf5_file["data"].keys())
-        return self._demos
+                self._demo_ids = list(self.hdf5_file["data"].keys())
+        return self._demo_ids
     
-    def load_demo(self, demo_id):
+    def _fetch_demo(self, demo_id):
         """
-        Load demo with @demo_id into memory.
+        Fetch demo with @demo_id from memory.
 
         Args: 
             demo_id: demo id

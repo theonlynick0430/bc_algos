@@ -53,14 +53,14 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                 useful for masking loss functions on padded parts of the data.
 
             goal_mode (GoalMode): (optional) type of goals to be fetched. 
-                If GoalMode.LAST, provide last observation as goal for each frame.
-                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame.
-                If GoalMode.FULL, provide all subgoals for a single batch.
+                If GoalMode.LAST, provide last observation as goal for each sequence.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each sequence.
+                If GoalMode.FULL, provide all subgoals for each sequence.
                 Defaults to None, or no goals. 
 
-            num_subgoal (int): (optional) number of subgoals for each trajectory.
-                Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
-                Assumes that @num_subgoal <= min trajectory length.
+            num_subgoal (int): (optional) number of subgoals for each demo.
+                Defaults to None, which indicates that every frame in the demo is also a subgoal. 
+                Assumes that @num_subgoal <= min demo length.
 
             normalize (bool): if True, normalize data according to mean and stdv 
                 computed from the dataset or provided in @normalization_stats.
@@ -134,7 +134,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
     @property
     @abstractmethod
-    def demos(self):
+    def demo_ids(self):
         """
         Returns: all demo ids.
         """
@@ -145,7 +145,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         Returns: number of demos.
         """
-        return len(self.demos)
+        return len(self.demo_ids)
 
     @property
     def gc(self):
@@ -162,25 +162,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         return self._normalization_stats
     
-    @abstractmethod
-    def load_demo(self, demo_id):
-        """
-        Load demo with @demo_id into memory.
-
-        Args: 
-            demo_id: demo id
-
-        Returns: nested dictionary with the following format:
-        {
-            dataset_key: data (np.array) of shape [T, ...]
-            ...
-            obs_key: data (np.array) of shape [T, ...]
-            ...
-            "length": length of trajectory
-        }
-        """
-        return NotImplementedError
-    
     def compute_normalization_stats(self):
         """
         Compute the mean and stdv of dataset items.
@@ -196,7 +177,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + [self.action_key]
 
         with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
-            for i, demo_id in enumerate(self.demos):
+            for i, demo_id in enumerate(self.demo_ids):
                 demo = self.load_demo(demo_id=demo_id)
                 traj_dict = {key: demo[key] for key in keys}
                 if i == 0:
@@ -209,13 +190,66 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         
         return ObsUtils.compute_normalization_stats(traj_stats=merged_stats, tol=1e-5)
     
+    def normalize_demo(self, demo, normalization_stats):
+        """
+        Normalize @demo in place according to @normalization_stats.
+
+        Args: 
+            demo (dict): nested dictionary returned from self.load_demo()
+
+            normalization_stats (dict): nested dictionary from dataset/observation key 
+                to a dictionary that contains mean and stdv. 
+        """
+        for key in normalization_stats:
+            demo[key] = ObsUtils.normalize(data=demo[key], normalization_stats=normalization_stats[key])
+
+    @abstractmethod
+    def _fetch_demo(self, demo_id):
+        """
+        Fetch demo with @demo_id from memory.
+
+        Args: 
+            demo_id: demo id
+
+        Returns: nested dictionary with the following format:
+        {
+            dataset_key: data (np.array) of shape [T, ...]
+            ...
+            obs_key: data (np.array) of shape [T, ...]
+            ...
+            "length": length of trajectory
+        }
+        """
+        return NotImplementedError
+    
+    def load_demo(self, demo_id):
+        """
+        Fetch demo with @demo_id from memory and preprocess it.
+
+        Args: 
+            demo_id: demo id
+
+        Returns: nested dictionary with the following format:
+        {
+            dataset_key: data (np.array) of shape [T, ...]
+            ...
+            obs_key: data (np.array) of shape [T, ...]
+            ...
+            "length": length of trajectory
+        }
+        """
+        demo = self._fetch_demo(demo_id=demo_id)
+        if self.normalize:
+            self.normalize_demo(demo=demo, normalization_stats=self._normalization_stats)
+        return demo
+    
     def cache_index(self):
         """
         Cache all indices required for get_item calls to speed up training.
         """
         self.index_cache = {}
         with tqdm(total=self.num_demos, desc="caching sequences", unit="demo") as progress_bar:
-            for demo_id in self.demos:
+            for demo_id in self.demo_ids:
                 demo = self.load_demo(demo_id=demo_id)
                 demo_length = demo["length"]
 
@@ -308,7 +342,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         Randomly sample a sequence from a demo. 
         """
-        demo_id = self.demos[index]
+        demo_id = self.demo_ids[index]
         demo = self.load_demo(demo_id=demo_id)
         sample_size = demo["length"]
         if not self.pad_history:

@@ -25,7 +25,7 @@ class IsaacGymDataset(SequenceDataset):
         normalize=False,
         normalization_stats=None,
         filter_by_attribute=None,
-        demos=None,
+        demo_ids=None,
     ):
         """
         Args:
@@ -53,14 +53,14 @@ class IsaacGymDataset(SequenceDataset):
                 useful for masking loss functions on padded parts of the data.
 
             goal_mode (GoalMode): (optional) type of goals to be fetched. 
-                If GoalMode.LAST, provide last observation as goal for each frame.
-                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each frame.
-                If GoalMode.FULL, provide all subgoals for a single batch.
+                If GoalMode.LAST, provide last observation as goal for each sequence.
+                If GoalMode.SUBGOAL, provide an intermediate observation as goal for each sequence.
+                If GoalMode.FULL, provide all subgoals for each sequence.
                 Defaults to None, or no goals. 
 
-            num_subgoal (int): (optional) number of subgoals for each trajectory.
-                Defaults to None, which indicates that every frame in trajectory is also a subgoal. 
-                Assumes that @num_subgoal <= min trajectory length.
+            num_subgoal (int): (optional) number of subgoals for each demo.
+                Defaults to None, which indicates that every frame in the demo is also a subgoal. 
+                Assumes that @num_subgoal <= min demo length.
 
             normalize (bool): if True, normalize data according to mean and stdv 
                 computed from the dataset or provided in @normalization_stats.
@@ -71,11 +71,11 @@ class IsaacGymDataset(SequenceDataset):
             filter_by_attribute (str): (optional) if provided, use the provided filter key 
                 to look up a subset of demos to load
 
-            demos (array): (optional) if provided, only load demos with these selected ids
+            demo_ids (array): (optional) if provided, only load demos with these selected ids
         """
         self.path = path
         self.filter_by_attribute = filter_by_attribute
-        self._demos = demos
+        self._demo_ids = demo_ids
 
         super(IsaacGymDataset, self).__init__(
             obs_key_to_modality=obs_key_to_modality,
@@ -102,23 +102,23 @@ class IsaacGymDataset(SequenceDataset):
         return os.path.join(self.path, f"run_{demo_id}.pkl.gzip")
 
     @property
-    def demos(self):
+    def demo_ids(self):
         """
         Returns: all demo ids.
         """
-        if self._demos is None:
+        if self._demo_ids is None:
             if self.filter_by_attribute is not None:
                 split_path = os.path.join(self.path, "split.pkl.gzip")
                 split = load_gzip_pickle(filename=split_path)
-                self._demos = split[self.filter_by_attribute]
+                self._demo_ids = split[self.filter_by_attribute]
             else:
-                self._demos = [i for i in range(len(os.listdir(self.path))) if
+                self._demo_ids = [i for i in range(len(os.listdir(self.path))) if
                                os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
-        return self._demos
+        return self._demo_ids
     
-    def load_demo(self, demo_id):
+    def _fetch_demo(self, demo_id):
         """
-        Load demo with @demo_id into memory.
+        Fetch demo with @demo_id from memory.
 
         Args: 
             demo_id: demo id

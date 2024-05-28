@@ -54,10 +54,10 @@
         "type": "isaac_gym",
         "path": null,
         "action_key": "actions",
-        "frame_stack": 0,
-        "seq_length": 1,
-        "pad_frame_stack": true,
-        "pad_seq_length": true,
+        "history": 0,
+        "action_chunk": 10,
+        "pad_history": true,
+        "pad_action_chunk": true,
         "get_pad_mask": true,
         "goal_mode": null,
         "num_subgoal": null,
@@ -65,11 +65,11 @@
         "kwargs": {
             "train": {
                 "filter_by_attribute": "train",
-                "demos": null
+                "demo_ids": null
             },
             "valid": {
                 "filter_by_attribute": "valid",
-                "demos": null
+                "demo_ids": null
             }
         }
     },
