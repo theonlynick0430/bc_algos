@@ -162,47 +162,6 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         """
         return self._normalization_stats
     
-    def compute_normalization_stats(self):
-        """
-        Compute the mean and stdv of dataset items.
-
-        Returns: nested dictionary from dataset/observation key 
-            to a dictionary that contains mean and stdv. 
-        """
-        traj_dict = {}
-        merged_stats = {}
-
-        # don't compute normalization stats for RGB data since we use backbone encoders
-        # with their own normalization stats
-        keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + [self.action_key]
-
-        with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
-            for i, demo_id in enumerate(self.demo_ids):
-                demo = self.load_demo(demo_id=demo_id)
-                traj_dict = {key: demo[key] for key in keys}
-                if i == 0:
-                    merged_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
-                else:
-                    traj_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
-                    merged_stats = ObsUtils.aggregate_traj_stats(traj_stats_a=merged_stats, traj_stats_b=traj_stats)
-
-                progress_bar.update(1)
-        
-        return ObsUtils.compute_normalization_stats(traj_stats=merged_stats, tol=1e-5)
-    
-    def normalize_demo(self, demo, normalization_stats):
-        """
-        Normalize @demo in place according to @normalization_stats.
-
-        Args: 
-            demo (dict): nested dictionary returned from @self.load_demo
-
-            normalization_stats (dict): nested dictionary from dataset/observation key 
-                to a dictionary that contains mean and stdv. 
-        """
-        for key in normalization_stats:
-            if key in demo: demo[key] = ObsUtils.normalize(data=demo[key], normalization_stats=normalization_stats[key])
-
     @abstractmethod
     def demo_len(self, demo_id):
         """
@@ -230,6 +189,47 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         }
         """
         return NotImplementedError
+    
+    def compute_normalization_stats(self):
+        """
+        Compute the mean and stdv of dataset items.
+
+        Returns: nested dictionary from dataset/observation key 
+            to a dictionary that contains mean and stdv. 
+        """
+        traj_dict = {}
+        merged_stats = {}
+
+        # don't compute normalization stats for RGB data since we use backbone encoders
+        # with their own normalization stats
+        keys = [obs_key for obs_key in self.obs_keys if self.obs_key_to_modality[obs_key] != Const.Modality.RGB] + [self.action_key]
+
+        with tqdm(total=self.num_demos, desc="computing normalization stats", unit="demo") as progress_bar:
+            for i, demo_id in enumerate(self.demo_ids):
+                demo = self._fetch_demo(demo_id=demo_id)
+                traj_dict = {key: demo[key] for key in keys}
+                if i == 0:
+                    merged_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
+                else:
+                    traj_stats = ObsUtils.compute_traj_stats(traj_dict=traj_dict)
+                    merged_stats = ObsUtils.aggregate_traj_stats(traj_stats_a=merged_stats, traj_stats_b=traj_stats)
+
+                progress_bar.update(1)
+        
+        return ObsUtils.compute_normalization_stats(traj_stats=merged_stats, tol=1e-3)
+    
+    def normalize_demo(self, demo, normalization_stats):
+        """
+        Normalize @demo in place according to @normalization_stats.
+
+        Args: 
+            demo (dict): nested dictionary returned from @self.load_demo
+
+            normalization_stats (dict): nested dictionary from dataset/observation key 
+                to a dictionary that contains mean and stdv. 
+        """
+        for key in normalization_stats:
+            if key in demo: demo[key] = ObsUtils.normalize(data=demo[key], normalization_stats=normalization_stats[key])
     
     def load_demo(self, demo_id):
         """

@@ -188,7 +188,7 @@ def train(config):
             rollout_epoch_dir = os.path.join(rollout_dir, f"{epoch}")
             os.mkdir(rollout_epoch_dir)
             with tqdm(total=validset.num_demos, unit='demo') as progress:
-                for demo_id in validset.demos:
+                for demo_id in validset.demo_ids:
                     _ = rollout_env.rollout_with_stats(
                         demo_id=demo_id,
                         video_dir=rollout_epoch_dir,

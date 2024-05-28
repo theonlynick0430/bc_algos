@@ -90,14 +90,14 @@ class BC_Transformer(BC):
     using transformer encoder-decoder architecture.
     """
     def __init__(
-            self, 
-            obs_group_enc, 
-            backbone, 
-            action_dec, 
-            history, 
-            action_chunk, 
-            num_goal=None,
-        ):
+        self, 
+        obs_group_enc, 
+        backbone, 
+        action_dec, 
+        history, 
+        action_chunk, 
+        num_goal=None,
+    ):
         """
         Args:
             obs_group_enc (ObservationGroupEncoder): input encoder
@@ -106,7 +106,7 @@ class BC_Transformer(BC):
 
             action_dec (ActionDecoder): output decoder
 
-            history (int): number of stacked frames provided as input to policy
+            history (int): number of frames provided as input to policy as history
 
             action_chunk (int): number of actions to predict in a single model pass
 
@@ -140,8 +140,8 @@ class BC_Transformer(BC):
         Returns: BC_Transformer instance.
         """
         
-        history = config.dataset.frame_stack
-        action_chunk = config.dataset.seq_length
+        history = config.dataset.history
+        action_chunk = config.dataset.action_chunk
         goal_mode = config.dataset.goal_mode
         num_subgoal = config.dataset.num_subgoal
 
