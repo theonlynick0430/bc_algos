@@ -11,6 +11,7 @@ import time
 import os
 from collections import OrderedDict
 from copy import deepcopy
+from abc import abstractmethod
 
 
 class RolloutEnv:
@@ -24,7 +25,7 @@ class RolloutEnv:
         policy,
         obs_group_to_key,
         obs_key_to_modality,
-        frame_stack=0,
+        history=0,
         use_ortho6D=False,
         use_world=False,
         closed_loop=True,
@@ -46,7 +47,7 @@ class RolloutEnv:
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 
-            frame_stack (int): number of stacked frames to be provided as input to policy
+            history (int): number of frames to be provided as input to policy as history
 
             use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
 
@@ -72,13 +73,13 @@ class RolloutEnv:
         """
         assert isinstance(validset, SequenceDataset)
         assert isinstance(policy, BC)
-        assert validset.pad_frame_stack and validset.pad_seq_length, "rollout requires padding"
+        assert validset.pad_history and validset.pad_action_chunk, "rollout requires padding"
 
         self.validset = validset
         self.policy = policy
         self.obs_group_to_key = obs_group_to_key
         self.obs_key_to_modality = obs_key_to_modality
-        self.frame_stack = frame_stack
+        self.history = history
         self.use_ortho6D = use_ortho6D
         self.use_world = use_world
         self.closed_loop = closed_loop
@@ -115,7 +116,7 @@ class RolloutEnv:
             policy=policy,
             obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
             obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
-            frame_stack=config.dataset.frame_stack,
+            history=config.dataset.history,
             use_ortho6D=config.rollout.ortho6D,
             use_world=config.rollout.world,
             closed_loop=config.rollout.closed_loop,
@@ -128,27 +129,31 @@ class RolloutEnv:
             verbose=config.rollout.verbose,
         )
 
+    @abstractmethod
     def create_env(self):
         """
         Create and return environment associated with dataset.
         """
         return NotImplementedError
     
-    def normalize_obs(self, obs):
+    def normalize_obs(self, obs, normalization_stats):
         """
-        Normalize observation from environment according to @self.normalization_stats.
+        Normalize @obs according to @normalization_stats.
 
         Args: 
             obs (dict): dictionary from observation key to data (np.array)
 
+            normalization_stats (dict): nested dictionary from dataset/observation key 
+                to a dictionary that contains mean and stdv. 
+
         Returns: normalized @obs.
         """
         obs = deepcopy(obs)
-        for key in self.normalization_stats:
-            if key in obs: obs[key] = ObsUtils.normalize(data=obs[key], normalization_stats=self.normalization_stats[key])
+        for key in normalization_stats:
+            if key in obs: obs[key] = ObsUtils.normalize(data=obs[key], normalization_stats=normalization_stats[key])
         return obs
     
-    def input_from_initial_obs(self, obs, demo_id):
+    def input_from_initial_obs(self, obs, demo_id, demo):
         """
         Create model input from initial environment observation.
         For models with history, this requires padding.
@@ -158,11 +163,13 @@ class RolloutEnv:
 
             demo_id: demo id
 
+            demo (dict): nested dictionary returned from @self.validset.load_demo
+
         Returns: nested dictionary from observation group to observation key
             to data (np.array) of shape [B, T_obs/T_goal, ...]
         """
         if self.normalize:
-            obs = self.normalize_obs(obs=obs)
+            obs = self.normalize_obs(obs=obs, normalization_stats=self.normalization_stats)
         
         input = OrderedDict()
 
@@ -173,14 +180,14 @@ class RolloutEnv:
 
         input = TensorUtils.to_batch(x=input)
         input = TensorUtils.to_sequence(x=input)
-        input = TensorUtils.repeat_seq(x=input, k=self.frame_stack+1) # prepare frame_stack
+        input = TensorUtils.repeat_seq(x=input, k=self.history+1) # prepare history
 
         if self.gc:
-            input["goal"] = self.fetch_goal(demo_id=demo_id, t=0)
+            input["goal"] = self.fetch_goal(demo_id=demo_id, demo=demo, t=0)
             
         return input
     
-    def input_from_new_obs(self, input, obs, demo_id, t):
+    def input_from_new_obs(self, input, obs, demo_id, demo, t):
         """
         Update model input by shifting history and inserting new observation
         from environment.
@@ -193,12 +200,14 @@ class RolloutEnv:
 
             demo_id: demo id
 
+            demo (dict): nested dictionary returned from @self.validset.load_demo
+
             t (int): timestep in trajectory
 
         Returns: updated input @input.
         """
         if self.normalize:
-            obs = self.normalize_obs(obs=obs)
+            obs = self.normalize_obs(obs=obs, normalization_stats=self.normalization_stats)
         
         input = TensorUtils.shift_seq(x=input, k=-1)
 
@@ -208,23 +217,32 @@ class RolloutEnv:
             input["obs"][obs_key][:, -1, :] = obs[obs_key]
         
         if self.gc:
-            input["goal"] = self.fetch_goal(demo_id=demo_id, t=t)
+            input["goal"] = self.fetch_goal(demo_id=demo_id, demo=demo, t=t)
 
         return input
     
-    def fetch_goal(self, demo_id, t):
+    def fetch_goal(self, demo_id, demo, t):
         """
-        Get goal for timestep @t in demo with @demo_id.
+        Get goal for timestep @t in @demo.
 
         Args: 
-            demo_id: demo id
+            demo_id (int): demo id, ie. 0
+
+            demo (dict): nested dictionary returned from @self.validset.load_demo
 
             t (int): timestep in trajectory
 
         Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
         """
-        return NotImplementedError
+        demo_length = demo["length"]
+        if t >= demo_length:
+            # reuse last goal
+            t = demo_length - 1
+        goal = self.validset.seq_from_timstep(demo_id=demo_id, demo=demo, t=t)["goal"]
+        goal = TensorUtils.to_batch(x=goal)
+        return goal
     
+    @abstractmethod
     def init_demo(self, demo_id):
         """
         Initialize environment for demo with @demo_id 
@@ -284,8 +302,9 @@ class RolloutEnv:
 
         Returns: dictionary of results with the keys "horizon", "success", and "error".
         """
-        demo_len = self.validset.demo_len(demo_id=demo_id)
-        horizon = demo_len if self.horizon is None else self.horizon
+        demo = self.validset.load_demo(demo_id=demo_id)
+        demo_length = demo["length"]
+        horizon = demo_length if self.horizon is None else self.horizon
 
         # switch to eval mode
         self.policy.eval()
@@ -293,7 +312,7 @@ class RolloutEnv:
         obs = self.init_demo(demo_id=demo_id)
 
         # policy input from initial observation
-        input = self.input_from_initial_obs(obs=obs, demo_id=demo_id)
+        input = self.input_from_initial_obs(obs=obs, demo_id=demo_id, demo=demo)
 
         results = {}
         video_count = 0  # video frame counter
@@ -304,7 +323,7 @@ class RolloutEnv:
         # iterate until horizon reached or termination on success
         while step_i < horizon and not (self.terminate_on_success and success):
             # compute new input
-            input = self.input_from_new_obs(input=input, obs=obs, demo_id=demo_id, t=step_i)
+            input = self.input_from_new_obs(input=input, obs=obs, demo_id=demo_id, demo=demo, t=step_i)
             x = BC.prepare_input(input=input, device=device)
 
             # query policy for actions
@@ -315,13 +334,12 @@ class RolloutEnv:
             actions = actions.detach().cpu().numpy()
 
             # compute error 
-            index = self.validset.index_from_timestep(demo_id=demo_id, t=step_i)
-            frame = self.validset[index]
-            target = frame[self.validset.action_key][self.frame_stack:, :]
+            seq = self.validset.seq_from_timstep(demo_id=demo_id, demo=demo, t=step_i)
+            target = seq[self.validset.action_key][self.history:, :]
             e = np.mean(np.abs(target-pred), axis=-1)
             coef = np.full([e.shape[0]], 1.)
             if self.validset.get_pad_mask is True:
-                pad_mask = frame["pad_mask"][self.frame_stack:]
+                pad_mask = seq["pad_mask"][self.history:]
                 coef = pad_mask * coef
             e = np.sum(coef*e)/np.sum(coef)
             error.append(e)

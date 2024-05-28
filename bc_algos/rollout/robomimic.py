@@ -16,7 +16,7 @@ class RobomimicRolloutEnv(RolloutEnv):
         policy,
         obs_group_to_key,
         obs_key_to_modality,
-        frame_stack=0,
+        history=0,
         use_ortho6D=False,
         use_world=False,
         closed_loop=True,
@@ -38,7 +38,7 @@ class RobomimicRolloutEnv(RolloutEnv):
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 
-            frame_stack (int): number of stacked frames to be provided as input to policy
+            history (int): number of frames to be provided as input to policy as history
 
             use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
 
@@ -69,7 +69,7 @@ class RobomimicRolloutEnv(RolloutEnv):
             policy=policy,
             obs_group_to_key=obs_group_to_key,
             obs_key_to_modality=obs_key_to_modality,
-            frame_stack=frame_stack,
+            history=history,
             use_ortho6D=use_ortho6D,
             use_world=use_world,
             closed_loop=closed_loop,
@@ -81,26 +81,6 @@ class RobomimicRolloutEnv(RolloutEnv):
             horizon=horizon,
             verbose=verbose,
         )
-    
-    def fetch_goal(self, demo_id, t):
-        """
-        Get goal for timestep @t in demo with @demo_id.
-
-        Args: 
-            demo_id (str): demo id, ie. "demo_0"
-
-            t (int): timestep in trajectory
-
-        Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
-        """
-        demo_length = self.validset.demo_len(demo_id=demo_id)
-        if t >= demo_length:
-            # reuse last goal
-            t = demo_length-1
-        index = self.validset.index_from_timestep(demo_id=demo_id, t=t)
-        goal = self.validset[index]["goal"]
-        goal = TensorUtils.to_batch(x=goal)
-        return goal
         
     def create_env(self):
         """

@@ -195,13 +195,13 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Normalize @demo in place according to @normalization_stats.
 
         Args: 
-            demo (dict): nested dictionary returned from self.load_demo()
+            demo (dict): nested dictionary returned from @self.load_demo
 
             normalization_stats (dict): nested dictionary from dataset/observation key 
                 to a dictionary that contains mean and stdv. 
         """
         for key in normalization_stats:
-            demo[key] = ObsUtils.normalize(data=demo[key], normalization_stats=normalization_stats[key])
+            if key in demo: demo[key] = ObsUtils.normalize(data=demo[key], normalization_stats=normalization_stats[key])
 
     @abstractmethod
     def _fetch_demo(self, demo_id):
@@ -290,7 +290,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Extract a (sub)sequence from @demo.
 
         Args:
-            demo (dict): nested dictionary returned from self.load_demo()
+            demo (dict): nested dictionary returned from @self.load_demo
 
             keys (array): keys to extract
 
@@ -311,7 +311,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
         Args: 
             demo_id: demo id
 
-            demo (dict): nested dictionary returned from self.load_demo()
+            demo (dict): nested dictionary returned from @self.load_demo
 
             t (int): timestep in demo
 
