@@ -3,19 +3,20 @@
         "name": "bc_transformer",
         "ouput_dir": null,
         "valid_rate": 1,
-        "save_rate": 100, 
-        "rollout_rate": 100
+        "save_rate": 500, 
+        "rollout_rate": 500
     },
 
     "train": {
-        "epochs": 1000,
+        "epochs": 2000,
         "batch_size": 8, 
         "loss": "L1",
         "discount": 1.0,
         "lr": 1e-5,
         "weight_decay": 1e-4,
         "betas": [0.9, 0.999], 
-        "weights": null
+        "weights": null,
+        "num_workers": 8
     },
 
     "observation": {

@@ -7,7 +7,7 @@ from tqdm import tqdm
 import wandb
 
 
-def run_epoch(model, data_loader, loss_fn, frame_stack, optimizer=None, validate=False, device=None):
+def run_epoch(model, data_loader, loss_fn, history, optimizer=None, validate=False, device=None):
     """
     Run a single epoch of training/validation by iterating 
     fully through data loader. If @validate is False, update model weights
@@ -20,7 +20,7 @@ def run_epoch(model, data_loader, loss_fn, frame_stack, optimizer=None, validate
 
         loss_fn (nn.Module): function to compute loss
 
-        frame_stack (int): history of observation not including the current frame
+        history (int): number of frames provided as input to policy as history
 
         optimizer (optim.Optimizer): (optional) function to update model parameters.
 
@@ -43,11 +43,11 @@ def run_epoch(model, data_loader, loss_fn, frame_stack, optimizer=None, validate
         for batch in data_loader:
             # prepare input and target
             batch = BC.prepare_input(input=batch, device=device)
-            target = batch[data_loader.dataset.action_key][:, frame_stack:, :]
+            target = batch[data_loader.dataset.action_key][:, history:, :]
             pad_mask = None
             if data_loader.dataset.get_pad_mask is True:
-                pad_mask = batch["pad_mask"][:, frame_stack:]
-            batch["obs"] = TensorUtils.slice(x=batch["obs"], dim=1, start=0, end=frame_stack+1)
+                pad_mask = batch["pad_mask"][:, history:]
+            batch["obs"] = TensorUtils.slice(x=batch["obs"], dim=1, start=0, end=history+1)
             # generate output
             output = model(batch)
             # compute loss

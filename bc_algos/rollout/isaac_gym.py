@@ -43,7 +43,7 @@ class IsaacGymRolloutEnv(RolloutEnv):
 
             obs_key_to_modality (dict): dictionary from observation key to modality
 
-            history (int): number of frames to be provided as input to policy as history
+            history (int): number of frames provided as input to policy as history
             
             use_ortho6D (bool): if True, environment uses ortho6D representation for orientation
 
