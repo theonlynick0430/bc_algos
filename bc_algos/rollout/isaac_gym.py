@@ -1,13 +1,12 @@
 from bc_algos.rollout.rollout_env import RolloutEnv
 from bc_algos.dataset.isaac_gym import IsaacGymDataset
 from bc_algos.envs.isaac_gym import IsaacGymEnv
-from bc_algos.utils.misc import load_gzip_pickle
-import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
 import omegaconf
 import numpy as np
 import json
+import pandas as pd
 
 
 class IsaacGymRolloutEnv(RolloutEnv):
@@ -152,7 +151,7 @@ class IsaacGymRolloutEnv(RolloutEnv):
         Returns: dictionary from observation key to data (np.array) obtained
             from environment after initializing demo
         """
-        run = load_gzip_pickle(filename=self.validset.demo_id_to_run_path(demo_id=demo_id))
+        run = pd.read_pickle(self.validset.demo_id_to_run_path(demo_id=demo_id))
         metadata = run["metadata"]
         cubes_pos = run["obs"]["cubes_pos"][0]
         cubes_quat = run["obs"]["cubes_quat"][0]

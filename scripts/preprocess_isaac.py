@@ -2,7 +2,7 @@ from bc_algos.envs.isaac_gym import IsaacGymEnv
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
-from bc_algos.utils.misc import load_gzip_pickle, save_gzip_pickle
+from bc_algos.utils.misc import load_gzip_pickle
 from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d, axis_angle_to_matrix, matrix_to_axis_angle
 from addict import Dict
 import os
@@ -11,6 +11,7 @@ import json
 import torch
 from tqdm import tqdm
 import numpy as np
+import pickle
 
     
 def preprocess_dataset(
@@ -77,8 +78,9 @@ def preprocess_dataset(
             demo["obs"]["q"] = run["obs"]["q"]
             demo["metadata"] = run["metadata"]
 
-            new_run_path = os.path.join(output_path, sub_path)
-            save_gzip_pickle(data=demo, filename=new_run_path)
+            new_run_path = os.path.join(output_path, sub_path.split('.')[0] + ".pickle")
+            with open(new_run_path, 'wb') as handle:
+                pickle.dump(demo, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
             progress_bar.update(1)
 
@@ -87,8 +89,9 @@ def preprocess_dataset(
     train_demo_id = np.arange(split_idx, dtype=int)
     valid_demo_id = np.arange(split_idx, num_demos, dtype=int)
     split = {"train": train_demo_id, "valid": valid_demo_id}
-    split_path = os.path.join(output_path, "split.pkl.gzip")
-    save_gzip_pickle(data=split, filename=split_path)
+    split_path = os.path.join(output_path, "split.pickle")
+    with open(split_path, 'wb') as handle:
+        pickle.dump(split, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def main(args):
     assert os.path.exists(args.config), f"config at {args.config} does not exist"

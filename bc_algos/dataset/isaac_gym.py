@@ -1,5 +1,5 @@
 from bc_algos.dataset.dataset import SequenceDataset
-from bc_algos.utils.misc import load_gzip_pickle
+import pandas as pd
 import os
 
 
@@ -100,7 +100,7 @@ class IsaacGymDataset(SequenceDataset):
         
         Returns: run path associated with @demo_id.
         """
-        return os.path.join(self.path, f"run_{demo_id}.pkl.gzip")
+        return os.path.join(self.path, f"run_{demo_id}.pickle")
 
     @property
     def demo_ids(self):
@@ -109,8 +109,8 @@ class IsaacGymDataset(SequenceDataset):
         """
         if self._demo_ids is None:
             if self.filter_by_attribute is not None:
-                split_path = os.path.join(self.path, "split.pkl.gzip")
-                split = load_gzip_pickle(filename=split_path)
+                split_path = os.path.join(self.path, "split.pickle")
+                split = pd.read_pickle(split_path) 
                 self._demo_ids = split[self.filter_by_attribute]
             else:
                 self._demo_ids = [i for i in range(len(os.listdir(self.path))) if
@@ -125,7 +125,7 @@ class IsaacGymDataset(SequenceDataset):
         Returns: length of demo with @demo_id.
         """
         if demo_id not in self.demo_id_to_demo_length:
-            run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
+            run = pd.read_pickle(self.demo_id_to_run_path(demo_id=demo_id))
             self.demo_id_to_demo_length[demo_id] = run["metadata"]["num_steps"]-1
         return self.demo_id_to_demo_length[demo_id]
     
@@ -144,7 +144,7 @@ class IsaacGymDataset(SequenceDataset):
             ...
         }
         """
-        run = load_gzip_pickle(filename=self.demo_id_to_run_path(demo_id=demo_id))
+        run = pd.read_pickle(self.demo_id_to_run_path(demo_id=demo_id))
         demo = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
         demo[self.action_key] = run["policy"][self.action_key]
         return demo
