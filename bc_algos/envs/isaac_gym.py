@@ -53,7 +53,8 @@ class IsaacGymEnv(BaseEnv):
         )
 
         self.config = config
-        self.task = self.config["task"]["name"]
+        self.task = config["task"]["name"]
+        self.control_type = config["task"]["env"]["controlType"]
 
         self.env = isaacgymenvs.make(
             config.seed,
@@ -144,6 +145,19 @@ class IsaacGymEnv(BaseEnv):
         action = torch.from_numpy(action).to(self.device).float().unsqueeze(0)
         obs = self.env.step(action)
         return self.get_observation(obs)
+    
+    def warmup(self):
+        """
+        Warmup environment.
+
+        Returns: observation dictionary after warming up environment.
+        """
+        if self.control_type == "osc":
+            for _ in range(self.init_cycles):
+                obs = self.step(np.zeros(7))
+        elif self.control_type == "joint_abs":
+            obs = self.get_observation()
+        return obs
 
     def reset(self):
         """
@@ -154,11 +168,7 @@ class IsaacGymEnv(BaseEnv):
         # reset randomly
         self.env.reset_idx(self.env_id)
 
-        # "warm up" the environment
-        for _ in range(self.init_cycles):
-            obs = self.step(np.zeros(7))
-
-        return obs
+        return self.warmup()
 
     def reset_to(self, state):
         """
@@ -191,12 +201,7 @@ class IsaacGymEnv(BaseEnv):
         else:
             raise Exception(f"Task {self.task} not supported")
 
-        # "warm up" the environment
-        for _ in range(self.init_cycles):
-            self.env.set_arm_dof(self.env_id, q_init)
-            obs = self.step(np.zeros(7))
-
-        return obs
+        return self.warmup()
 
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
         """
