@@ -149,7 +149,7 @@ class ResNet18Core(EncoderCore):
     def __init__(
         self, 
         input_shape, 
-        embed_shape=[512, 15, 20], 
+        embed_shape=[512, 8, 12], 
         freeze=True,
         spatial_reduction=None, 
         spatial_reduction_args=None,
@@ -160,7 +160,7 @@ class ResNet18Core(EncoderCore):
                 Expected to follow [C, H, W].
 
             embed_shape (array): output shape of ResNet-18 backbone excluding batch dim. 
-                Defaults to output shape for input images of resolution 480x640.
+                Defaults to output shape for input images of resolution 256x384.
 
             freeze (bool): if True, freeze ResNet-18 backbone
 
