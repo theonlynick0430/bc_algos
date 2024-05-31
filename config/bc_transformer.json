@@ -23,7 +23,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 480, 640]
+            "agentview_image": [3, 256, 384]
         },
         "modalities": {
             "obs": {
