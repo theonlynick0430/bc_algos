@@ -4,7 +4,7 @@
     "physics_engine": "physx",
     "policy": {
       "simFrequency": 60,
-      "actionFrequency": 16
+      "actionFrequency": 8
     },
     "env": {
       "numEnvs": 1,
@@ -24,7 +24,7 @@
       "liftRewardScale": 1.5,
       "alignRewardScale": 2.0,
       "stackRewardScale": 16.0,
-      "controlType": "osc",
+      "controlType": "joint_abs",
       "numCubes": 1,
       "asset": {
         "assetRoot": "../../assets",

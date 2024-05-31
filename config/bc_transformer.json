@@ -1,6 +1,6 @@
 {
     "experiment": {
-        "name": "bc_transformer",
+        "name": "inv_kin_var1",
         "ouput_dir": null,
         "valid_rate": 1,
         "save_rate": 500, 
@@ -21,16 +21,11 @@
 
     "observation": {
         "shapes": {
-            "robot0_eef_pos": [3],
-            "robot0_eef_quat": [4],
             "agentview_image": [3, 256, 384]
         },
         "modalities": {
             "obs": {
-                "low_dim": [
-                    "robot0_eef_pos",
-                    "robot0_eef_quat"
-                ],
+                "low_dim": [],
                 "rgb": ["agentview_image"]
             },
             "goal": {
@@ -56,7 +51,7 @@
         "path": null,
         "action_key": "actions",
         "history": 0,
-        "action_chunk": 10,
+        "action_chunk": 1,
         "pad_history": true,
         "pad_action_chunk": true,
         "get_pad_mask": true,

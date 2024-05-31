@@ -1,5 +1,6 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import pandas as pd
+import numpy as np 
 import os
 
 
@@ -146,7 +147,8 @@ class IsaacGymDataset(SequenceDataset):
         """
         run = pd.read_pickle(self.demo_id_to_run_path(demo_id=demo_id))
         demo = {obs_key: run["obs"][obs_key] for obs_key in self.obs_keys}
-        demo[self.action_key] = run["policy"][self.action_key]
+        grip_action = run["policy"][self.action_key][:, -1:]
+        demo[self.action_key] = np.concatenate((run["obs"]["q"][:, :-2], grip_action), axis=-1)
         return demo
 
     def __repr__(self):
