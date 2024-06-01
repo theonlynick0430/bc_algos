@@ -234,7 +234,7 @@ class RolloutEnv:
 
         Returns: goal sequence (np.array) of shape [B=1, T_goal, ...].
         """
-        demo_length = demo["length"]
+        demo_length = self.validset.demo_len(demo_id=demo_id)
         if t >= demo_length:
             # reuse last goal
             t = demo_length - 1
