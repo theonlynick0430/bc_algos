@@ -35,7 +35,7 @@
             },
             "goal": {
                 "low_dim": [],
-                "rgb": []
+                "rgb": ["agentview_image"]
             }
         },
         "kwargs": {
@@ -44,8 +44,8 @@
                 "hidden_dims": []
             },
             "rgb": {
-                "spatial_reduction": null,
-                "spatial_reduction_args": {}, 
+                "spatial_reduction": "token_learner_mlp",
+                "spatial_reduction_args": {"S": 16}, 
                 "freeze": false
             }
         }
@@ -60,8 +60,8 @@
         "pad_history": true,
         "pad_action_chunk": true,
         "get_pad_mask": true,
-        "goal_mode": null,
-        "num_subgoal": null,
+        "goal_mode": "full",
+        "num_subgoal": 25,
         "normalize": true,
         "kwargs": {
             "train": {
