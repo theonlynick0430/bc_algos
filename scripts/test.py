@@ -107,11 +107,15 @@ def test(config):
     print("rolling out...")
     with tqdm(total=validset.num_demos, unit='demo') as progress:
         for demo_id in validset.demo_ids:
-            _ = rollout_env.rollout_with_stats(
+            results = rollout_env.rollout_with_stats(
                 demo_id=demo_id,
                 video_dir=config.experiment.output_dir,
                 device=accelerator.device,
             )
+            print("metrics:")
+            print(results["metrics"]["pick_success"])
+            print(results["metrics"]["put_success"])
+            print(results["metrics"]["success"])
             progress.update(1)
 
     # deinit obs utils

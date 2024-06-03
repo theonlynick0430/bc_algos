@@ -253,10 +253,12 @@ class IsaacGymEnv(BaseEnv):
         # put success (planar and vertical distance from goal)
         self.planar_dist = np.linalg.norm(self.src_cube_goal_pos[:-1]-src_cube_pos[:-1])
         self.vertical_dist = np.abs(self.src_cube_goal_pos[-1]-src_cube_pos[-1])
-        if self.stack:
-            put_success = self.planar_dist < PLANAR_THRESH_STACK and self.vertical_dist < VERTICAL_THRESH
-        else:
-            put_success = self.planar_dist < PLANAR_THRESH_NEAR and self.vertical_dist < VERTICAL_THRESH
+        put_success = False
+        if pick_success: # only compute put success if pick is successful
+            if self.stack:
+                put_success = self.planar_dist < PLANAR_THRESH_STACK and self.vertical_dist < VERTICAL_THRESH
+            else:
+                put_success = self.planar_dist < PLANAR_THRESH_NEAR and self.vertical_dist < VERTICAL_THRESH
         return {
             "pick_success": pick_success, 
             "put_success": put_success,

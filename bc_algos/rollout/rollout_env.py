@@ -334,7 +334,10 @@ class RolloutEnv:
             actions = actions.detach().cpu().numpy()
 
             # compute error 
-            seq = self.validset.seq_from_timstep(demo_id=demo_id, demo=demo, t=step_i)
+            t = step_i
+            if t >= demo_length:
+                t = demo_length - 1
+            seq = self.validset.seq_from_timstep(demo_id=demo_id, demo=demo, t=t)
             target = seq[self.validset.action_key][self.history:, :]
             e = np.mean(np.abs(target-pred), axis=-1)
             coef = np.full([e.shape[0]], 1.)
@@ -362,7 +365,8 @@ class RolloutEnv:
                 obs = self.env.step(action)
                 step_i += 1
 
-                success = self.env.is_success()
+                metrics = self.env.is_success()
+                success = metrics["success"]
 
                 # visualization
                 if video_writer is not None:
@@ -372,11 +376,11 @@ class RolloutEnv:
                     video_count += 1
 
                 # break if success
-                if self.terminate_on_success and success["success"]:
+                if self.terminate_on_success and success:
                     break
                 
         results["horizon"] = step_i
-        results["success"] = success
+        results["metrics"] = metrics
         results["error"] = error
         
         return results
@@ -414,7 +418,7 @@ class RolloutEnv:
         
         if self.verbose:
             horizon = rollout_info["horizon"]
-            success = rollout_info["success"]
+            success = rollout_info["metrics"]["success"]
             print(f"demo={demo_id}, horizon={horizon}, success={success}")
             if write_video:
                 img_path = os.path.join(video_dir, f"{demo_id}_error.png")
