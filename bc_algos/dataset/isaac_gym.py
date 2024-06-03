@@ -1,5 +1,6 @@
 from bc_algos.dataset.dataset import SequenceDataset
 import pandas as pd
+import re
 import os
 
 
@@ -113,8 +114,14 @@ class IsaacGymDataset(SequenceDataset):
                 split = pd.read_pickle(split_path) 
                 self._demo_ids = split[self.filter_by_attribute]
             else:
-                self._demo_ids = [i for i in range(len(os.listdir(self.path))) if
-                               os.path.isfile(self.demo_id_to_run_path(demo_id=i))]
+                demo_ids = []
+                for subpath in os.listdir(self.path):
+                    s = re.search(r"\d+", subpath)
+                    if s is not None:
+                        demo_id = int(s.group())
+                        if os.path.isfile(self.demo_id_to_run_path(demo_id=demo_id)):
+                            demo_ids.append(demo_id)
+                self._demo_ids = demo_ids
         return self._demo_ids
     
     def demo_len(self, demo_id):

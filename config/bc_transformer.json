@@ -61,7 +61,7 @@
         "pad_action_chunk": true,
         "get_pad_mask": true,
         "goal_mode": "full",
-        "num_subgoal": 25,
+        "num_subgoal": 3,
         "normalize": true,
         "kwargs": {
             "train": {
@@ -94,12 +94,12 @@
         "type": "isaac_gym",
         "ortho6D": false,
         "world": false,
-        "env_cfg_path": "config/isaac_gym_env_simple.json",
+        "env_cfg_path": "config/isaac_gym_env.json",
         "closed_loop": false,
         "render_video": false,
         "video_skip": 1,
-        "terminate_on_success": false,
-        "horizon": null,
+        "terminate_on_success": true,
+        "horizon": 250,
         "verbose": true
     }
 }

@@ -105,6 +105,9 @@ def test(config):
     policy = accelerator.prepare(policy)
 
     print("rolling out...")
+    num_pick_success = 0
+    num_put_success = 0
+    num_success = 0
     with tqdm(total=validset.num_demos, unit='demo') as progress:
         for demo_id in validset.demo_ids:
             results = rollout_env.rollout_with_stats(
@@ -112,11 +115,16 @@ def test(config):
                 video_dir=config.experiment.output_dir,
                 device=accelerator.device,
             )
-            print("metrics:")
-            print(results["metrics"]["pick_success"])
-            print(results["metrics"]["put_success"])
-            print(results["metrics"]["success"])
+            num_pick_success += int(results["metrics"]["pick_success"])
+            num_put_success += int(results["metrics"]["put_success"])
+            num_success += int(results["metrics"]["success"])
             progress.update(1)
+    pick_success_rate = num_pick_success / validset.num_demos
+    put_success_rate = num_put_success / num_pick_success
+    success_rate = num_success / validset.num_demos
+    print(f"pick_success_rate: {pick_success_rate}")
+    print(f"put_success_rate: {put_success_rate}")
+    print(f"overall success_rate: {success_rate}")
 
     # deinit obs utils
     ObsUtils.deinit_obs_utils()

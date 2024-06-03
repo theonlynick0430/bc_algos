@@ -406,23 +406,23 @@ class RolloutEnv:
             print("video writes to " + video_path)
         
         rollout_timestamp = time.time()
-        rollout_info = self.run_rollout(
+        results = self.run_rollout(
             demo_id=demo_id, 
             video_writer=video_writer, 
             device=device,
         )
-        rollout_info["duration"] = time.time() - rollout_timestamp
+        results["duration"] = time.time() - rollout_timestamp
 
         if write_video:
             video_writer.close()
         
         if self.verbose:
-            horizon = rollout_info["horizon"]
-            success = rollout_info["metrics"]["success"]
-            print(f"demo={demo_id}, horizon={horizon}, success={success}")
+            horizon = results["horizon"]
+            metrics = results["metrics"]
+            print(f"demo={demo_id}, horizon={horizon}, metrics={metrics}")
             if write_video:
                 img_path = os.path.join(video_dir, f"{demo_id}_error.png")
-                error = np.array(rollout_info["error"])
+                error = np.array(results["error"])
                 t = np.arange(error.shape[0])
                 plt.figure()
                 plt.plot(t, error)
@@ -431,4 +431,4 @@ class RolloutEnv:
                 plt.ylabel("error")
                 plt.savefig(img_path)              
 
-        return rollout_info
+        return results
