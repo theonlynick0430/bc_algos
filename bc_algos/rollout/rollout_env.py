@@ -372,7 +372,7 @@ class RolloutEnv:
                     video_count += 1
 
                 # break if success
-                if self.terminate_on_success and success:
+                if self.terminate_on_success and success["success"]:
                     break
                 
         results["horizon"] = step_i

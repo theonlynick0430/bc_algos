@@ -9,6 +9,13 @@ import torch
 import numpy as np
 
 
+BLOCK_RADIUS = 0.025
+BLOCK_DIAMETER = BLOCK_RADIUS*2
+PICK_THRESH = BLOCK_DIAMETER
+PLANAR_THRESH_NEAR = BLOCK_DIAMETER*3
+PLANAR_THRESH_STACK = BLOCK_DIAMETER
+VERTICAL_THRESH = BLOCK_RADIUS
+
 class IsaacGymEnv(BaseEnv):
     """
     Class for interacting with Isaac Gym environment.
@@ -196,6 +203,7 @@ class IsaacGymEnv(BaseEnv):
             block_init_pose[:, 2] += 0.01
             q_init = torch.from_numpy(state["start_q"]).to(self.device).float().unsqueeze(0)
             block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)
+            self.stack = state["offset_index"] == 4
             self.env.reset_idx(self.env_id, active_cube_indices=block_indices, active_cube_radius=block_radius,
                                active_cube_asset_types=block_type, colors=block_colors, init_cube_state=block_init_pose)
         else:
@@ -226,4 +234,21 @@ class IsaacGymEnv(BaseEnv):
         """
         Returns: whether the task conditions are reached.
         """
-        return False
+        obs = self.get_observation(preprocess=False)
+        src_cube_pos = obs["cubes_pos"][0, 0, :]
+        # pick success (max vertical distance achieved)
+        self.max_dz = max(self.max_dz, np.abs(src_cube_pos[-1]-self.src_cube_init_pos[-1]))
+        self.max_dz = max(self.max_dz, 0)
+        pick_success = self.max_dz > PICK_THRESH
+        # put success (planar and vertical distance from goal)
+        self.planar_dist = np.linalg.norm(self.src_cube_goal_pos[:-1]-src_cube_pos[:-1])
+        self.vertical_dist = np.abs(self.src_cube_goal_pos[-1]-src_cube_pos[-1])
+        if self.stack:
+            put_success = self.planar_dist < PLANAR_THRESH_STACK and self.vertical_dist < VERTICAL_THRESH
+        else:
+            put_success = self.planar_dist < PLANAR_THRESH_NEAR and self.vertical_dist < VERTICAL_THRESH
+        return {
+            "pick_success": pick_success, 
+            "put_success": put_success,
+            "success": pick_success and put_success,
+        }
