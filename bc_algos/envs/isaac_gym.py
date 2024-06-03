@@ -129,6 +129,8 @@ class IsaacGymEnv(BaseEnv):
             state_mat = quaternion_to_matrix(state_quat)
             state_ortho6D = matrix_to_rotation_6d(state_mat)
             obs["robot0_eef_ortho6D"] = state_ortho6D
+        # save for success computation 
+        obs["cubes_pos"] = di["cubes_pos"].cpu().numpy()
         return obs
 
     def load_env(self, xml):
@@ -208,8 +210,17 @@ class IsaacGymEnv(BaseEnv):
                                active_cube_asset_types=block_type, colors=block_colors, init_cube_state=block_init_pose)
         else:
             raise Exception(f"Task {self.task} not supported")
+        
+        obs = self.warmup()
 
-        return self.warmup()
+        # for sucess metrics
+        self.src_cube_init_pos = obs["cubes_pos"][0, 0, :]
+        self.src_cube_goal_pos = state["cube_pos_goal"]
+        self.max_dz = 0.
+        self.planar_dist = 0.
+        self.vertical_dist = 0.
+
+        return obs
 
     def render(self, height=None, width=None, camera_name=None, on_screen=False):
         """
@@ -238,7 +249,6 @@ class IsaacGymEnv(BaseEnv):
         src_cube_pos = obs["cubes_pos"][0, 0, :]
         # pick success (max vertical distance achieved)
         self.max_dz = max(self.max_dz, np.abs(src_cube_pos[-1]-self.src_cube_init_pos[-1]))
-        self.max_dz = max(self.max_dz, 0)
         pick_success = self.max_dz > PICK_THRESH
         # put success (planar and vertical distance from goal)
         self.planar_dist = np.linalg.norm(self.src_cube_goal_pos[:-1]-src_cube_pos[:-1])
