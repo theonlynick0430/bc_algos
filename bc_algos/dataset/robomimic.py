@@ -5,7 +5,7 @@ import h5py
 class RobomimicDataset(SequenceDataset):
     """
     Class for fetching sequences of experience from Robomimic dataset.
-    Length of the fetched sequence is equal to (@self.frame_stack + @self.seq_length)
+    Length of the fetched sequence is equal to (@self.history + @self.action_chunk)
     """
     def __init__(
         self,
