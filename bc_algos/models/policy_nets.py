@@ -166,15 +166,23 @@ class BC_Transformer(BC):
         """
         Create positional encodings for model input.
         """
-        embedding = nn.Embedding(1, self.embed_dim)
-        self.goal_embedding = nn.Parameter(embedding(LongTensor([0])))
+        self.obs_group_to_embedding = nn.ParameterDict()
+        num_obs_groups = len(self.obs_group_enc.output_dim)
+        if num_obs_groups > 1:
+            embeddings = nn.Embedding(num_obs_groups, self.embed_dim)
+            for i, obs_group in enumerate(self.obs_group_enc.output_dim):
+                self.obs_group_to_embedding[obs_group] = nn.Parameter(embeddings(LongTensor([i])))
 
-        T = self.num_goal
-        N = self.obs_group_enc.output_dim["goal"] // self.embed_dim
-        goal_pos_enc = pos_enc_1d(d_model=self.embed_dim, T=T)
-        goal_pos_enc = goal_pos_enc.unsqueeze(1).repeat(1, N, 1).view(-1, self.embed_dim)
-        self.goal_pos_enc = nn.Parameter(goal_pos_enc)
-        self.goal_pos_enc.requires_grad = False # buffer
+        self.obs_group_to_pos_enc = nn.ParameterDict()
+        for obs_group in self.obs_group_enc.output_dim:
+            T = self.history+1 if obs_group == "obs" else self.num_goal
+            if T > 1:
+                N = self.obs_group_enc.output_dim[obs_group] // self.embed_dim
+                pos_enc = pos_enc_1d(d_model=self.embed_dim, T=T)
+                pos_enc = pos_enc.unsqueeze(1).repeat(1, N, 1).view(-1, self.embed_dim)
+                pos_enc = nn.Parameter(pos_enc)
+                pos_enc.requires_grad = False # buffer
+                self.obs_group_to_pos_enc[obs_group] = pos_enc
 
         self.tgt = nn.Parameter(pos_enc_1d(d_model=self.embed_dim, T=self.action_chunk))
         self.tgt.requires_grad = False # buffer
@@ -191,10 +199,15 @@ class BC_Transformer(BC):
         """
         B = TensorUtils.get_batch_dim(x=input)
         latent_dict = TensorUtils.time_distributed(input=input, op=self.obs_group_enc)
-        obs_latent = latent_dict["obs"].view(B, -1, self.embed_dim)
-        goal_latent = latent_dict["goal"].view(B, -1, self.embed_dim)
-        goal_latent = goal_latent + self.goal_embedding + self.goal_pos_enc
-        src = torch.cat([obs_latent, goal_latent], dim=-2)
+        src = []
+        for obs_group, latent in latent_dict.items():
+            latent = latent.view(B, -1, self.embed_dim)
+            if obs_group in self.obs_group_to_embedding:
+                latent = latent + self.obs_group_to_embedding[obs_group]
+            if obs_group in self.obs_group_to_pos_enc:
+                latent = latent + self.obs_group_to_pos_enc[obs_group]
+            src.append(latent)
+        src = torch.cat(src, dim=-2)
         tgt = self.tgt.unsqueeze(0).repeat(B, 1, 1)
         output = self.backbone(src, tgt)
         action = TensorUtils.time_distributed(input=output, op=self.action_dec)
