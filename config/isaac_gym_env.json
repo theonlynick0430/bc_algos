@@ -25,15 +25,15 @@
       "alignRewardScale": 2.0,
       "stackRewardScale": 16.0,
       "controlType": "osc",
-      "numCubes": 4,
+      "numCubes": 1,
       "asset": {
         "assetRoot": "../../assets",
         "assetFileNameFranka": "urdf/franka_description/robots/franka_panda_gripper.urdf"
       },
       "enableCameraSensors": true,
       "cameraResolution": [
-        256,
-        256
+        480,
+        640
       ]
     },
     "sim": {

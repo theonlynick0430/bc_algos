@@ -41,6 +41,7 @@ def load_act_policy(core_config, config):
     policy_config = core_config['policy_config']
 
     policy = make_policy(policy_class, policy_config, config)
+    policy.load_state_dict(torch.load("/home/niksrid/bc_algos_act/policy_epoch_995_seed_0.ckpt"))
     policy.eval()
     policy.cuda()
     return policy
@@ -77,7 +78,7 @@ def test(config, config_act, core_config_act):
     valid_loader = DataLoader(validset, batch_size=config.train.batch_size, shuffle=True)
 
     # load obs encoder
-    obs_group_enc = ObservationGroupEncoder.factory(config=config)
+    #obs_group_enc = ObservationGroupEncoder.factory(config=config)
 
     # load backbone network
     # if config.policy.type == Const.PolicyType.MLP:
@@ -148,7 +149,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         type=str,
-        required=True,
         help="path to a config json",
         default="config/bc_transformer.json"
     )
@@ -156,15 +156,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        required=True,
         help="path to dataset",
-        default="/home/niksrid/bc_algos/datasets/proc/dataset_v15_diff"
+        default="/home/niksrid/bc_algos_act/datasets/proc/dataset_v15_diff"
     )
 
     parser.add_argument(
         "--weights",
         type=str,
-        required=True,
         help="path to saved weights",
         default="/home/niksrid/bc_algos/outputs/bac_issac_100_high_res/model_599.pth"
     )
@@ -172,7 +170,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output",
         type=str,
-        required=True,
         help="path to output directory",
         default="outputs/"
     )
@@ -195,7 +192,7 @@ if __name__ == "__main__":
     config.dataset.path = args.dataset
     config.train.weights = args.weights
     config.experiment.output_dir = args.output
-    config_act = OmegaConf.load("/home/chfeng/act/config/Isaac.yaml") #hardcode
+    config_act = OmegaConf.load("/home/niksrid/act_debug/config/Isaac.yaml") #hardcode
     def get_act_policy_config(config):
         enc_layers = 4
         dec_layers = 7

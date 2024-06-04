@@ -1,6 +1,6 @@
 {
     "experiment": {
-        "name": "bc_transformer",
+        "name": "test_test_high_res",
         "ouput_dir": null,
         "valid_rate": 1,
         "save_rate": 50, 
@@ -22,7 +22,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 256, 256]
+            "agentview_image": [3, 480, 640]
         },
         "modalities": {
             "obs": {
@@ -42,12 +42,12 @@
                 "output_shape": [512],
                 "hidden_dims": []
             },
-            "rgb": {}
+            "rgb": {"embed_shape": [512, 15, 20]}
         }
     },
 
     "dataset": {
-        "type": "robomimic",
+        "type": "isaac_gym",
         "path": null,
         "dataset_keys": [
             "actions"
@@ -87,13 +87,13 @@
     },
 
     "rollout": {
-        "type": "robomimic",
-        "env_cfg_path": null,
-        "closed_loop": true,
+        "type": "isaac_gym",
+        "env_cfg_path": "/home/niksrid/bc_algos/config/isaac_gym_env.json",
+        "closed_loop": false,
         "render_video": false,
         "video_skip": 1,
         "terminate_on_success": false,
         "horizon": null,
-        "verbose": false
+        "verbose": true
     }
 }

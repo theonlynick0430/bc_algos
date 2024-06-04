@@ -9,7 +9,7 @@ import time
 import os
 from collections import OrderedDict
 from copy import deepcopy
-
+import torch
 
 class RolloutEnv:
     """
@@ -63,7 +63,7 @@ class RolloutEnv:
             verbose (bool): if True, log rollout stats and visualize error
         """
         assert isinstance(validset, SequenceDataset)
-        assert isinstance(policy, BC)
+        #assert isinstance(policy, BC)
         assert validset.pad_frame_stack and validset.pad_seq_length, "rollout requires padding"
 
         self.validset = validset
@@ -264,7 +264,8 @@ class RolloutEnv:
             x = BC.prepare_input(input=input, device=device)
 
             # query policy for actions
-            actions = self.policy(x)
+            #actions = self.policy(x)
+            actions = self.policy(torch.cat([x['obs']['robot0_eef_pos'], x['obs']['robot0_eef_quat']], dim=-1).squeeze(1), x['obs']['agentview_image'])
             actions = actions.squeeze(0).detach().cpu().numpy() # remove batch dim
 
             # compute error 

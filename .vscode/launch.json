@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            // "args": [
+            //     "--config",  "config/bc_transformer.json",
+            //     "--dataset", "/home/niksrid/bc_algos/datasets/proc/dataset_v15_diff", 
+            //     "--weights", "/home/niksrid/bc_algos/outputs/bac_issac_100_high_res/model_599.pth",
+            //     "--output", "outputs/"
+            // ]
+        }
+    ]
+}
