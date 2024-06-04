@@ -166,9 +166,6 @@ class BC_Transformer(BC):
         """
         Create positional encodings for model input.
         """
-        embedding = nn.Embedding(1, self.embed_dim)
-        self.goal_embedding = nn.Parameter(embedding(LongTensor([0])))
-
         T = self.num_goal
         N = self.obs_group_enc.output_dim["goal"] // self.embed_dim
         goal_pos_enc = pos_enc_1d(d_model=self.embed_dim, T=T)
@@ -193,7 +190,7 @@ class BC_Transformer(BC):
         latent_dict = TensorUtils.time_distributed(input=input, op=self.obs_group_enc)
         src = latent_dict["obs"].view(B, -1, self.embed_dim)
         goal = latent_dict["goal"].view(B, -1, self.embed_dim)
-        goal = goal + self.goal_embedding + self.goal_pos_enc
+        goal = goal + self.goal_pos_enc
         tgt = self.tgt.unsqueeze(0).repeat(B, 1, 1)
         output = self.backbone(src, goal, tgt)
         action = TensorUtils.time_distributed(input=output, op=self.action_dec)
