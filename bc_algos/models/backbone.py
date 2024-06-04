@@ -128,9 +128,11 @@ class Transformer(Backbone):
         return self.embed_dim
 
     def create_layers(self):
-        self.transformer = nn.Transformer(d_model=self.embed_dim, batch_first=True, norm_first=True, **self.kwargs)
+        layer = nn.TransformerDecoderLayer(d_model=512, nhead=8, dim_feedforward=3200, batch_first=True, norm_first=True)
+        self.encoder = nn.TransformerDecoder(decoder_layer=layer, num_layers=4)
+        self.decoder = nn.TransformerDecoder(decoder_layer=layer, num_layers=7)
 
-    def forward(self, src, tgt):
+    def forward(self, src, goal, tgt):
         """
         Forward pass through transformer policy.
 
@@ -141,5 +143,6 @@ class Transformer(Backbone):
 
         Returns: output data (tensor) of shape [B, T_tgt, @self.output_dim].
         """
-        return self.transformer(src, tgt)
+        mem = self.encoder(src, goal)
+        return self.decoder(tgt, mem)
         

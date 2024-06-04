@@ -191,11 +191,10 @@ class BC_Transformer(BC):
         """
         B = TensorUtils.get_batch_dim(x=input)
         latent_dict = TensorUtils.time_distributed(input=input, op=self.obs_group_enc)
-        obs_latent = latent_dict["obs"].view(B, -1, self.embed_dim)
-        goal_latent = latent_dict["goal"].view(B, -1, self.embed_dim)
-        goal_latent = goal_latent + self.goal_embedding + self.goal_pos_enc
-        src = torch.cat([obs_latent, goal_latent], dim=-2)
+        src = latent_dict["obs"].view(B, -1, self.embed_dim)
+        goal = latent_dict["goal"].view(B, -1, self.embed_dim)
+        goal = goal + self.goal_embedding + self.goal_pos_enc
         tgt = self.tgt.unsqueeze(0).repeat(B, 1, 1)
-        output = self.backbone(src, tgt)
+        output = self.backbone(src, goal, tgt)
         action = TensorUtils.time_distributed(input=output, op=self.action_dec)
         return action
