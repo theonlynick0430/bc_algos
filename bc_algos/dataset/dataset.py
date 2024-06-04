@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+import matplotlib.pyplot as plt
 
 
 class SequenceDataset(ABC, torch.utils.data.Dataset):
@@ -341,7 +342,16 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             goal_seq_index = goal_index
             if self.goal_mode == GoalMode.SUBGOAL:
                 goal_seq_index = goal_index[t+self.history:t+self.seq_length]
-            seq["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
+            # seq["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
+            im1 = plt.imread(f"/home/niksrid/nik/bc_algos/datasets/test_gen/run_{demo_id}/0.png")
+            im2 = plt.imread(f"/home/niksrid/nik/bc_algos/datasets/test_gen/run_{demo_id}/6.png")
+            im3 = plt.imread(f"/home/niksrid/nik/bc_algos/datasets/test_gen/run_{demo_id}/12.png")
+            im4 = plt.imread(f"/home/niksrid/nik/bc_algos/datasets/test_gen/run_{demo_id}/18.png")
+            im5 = plt.imread(f"/home/niksrid/nik/bc_algos/datasets/test_gen/run_{demo_id}/24.png")
+            goal = np.stack((im1, im2, im3, im4, im5), axis=0)
+            goal = np.transpose(goal, (0, 3, 1, 2))
+            seq["goal"] = {}
+            seq["goal"]["agentview_image"] = goal
         if self.get_pad_mask:
             seq["pad_mask"] = pad_index[t:t+self.seq_length]
         return seq
