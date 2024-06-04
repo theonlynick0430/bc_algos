@@ -3,7 +3,7 @@ import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
 from bc_algos.utils.misc import load_gzip_pickle, save_gzip_pickle
-from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d, axis_angle_to_matrix, matrix_to_axis_angle
+#from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d, axis_angle_to_matrix, matrix_to_axis_angle
 from addict import Dict
 import os
 import argparse

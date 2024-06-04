@@ -62,7 +62,7 @@
         "normalize": false,
         "kwargs": {
             "train": {
-                "filter_by_attribute": "train",
+                "filter_by_attribute": "valid",
                 "demos": null
             },
             "valid": {
@@ -91,8 +91,8 @@
         "type": "isaac_gym",
         "ortho6D": false,
         "world": false,
-        "env_cfg_path": "/home/niksrid/nik/bc_algos/config/isaac_gym_env_simple.json",
-        "closed_loop": true,
+        "env_cfg_path": "/home/niksrid/nik/bc_algos/config/isaac_gym_env.json",
+        "closed_loop": false,
         "render_video": false,
         "video_skip": 1,
         "terminate_on_success": false,

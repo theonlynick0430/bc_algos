@@ -2,7 +2,7 @@ from bc_algos.dataset.dataset import SequenceDataset
 import bc_algos.utils.tensor_utils as TensorUtils
 import bc_algos.utils.obs_utils as ObsUtils
 from bc_algos.models.policy_nets import BC
-from pytorch3d.transforms import quaternion_to_matrix, axis_angle_to_matrix, matrix_to_axis_angle, rotation_6d_to_matrix
+#from pytorch3d.transforms import quaternion_to_matrix, axis_angle_to_matrix, matrix_to_axis_angle, rotation_6d_to_matrix
 import torch
 import numpy as np
 import imageio
@@ -11,7 +11,51 @@ import time
 import os
 from collections import OrderedDict
 from copy import deepcopy
+from bc_algos.utils.misc import load_gzip_pickle
+from PIL import Image
+import torchvision.transforms as transforms
 
+def load_and_transform_image(image_path):
+    # Define the transformation pipeline
+    transform = transforms.Compose([
+        transforms.Resize((480, 640)),  # Resize the image to 480x640
+        transforms.ToTensor(),  # Convert the image to a PyTorch tensor and normalize from [0, 255] to [0, 1]
+    ])
+
+    # Load the image
+    image = Image.open(image_path)
+
+    # Apply the transformation
+    tensor_image = transform(image)
+
+    return tensor_image
+
+def associate_sequences_evenly(x, y):
+    n = len(x)
+    m = len(y)
+    segment_length = n // m  # Base length of each segment
+    remainder = n % m        # Remainder that needs to be distributed
+
+    result_dict = {}
+    start_index = 0
+
+    for i in range(m):
+        # Add an extra element to this segment if there are still remainder elements to distribute
+        if remainder > 0:
+            end_index = start_index + segment_length + 1
+            remainder -= 1
+        else:
+            end_index = start_index + segment_length
+
+        segment = x[start_index:end_index]
+        start_index = end_index  # Update start index for the next segment
+
+        # Map each element in the segment to the corresponding y value
+        for element in segment:
+            #result_dict[element] = end_index-1
+            result_dict[element] = y[i]
+
+    return result_dict
 
 class RolloutEnv:
     """
@@ -71,7 +115,7 @@ class RolloutEnv:
             verbose (bool): if True, log rollout stats and visualize error
         """
         assert isinstance(validset, SequenceDataset)
-        assert isinstance(policy, BC)
+        #assert isinstance(policy, BC)
         assert validset.pad_frame_stack and validset.pad_seq_length, "rollout requires padding"
 
         self.validset = validset
@@ -302,16 +346,40 @@ class RolloutEnv:
 
         step_i = 0
         # iterate until horizon reached or termination on success
+        video_ref = load_gzip_pickle(os.path.join("/home/niksrid/bc_algos/datasets/preprocessed/dataset_v3_test_16hz", "run_" + str(demo_id) + ".pkl.gzip"))
+        # video_ref_folder = os.path.join("/home/niksrid/bc_algos/validation_results_short_test_TT25", "{:06}".format(demo_id))
+        video_ref_folder = os.path.join("/home/niksrid/bc_algos/validation_results_long_test_TT25", "run_" + str(demo_id))
+        
+        effctive_length = len(video_ref['obs']['agentview_image'])
+        associations = associate_sequences_evenly(np.arange(effctive_length), np.arange(1, 25))
+        
         while step_i < horizon and not (self.terminate_on_success and success):
             # compute new input
             input = self.input_from_new_obs(input=input, obs=obs, demo_id=demo_id, t=step_i)
             x = BC.prepare_input(input=input, device=device)
 
+        
+            if step_i + 10 <= effctive_length:
+                goals_index = associations[step_i + 10 - 1]
+            else:
+                goals_index = associations[effctive_length - 1]
+            
+
             # query policy for actions
-            actions = self.policy(x).squeeze(0) # remove batch dim
+            #goals = torch.from_numpy(video_ref['obs']['agentview_image'][goals_index].astype('float32'))
+            # print(step_i)
+            # print(associations)
+            # print(goals_index)
+            goals = load_and_transform_image(os.path.join(video_ref_folder, str(goals_index) + '.png'))
+            goals = goals.unsqueeze(0)
+            goals = goals.cuda()
+            #actions = self.policy(x).squeeze(0) # remove batch dim
+            goals = goals.unsqueeze(0)
+            actions = self.policy(torch.cat([x['obs']['robot0_eef_pos'], x['obs']['robot0_eef_quat']], dim=-1).squeeze(1), x['obs']['agentview_image'], goals=goals)
             pred = actions.detach().cpu().numpy()
             if self.use_ortho6D or self.use_world:
                 actions = self.postprocess_action(action=actions, obs=obs)
+            actions = actions.squeeze()
             actions = actions.detach().cpu().numpy()
 
             # compute error 
@@ -354,7 +422,9 @@ class RolloutEnv:
                     video_count += 1
 
                 # break if success
-                if self.terminate_on_success and success:
+                # if self.terminate_on_success and success:
+                #     break
+                if self.terminate_on_success and success["success"]:
                     break
                 
         results["horizon"] = step_i
