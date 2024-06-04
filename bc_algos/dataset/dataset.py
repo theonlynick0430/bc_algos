@@ -286,7 +286,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                         subgoal_index = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)
                         goal_index = np.repeat(subgoal_index[1:], np.diff(subgoal_index))
                 elif self.goal_mode == GoalMode.FULL:
-                    goal_index = np.linspace(0, demo_length, self.num_subgoal+1, dtype=np.uint32)[1:]
+                    vdm_index = np.linspace(0, demo_length, 25, dtype=np.uint32)
+                    goal_index = vdm_index[np.linspace(0, 24, self.num_subgoal, dtype=np.uint32)]
 
                 self.index_cache[demo_id] = (data_index, pad_index, goal_index)
 

@@ -1,6 +1,6 @@
 {
     "experiment": {
-        "name": "bc_transformer",
+        "name": "bct_isaac_var13",
         "ouput_dir": null,
         "valid_rate": 1,
         "save_rate": 500, 
@@ -61,7 +61,7 @@
         "pad_action_chunk": true,
         "get_pad_mask": true,
         "goal_mode": "full",
-        "num_subgoal": 3,
+        "num_subgoal": 5,
         "normalize": true,
         "kwargs": {
             "train": {

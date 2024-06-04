@@ -7,6 +7,7 @@ import bc_algos.utils.constants as Const
 from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d
 import torch
 import numpy as np
+import cv2
 
 
 BLOCK_RADIUS = 0.025
@@ -122,7 +123,12 @@ class IsaacGymEnv(BaseEnv):
                 obs[k] = di[k][0].cpu().numpy()
                 if preprocess:
                     if self.obs_key_to_modality[k] == Const.Modality.RGB:
+                        obs[k] = cv2.resize(obs[k], (384, 256))
                         obs[k] = IsaacGymEnv.preprocess_img(obs[k])
+                else:
+                    if self.obs_key_to_modality[k] == Const.Modality.RGB:
+                        obs[k] = cv2.resize(obs[k], (384, 256))
+
         # convert orientation to ortho6D
         if self.use_ortho6D:
             state_quat = obs["robot0_eef_quat"]

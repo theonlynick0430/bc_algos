@@ -32,8 +32,8 @@
         },
         "enableCameraSensors": true,
         "cameraResolution": [
-          256,
-          384
+          480,
+          640
         ]
       },
       "sim": {
