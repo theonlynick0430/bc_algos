@@ -259,7 +259,7 @@ if __name__ == "__main__":
     assert os.path.exists(args.dataset), f"dataset at {args.dataset} does not exist"
     if args.weights is not None:
         assert os.path.exists(args.weights), f"weights at {args.weights} does not exist"
-    assert os.path.exists(args.output), f"output directory at {args.dataset} does not exist"
+    assert os.path.exists(args.output), f"output directory at {args.output} does not exist"
 
     # load config 
     with open(args.config, 'r') as f:
