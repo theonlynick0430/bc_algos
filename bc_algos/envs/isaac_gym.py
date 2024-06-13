@@ -123,11 +123,7 @@ class IsaacGymEnv(BaseEnv):
                 obs[k] = di[k][0].cpu().numpy()
                 if preprocess:
                     if self.obs_key_to_modality[k] == Const.Modality.RGB:
-                        obs[k] = cv2.resize(obs[k], (384, 256))
                         obs[k] = IsaacGymEnv.preprocess_img(obs[k])
-                else:
-                    if self.obs_key_to_modality[k] == Const.Modality.RGB:
-                        obs[k] = cv2.resize(obs[k], (384, 256))
 
         # convert orientation to ortho6D
         if self.use_ortho6D:

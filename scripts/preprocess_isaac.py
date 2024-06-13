@@ -4,7 +4,6 @@ import bc_algos.utils.obs_utils as ObsUtils
 import bc_algos.utils.constants as Const
 from bc_algos.utils.misc import load_gzip_pickle
 from pytorch3d.transforms import quaternion_to_matrix, matrix_to_rotation_6d, axis_angle_to_matrix, matrix_to_axis_angle
-import torchvision.transforms as T
 from addict import Dict
 import os
 import argparse
@@ -36,13 +35,9 @@ def preprocess_dataset(
             demo = TensorUtils.to_tensor(x=demo, device=device)
 
             # preprocess images
-            trans = T.Resize((256,384))
             for obs_key in obs_keys:
                 if ObsUtils.OBS_KEY_TO_MODALITY[obs_key] == Const.Modality.RGB:
-                    img = demo["obs"][obs_key]
-                    img = IsaacGymEnv.preprocess_img(img=img)
-                    img = trans(img)
-                    demo["obs"][obs_key] = img.clip(0., 1.)
+                    demo["obs"][obs_key] = IsaacGymEnv.preprocess_img(img=demo["obs"][obs_key])
 
             # preprocess gripper actions to be more conducive for learning
             mask = demo["policy"][action_key][:, -1] >= 0
