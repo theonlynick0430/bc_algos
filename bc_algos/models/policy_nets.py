@@ -119,6 +119,7 @@ class BC_Transformer(BC):
         self.history = history
         self.action_chunk = action_chunk
         self.num_goal = num_goal
+        self.num_mask = int(0.75*num_goal)
         self.embed_dim = backbone.embed_dim
 
         self.create_pos_enc()
@@ -169,7 +170,7 @@ class BC_Transformer(BC):
         T = self.num_goal
         N = self.obs_group_enc.output_dim["goal"] // self.embed_dim
         goal_pos_enc = pos_enc_1d(d_model=self.embed_dim, T=T)
-        goal_pos_enc = goal_pos_enc.unsqueeze(1).repeat(1, N, 1)
+        goal_pos_enc = goal_pos_enc.unsqueeze(1).repeat(1, N, 1).view(-1, self.embed_dim)
         self.goal_pos_enc = nn.Parameter(goal_pos_enc)
         self.goal_pos_enc.requires_grad = False # buffer
 
@@ -190,12 +191,12 @@ class BC_Transformer(BC):
         T = self.num_goal
         latent_dict = TensorUtils.time_distributed(input=input, op=self.obs_group_enc)
         src = latent_dict["obs"].view(B, -1, self.embed_dim)
-        goal = latent_dict["goal"].view(B, T, -1, self.embed_dim)
+        goal = latent_dict["goal"].view(B, -1, self.embed_dim)
         goal = goal + self.goal_pos_enc
         # masking 
-        num_mask = int(0.75*T)
-        mask_idx = torch.randperm(T)[:num_mask]
-        goal[:, mask_idx, ...] = 0
+        goal = goal.view(B*T, -1)
+        mask_idx = torch.cat([torch.randperm(T)[:self.num_mask]+i*T for i in range(B)])
+        goal[mask_idx, :] = 0
         goal = goal.view(B, -1, self.embed_dim)
         tgt = self.tgt.unsqueeze(0).repeat(B, 1, 1)
         output = self.backbone(src, goal, tgt)
