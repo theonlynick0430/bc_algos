@@ -204,6 +204,8 @@ class IsaacGymEnv(BaseEnv):
             block_type = state["block_types"]
             block_colors = state["block_colors"]
             block_init_pose = state["block_init_pose"]
+            # noise = np.random.normal(loc=0, scale=BLOCK_RADIUS, size=(4, 2))
+            # block_init_pose[:, :2] += noise
             block_init_pose[:, 2] += 0.01
             q_init = torch.from_numpy(state["start_q"]).to(self.device).float().unsqueeze(0)
             block_init_pose = torch.from_numpy(block_init_pose).to(self.device).float().unsqueeze(0)

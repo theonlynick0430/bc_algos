@@ -12,6 +12,7 @@ import os
 from collections import OrderedDict
 from copy import deepcopy
 from abc import abstractmethod
+import cv2
 
 
 class RolloutEnv:
@@ -288,7 +289,8 @@ class RolloutEnv:
         action = torch.cat((action_pos, action_aa, action_grip), dim=-1)
         return action
 
-    def run_rollout(self, demo_id, video_writer=None, device=None):
+    def run_rollout(self, demo_id, video_path=None, device=None):
+    # def run_rollout(self, demo_id, video_writer=None, device=None):
         """
         Run rollout on demo with @demo_id.
 
@@ -369,11 +371,14 @@ class RolloutEnv:
                 success = metrics["success"]
 
                 # visualization
-                if video_writer is not None:
-                    if video_count % self.video_skip == 0:
-                        video_img = self.env.render()
-                        video_writer.append_data(video_img)
-                    video_count += 1
+                # if video_writer is not None:
+                #     if video_count % self.video_skip == 0:
+                #         video_img = self.env.render()
+                #         video_writer.append_data(video_img)
+                #     video_count += 1
+                img = self.env.render()
+                img_path = os.path.join(video_path, f"img_{step_i}.png")
+                cv2.imwrite(img_path, cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
 
                 # break if success
                 if self.terminate_on_success and success:
@@ -401,20 +406,24 @@ class RolloutEnv:
         write_video = video_dir is not None
         video_writer = None
         if write_video:
-            video_path = os.path.join(video_dir, f"{demo_id}.mp4")
-            video_writer = imageio.get_writer(video_path, fps=24)
-            print("video writes to " + video_path)
+            video_path = os.path.join(video_dir, f"{demo_id}")
+            if not os.path.exists(video_path):
+                os.mkdir(video_path)
+            # video_path = os.path.join(video_dir, f"{demo_id}.mp4")
+            # video_writer = imageio.get_writer(video_path, fps=24)
+            # print("video writes to " + video_path)
         
         rollout_timestamp = time.time()
         results = self.run_rollout(
             demo_id=demo_id, 
-            video_writer=video_writer, 
+            video_path=video_path, 
+            # video_writer=video_writer,
             device=device,
         )
         results["duration"] = time.time() - rollout_timestamp
 
-        if write_video:
-            video_writer.close()
+        # if write_video:
+        #     video_writer.close()
         
         if self.verbose:
             horizon = results["horizon"]

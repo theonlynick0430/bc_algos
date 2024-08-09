@@ -46,11 +46,27 @@ def test(config):
         )
     elif config.dataset.type == Const.DatasetType.ISAAC_GYM:
         trainset = IsaacGymDataset.factory(config=config, train=True)
-        validset = IsaacGymDataset.factory(
-            config=config, 
-            train=False, 
+        # validset = IsaacGymDataset.factory(
+        #     config=config, 
+        #     train=False, 
+        #     normalization_stats=trainset.normalization_stats,
+        # )    
+        validset = IsaacGymDataset(
+            path="/home/niksrid/nik/bc_algos/datasets/dataset_v5",
+            obs_key_to_modality=ObsUtils.OBS_KEY_TO_MODALITY,
+            obs_group_to_key=ObsUtils.OBS_GROUP_TO_KEY,
+            action_key="actions",
+            history=0,
+            action_chunk=10,
+            pad_history=True,
+            pad_action_chunk=True,
+            get_pad_mask=True,
+            goal_mode="full",
+            num_subgoal=25,
+            normalize=True,
             normalization_stats=trainset.normalization_stats,
-        )    
+            demo_ids=None,
+        ) 
     else:
         print(f"unsupported dataset type {config.dataset.type}")
         exit(1)
