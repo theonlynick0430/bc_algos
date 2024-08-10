@@ -1,6 +1,6 @@
 {
     "experiment": {
-        "name": "bc_transformer",
+        "name": "susie",
         "ouput_dir": null,
         "valid_rate": 1,
         "save_rate": 500, 
@@ -44,8 +44,8 @@
                 "hidden_dims": []
             },
             "rgb": {
-                "spatial_reduction": "token_learner_mlp",
-                "spatial_reduction_args": {"S": 16}, 
+                "spatial_reduction": null,
+                "spatial_reduction_args": null, 
                 "freeze": false
             }
         }
@@ -56,12 +56,12 @@
         "path": null,
         "action_key": "actions",
         "history": 0,
-        "action_chunk": 10,
+        "action_chunk": 1,
         "pad_history": true,
         "pad_action_chunk": true,
         "get_pad_mask": true,
         "goal_mode": "full",
-        "num_subgoal": 25,
+        "num_subgoal": 1,
         "normalize": true,
         "kwargs": {
             "train": {

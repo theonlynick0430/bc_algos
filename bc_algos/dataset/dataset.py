@@ -341,6 +341,10 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             goal_seq_index = goal_index
             if self.goal_mode == GoalMode.SUBGOAL:
                 goal_seq_index = goal_index[t+self.history:t+self.seq_length]
+            # susie conditioning 
+            k_min = 20
+            k_max = 24
+            goal_seq_index = np.array([min(t+np.random.randint(k_min, k_max+1), len(goal_index)-1)])
             seq["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
         if self.get_pad_mask:
             seq["pad_mask"] = pad_index[t:t+self.seq_length]
