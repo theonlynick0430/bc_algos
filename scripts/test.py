@@ -62,7 +62,7 @@ def test(config):
             pad_action_chunk=True,
             get_pad_mask=True,
             goal_mode="full",
-            num_subgoal=25,
+            num_subgoal=7,
             normalize=True,
             normalization_stats=trainset.normalization_stats,
             demo_ids=None,

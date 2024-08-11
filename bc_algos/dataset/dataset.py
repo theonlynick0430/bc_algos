@@ -344,9 +344,8 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
                 goal_seq_index = goal_index[t+self.history:t+self.seq_length]
             # seq["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
             imgs = []
-            goal_index = np.linspace(0, 24, self.num_subgoal, dtype=np.uint32)
-            for i in goal_index:
-                img = plt.imread(f"/home/niksrid/nik/bc_algos/datasets/final_test_generated_data/gen_final_test_v6_VL/run_{demo_id}/{i}.png")
+            for i in range(7):
+                img = plt.imread(f"/home/niksrid/nik/bc_algos/datasets/AVDC_collect/AVDC_results_IsaacGym_final_test_TT25_new_prompt/run_{demo_id}/{i}.png")
                 imgs.append(img)
             # imgs = [plt.imread(f"/home/niksrid/nik/bc_algos/datasets/final_test_generated_data/gen_final_test_v6_VGL/run_{demo_id}/24.png")]
             goal = np.stack(imgs, axis=0)
