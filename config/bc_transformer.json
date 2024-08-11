@@ -1,6 +1,6 @@
 {
     "experiment": {
-        "name": "bc_transformer",
+        "name": "AVDC",
         "ouput_dir": null,
         "valid_rate": 1,
         "save_rate": 500, 
@@ -23,7 +23,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 256, 384]
+            "agentview_image": [3, 48, 64]
         },
         "modalities": {
             "obs": {
@@ -46,7 +46,8 @@
             "rgb": {
                 "spatial_reduction": "token_learner_mlp",
                 "spatial_reduction_args": {"S": 16}, 
-                "freeze": false
+                "freeze": false,
+                "embed_shape": [512, 2, 2]
             }
         }
     },
@@ -61,7 +62,7 @@
         "pad_action_chunk": true,
         "get_pad_mask": true,
         "goal_mode": "full",
-        "num_subgoal": 25,
+        "num_subgoal": 7,
         "normalize": true,
         "kwargs": {
             "train": {
