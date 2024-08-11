@@ -23,7 +23,7 @@
         "shapes": {
             "robot0_eef_pos": [3],
             "robot0_eef_quat": [4],
-            "agentview_image": [3, 256, 384]
+            "agentview_image": [3, 256, 256]
         },
         "modalities": {
             "obs": {
@@ -46,7 +46,8 @@
             "rgb": {
                 "spatial_reduction": null,
                 "spatial_reduction_args": null, 
-                "freeze": false
+                "freeze": false,
+                "embed_shape": [512, 8, 8]
             }
         }
     },

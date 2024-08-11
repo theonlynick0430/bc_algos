@@ -3,7 +3,7 @@ from bc_algos.models.token_learner import TokenLearnerConv, TokenLearnerMLP
 import bc_algos.utils.constants as Const
 from transformers import ViTMAEModel
 import torchvision.models as models
-from torchvision.transforms import Normalize
+from torchvision.transforms import Normalize, CenterCrop
 import torch.nn as nn
 import torch
 import numpy as np
@@ -200,7 +200,10 @@ class ResNet18Core(EncoderCore):
             param.requires_grad = False
     
     def create_layers(self):
-        self.preprocessor = Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD)
+        self.preprocessor = nn.Sequential(
+            Normalize(mean=Const.IMAGE_NET_MEAN, std=Const.IMAGE_NET_STD),
+            CenterCrop(256)
+        )
         resnet18_classifier = models.resnet18(pretrained=True)
         # remove pooling and fc layers
         self.resnet18 = nn.Sequential(*list(resnet18_classifier.children())[:-2])
