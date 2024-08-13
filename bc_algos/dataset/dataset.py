@@ -6,6 +6,8 @@ import numpy as np
 from tqdm import tqdm
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+# import cv2
+# from datetime import datetime
 
 
 class SequenceDataset(ABC, torch.utils.data.Dataset):
@@ -345,10 +347,27 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
             if self.goal_mode == GoalMode.SUBGOAL:
                 goal_seq_index = goal_index[t+self.history:t+self.seq_length]
             # susie conditioning 
-            goal_seq_index = np.array([min(t+np.random.randint(self.k_max+self.k_eps+1), len(goal_index)-1)])
+            demo_length = self.demo_len(demo_id=demo_id)
+            goal_seq_index = np.array([min(t+np.random.randint(self.k_max+self.k_eps), demo_length)])
+            # end conditioning
             seq["goal"] = self.extract_data_seq(demo=demo, keys=self.obs_group_to_key["goal"], seq_index=goal_seq_index)
         if self.get_pad_mask:
             seq["pad_mask"] = pad_index[t:t+self.seq_length]
+        # susie debugging 
+        # print("SUSIE DEBUG")
+        # print(f"t: {t}")
+        # print(f"goal_seq_index: {goal_seq_index}")
+        # print("goal shape: ")
+        # print(seq["goal"]["agentview_image"].shape)
+        # live = (seq["obs"]["agentview_image"][0] * 255).astype(np.uint8)
+        # goal = (seq["goal"]["agentview_image"][0] * 255).astype(np.uint8)
+        # live = np.transpose(live, (1, 2, 0))
+        # goal = np.transpose(goal, (1, 2, 0))
+        # live = cv2.cvtColor(live, cv2.COLOR_RGB2BGR)
+        # goal = cv2.cvtColor(goal, cv2.COLOR_RGB2BGR)
+        # current_time = datetime.now().strftime("%H:%M:%S")
+        # cv2.imwrite(f"/home/niksrid/nik/bc_algos/outputs/goal_samples/{current_time}_live.png", live)
+        # cv2.imwrite(f"/home/niksrid/nik/bc_algos/outputs/goal_samples/{current_time}_goal.png", goal)
         return seq
     
     def __getitem__(self, index):

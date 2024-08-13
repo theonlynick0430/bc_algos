@@ -57,7 +57,7 @@
         "path": null,
         "action_key": "actions",
         "history": 0,
-        "action_chunk": 1,
+        "action_chunk": 4,
         "pad_history": true,
         "pad_action_chunk": true,
         "get_pad_mask": true,
