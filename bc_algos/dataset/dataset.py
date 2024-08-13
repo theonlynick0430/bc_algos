@@ -100,7 +100,7 @@ class SequenceDataset(ABC, torch.utils.data.Dataset):
 
         self.cache_index()
 
-        self.k_max = 22
+        self.k_max = 8
         self.k_eps = 2
 
     @classmethod
