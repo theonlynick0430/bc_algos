@@ -1,64 +1,110 @@
 
 from robosuite.utils.input_utils import *
-from robosuite.utils.transform_utils import quat2mat, mat2quat, quat2axisangle
-import numpy as np
+from robosuite.utils.transform_utils import quat2axisangle, quat_multiply
 import robosuite as suite
+import numpy as np 
 
+CUBE_POS_KEY = "cube_pos"
+CUBE_QUAT_KEY = "cube_quat"
+ROBOT_POS_KEY = "robot0_eef_pos"
+ROBOT_QUAT_KEY = "robot0_eef_quat"
+IMAGE_OBS_KEY = "agentview_image"
 
-GRIPPER_CLOSED = 1
-GRIPPER_OPEN = -1
-
-def get_env(env_name, render=True):
-    config = {
-        "env_name": env_name,
-        "robots": ["Panda"],
-        "controller_configs": suite.load_controller_config(default_controller="OSC_POSE"),
-    }
-    return config, suite.make(
-        **config,
-        has_renderer=render,
-        has_offscreen_renderer=False,
-        ignore_done=True,
-        use_camera_obs=False,
-        reward_shaping=True, 
-        control_freq=20,
+def get_env():
+    controller_config = suite.load_controller_config(default_controller="OSC_POSE")
+    controller_config["output_max"] = np.ones(6)
+    controller_config["output_min"] = -np.ones(6)
+    return suite.make(
+        env_name="Lift",
+        robots=["Panda"],
+        controller_configs=controller_config,
+        has_renderer=True,
+        has_offscreen_renderer=True,
+        use_camera_obs=True,
+        camera_names=["agentview"],
+        control_freq=20, 
     )
 
-def get_current_state(obs):
-    ee_pos = obs["robot0_eef_pos"].copy()
-    ee_quat = obs["robot0_eef_quat"].copy()
-    return [ee_pos, ee_quat]
+def encode_state(pos, quat):
+    return np.concatenate((pos, quat))
 
-def linear_action(env, target_state, update_target_state=None, gripper_cmd=0, thresh=0.05, max_steps=25, render=True):
-    obs = env._get_observations(force_update=True)
-    state = get_current_state(obs)
-    error = np.linalg.norm(np.concatenate(target_state)-np.concatenate(state))
-    steps = 0
+def decode_obs(obs):
+    pos = obs[ROBOT_POS_KEY]
+    quat = obs[ROBOT_QUAT_KEY]
+    return pos, quat
+
+def inverse_quaternion(quaternion):
+    x, y, z, w = quaternion
+    return np.array([-x, -y, -z, w])
+
+def linear_action(env, target_pos, target_quat, trans_step=0.025, rot_step=0.1, thresh=0.05, render=True):
+    target = encode_state(target_pos, target_quat)
+    obs = env._get_observations()
+    pos, quat = decode_obs(obs)
+    error = np.linalg.norm(target-encode_state(pos, quat))
     while error > thresh:
-        dmat = np.dot(quat2mat(target_state[1]), quat2mat(state[1]).T)
-        action = np.concatenate((target_state[0]-state[0], quat2axisangle(mat2quat(dmat)), [gripper_cmd]))
-        action[:3] /= np.linalg.norm(action[:3])
-        obs, _, _, _ = env.step(action) 
-        steps += 1
-        if steps >= max_steps:
-            return obs, False
+        action_pos = target_pos-pos
+        action_pos = action_pos
+        action_pos_norm = np.linalg.norm(action_pos)
+        if action_pos_norm > trans_step:
+            action_pos = action_pos/(action_pos_norm+1e-5)*trans_step
+        # for orientation, env takes in delta axis-angle commands relative to world axis
+        inv_quat = inverse_quaternion(quat)
+        action_quat = quat_multiply(target_quat, inv_quat)
+        action_aa = quat2axisangle(action_quat)
+        action_aa = action_aa
+        action_aa_norm = np.linalg.norm(action_aa)
+        if action_aa_norm > trans_step:
+            action_aa = action_aa/(action_aa_norm+1e-5)*rot_step
+        action = np.concatenate((action_pos, action_aa, [0]))
+        obs, _, _, _ = env.step(action)
         if render:
             env.render()
-        state = get_current_state(obs)
-        if update_target_state:
-            target_state = update_target_state(obs, target_state)
-        error = np.linalg.norm(np.concatenate(target_state)-np.concatenate(state))
+        pos, quat = decode_obs(obs)
+        error = np.linalg.norm(target-encode_state(pos, quat))
     return obs, True
 
-def gripper_action(env, grasp=True, render=True):
-    action = np.zeros(7)
-    if grasp:
-        action[6] = GRIPPER_CLOSED
-    else:
-        action[6] = GRIPPER_OPEN
+def gripper_close(env, render=True):
     obs = None
     for _ in range(10):
+        action = np.zeros(7)
+        action[-1] = 1
         obs, _, _, _ = env.step(action)
         if render:
             env.render()
     return obs
+
+def gripper_open(env, render=True):
+    obs = None
+    for _ in range(10):
+        action = np.zeros(7)
+        action[-1] = -1
+        obs, _, _, _ = env.step(action)
+        if render:
+            env.render()
+    return obs
+
+def signed_smallest_angle_from_axis(theta):
+    phi = theta
+    if phi < 0: 
+        phi += 2*np.pi
+    if phi >= 0 and phi < np.pi/2: 
+        if phi >= np.pi/4:
+            return np.pi/2 - phi
+        else:
+            return -phi
+    elif phi >= np.pi/2 and phi < np.pi:
+        if phi >= 3*np.pi/4:
+            return np.pi - phi
+        else:
+            return np.pi/2 - phi
+    elif phi >= np.pi and phi < 3*np.pi/2:
+        if phi >= 5*np.pi/4:
+            return 3*np.pi/2 - phi
+        else:
+            return np.pi - phi
+    else:
+        if phi >= 7*np.pi/4:
+            return 2*np.pi - phi
+        else:
+            return 3*np.pi/2 - phi

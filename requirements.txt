@@ -18,3 +18,4 @@ strenum
 deepspeed
 omegaconf
 pandas
+robosuite==1.4.0
